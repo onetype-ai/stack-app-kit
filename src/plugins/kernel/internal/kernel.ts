@@ -220,7 +220,10 @@ export function createKernel(options: Options): Kernel
     {
         if (!running)
         {
-            throw new KernelFault("NOT_STARTED", `Command "${command}" was run before the kernel started.`);
+            throw new KernelFault(
+                "NOT_STARTED",
+                `Command "${command}" was run before the kernel started. Every plugin's setup runs first, so a command called from one is too early: reach the service directly instead.`,
+            );
         }
 
         const one = commands.get(command);
