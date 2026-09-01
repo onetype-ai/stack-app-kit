@@ -6,6 +6,10 @@ import type { Kernel } from "../internal/kernel";
 export { StartupFailure } from "./StartupFailure";
 export type { StartupFailureProps } from "./StartupFailure";
 
+export { useDismiss } from "./hooks/useDismiss";
+export { useEventCallback } from "./hooks/useEventCallback";
+export { useFocusTrap } from "./hooks/useFocusTrap";
+
 const Held = createContext<Kernel | undefined>(undefined);
 
 /** The pages shown when a viewer may not see something, or nothing matched. */

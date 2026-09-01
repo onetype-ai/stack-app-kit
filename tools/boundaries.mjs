@@ -180,7 +180,9 @@ for (const name of plugins)
         const where = relative(".", file);
         const source = readFileSync(file, "utf8");
         const inside = file.startsWith(join(path, "internal"));
-        const pure = !/react/.test(relative(path, file));
+        // A .tsx file renders by definition, so it is never the pure surface.
+        // Judging by path alone called a React test pure and refused it.
+        const pure = !/react/.test(relative(path, file)) && !file.endsWith(".tsx");
 
         for (const { path: held, erased } of imports(source))
         {
