@@ -9,7 +9,7 @@ import { join } from "node:path";
 const limit = 1800;
 let failed = 0;
 
-function check(path)
+function check(path, allowed = limit)
 {
     if (!existsSync(path))
     {
@@ -20,7 +20,7 @@ function check(path)
 
     const size = readFileSync(path, "utf8").length;
 
-    if (size > limit)
+    if (size > allowed)
     {
         console.log(`OVER  ${path.padEnd(52)} ${String(size).padStart(5)}`);
         failed = 1;
@@ -37,6 +37,10 @@ for (const entry of readdirSync("#docs/procedures"))
 
 check("README.md");
 check("#docs/architecture.md");
+
+// A procedure is read, so it fits a screen. A reference is searched, and
+// split across files it answers the wrong one half the time.
+check("#docs/reference.md", 3400);
 check("src/kernel/usage.md");
 
 for (const name of readdirSync("src/plugins"))
