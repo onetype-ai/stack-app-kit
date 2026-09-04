@@ -146,9 +146,11 @@ for (const name of plugins)
         }
     }
 
-    if (!existsSync(join(path, "tests")))
+    const tests = join(path, "tests");
+
+    if (!existsSync(tests) || readdirSync(tests).filter((one) => one.includes(".test.")).length === 0)
     {
-        fault(`${name} has no tests/`);
+        fault(`${name} has no tests/, or none that hold a test`);
     }
 
     // Only the named files may sit at a plugin's top level.

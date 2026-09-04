@@ -33,7 +33,7 @@ The kernel sorts by `needs` and boots in dependency order. A cycle is a
 startup error naming both plugins.
 
 `boot` may: read config, offer an API, subscribe to events, claim hook points.
-It must not do work — no requests, no sockets, no timers, no DOM. Slow or
+It must not do work: no requests, no sockets, no timers, no DOM. Slow or
 failing setup belongs in `start`.
 
 ```ts

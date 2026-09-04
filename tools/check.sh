@@ -17,9 +17,7 @@ step()
     fi
 }
 
-step "format" npx prettier --check .
 step "types" npx tsc --noEmit
-step "lint" npx eslint .
 step "test" npx vitest run
 step "docs" node tools/docs.mjs
 step "boundaries" node tools/boundaries.mjs

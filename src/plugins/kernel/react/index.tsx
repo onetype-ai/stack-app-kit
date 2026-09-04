@@ -10,7 +10,7 @@ export { useDismiss } from "./hooks/useDismiss";
 export { useEventCallback } from "./hooks/useEventCallback";
 export { useFocusTrap } from "./hooks/useFocusTrap";
 
-const Held = createContext<Kernel | undefined>(undefined);
+const Running = createContext<Kernel | undefined>(undefined);
 
 /** The pages shown when a viewer may not see something, or nothing matched. */
 export type StatusPages = {
@@ -46,7 +46,7 @@ function usePages(): StatusPages
 /** Puts a kernel in reach of everything below it. */
 export function KernelProvider({ kernel, children }: { kernel: Kernel; children: ReactNode }): ReactNode
 {
-    return <Held.Provider value={kernel}>{children}</Held.Provider>;
+    return <Running.Provider value={kernel}>{children}</Running.Provider>;
 }
 
 /** Replaces the built-in 403 and 404. */
@@ -61,7 +61,7 @@ export function StatusPageProvider({ pages, children }: { pages: Partial<StatusP
 /** The kernel, for a component under a provider. */
 export function useKernel(): Kernel
 {
-    const kernel = useContext(Held);
+    const kernel = useContext(Running);
 
     if (kernel === undefined)
     {
@@ -75,8 +75,8 @@ export function useKernel(): Kernel
  * What a plugin holds: its config, its services, and everything a context
  * carries.
  *
- * Named so a plugin can alias it once — `export type DemoHandle =
- * PluginHandle<DemoConfig, DemoServices>` — rather than spelling the pair at
+ * Named so a plugin can alias it once: `export type DemoHandle =
+ * PluginHandle<DemoConfig, DemoServices>`: rather than spelling the pair at
  * every call site.
  */
 export type PluginHandle<Config = unknown, Services = unknown> = Context<Config, Services>;
@@ -90,8 +90,8 @@ export function usePlugin<Config = unknown, Services = unknown>(name: string): P
 /**
  * Renders every contribution to a slot.
  *
- * Each gets the validated payload — a contribution that could not learn what
- * it was decorating was the whole point of the mechanism, missed — and each
+ * Each gets the validated payload: a contribution that could not learn what
+ * it was decorating was the whole point of the mechanism, missed: and each
  * renders behind its own boundary, so one throwing does not blank the rest.
  */
 export function Slot({ name, payload }: { name: string; payload?: unknown }): ReactNode

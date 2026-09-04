@@ -34,7 +34,7 @@ src/index.ts         the one file that names our plugins
 tools/               the checks CI runs
 ```
 
-A plugin declares everything crossing its boundary — dependencies, public API,
+A plugin declares everything crossing its boundary: dependencies, public API,
 events, hooks, config. What is not declared does not exist, and the kernel
 refuses it before anything starts.
 

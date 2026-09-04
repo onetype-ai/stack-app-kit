@@ -152,7 +152,7 @@ export type Context<Config = unknown, Services = unknown> = {
      * only a React hook could reach left half an application unable to call
      * it.
      */
-    use: <Held>(plugin: string) => Held;
+    use: <Api>(plugin: string) => Api;
 };
 
 /**
@@ -162,7 +162,7 @@ export type Context<Config = unknown, Services = unknown> = {
  * callback taking a context would otherwise be a second inference site, and
  * two candidates for one parameter resolve to unknown.
  */
-type Given<Held> = NoInfer<Held>;
+type Given<Api> = NoInfer<Api>;
 
 /** Everything a plugin declares about itself. */
 export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown> = Described & {

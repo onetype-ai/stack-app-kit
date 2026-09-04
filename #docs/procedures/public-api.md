@@ -19,7 +19,7 @@ error classes callers match on, and one factory or accessor.
 
 ```ts
 export type { Transport, Request } from "./internal/contract";
-export { TransportError } from "./internal/errors";
+export { TransportFault } from "./internal/faults";
 export function from(host: Host): Transport
 ```
 

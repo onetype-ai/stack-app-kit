@@ -1,7 +1,7 @@
 import type { Hook, Participant } from "./contract";
 import { KernelFault } from "./faults";
 
-type Held<Context> = { plugin: string; participant: Participant<Context> };
+type Participating<Context> = { plugin: string; participant: Participant<Context> };
 
 /**
  * Hook points: where a plugin inspects what is about to happen and may refuse.
@@ -12,7 +12,7 @@ type Held<Context> = { plugin: string; participant: Participant<Context> };
 export function hooks<Context>()
 {
     const declared = new Map<string, { owner: string; hook: Hook }>();
-    const participants = new Map<string, Held<Context>[]>();
+    const participants = new Map<string, Participating<Context>[]>();
 
     return {
         declare: (owner: string, name: string, hook: Hook): void =>

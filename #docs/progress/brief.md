@@ -3,7 +3,7 @@
 ## What this is
 
 One package a Stack front-end is built on: a kernel that holds the seams, and
-the plugins we ship behind it. A library — what the application is, the
+the plugins we ship behind it. A library: what the application is, the
 application writes.
 
 ## Two kinds of plugin
@@ -24,7 +24,7 @@ anything starts.
 
 ## Where we are
 
-Both plugins work. 87 tests, every one watched to fail before it was trusted.
+Five plugins work. 139 tests, every one watched to fail before it was trusted.
 
 An application declares plugins with `definePlugin`, builds a kernel with
 `createKernel`, and renders through `Slot` and `RouteGuard`. `transport`
@@ -32,6 +32,6 @@ carries requests over a socket where there is one and HTTP where there is not.
 
 ## Next
 
-The config `tools/check.sh` calls — eslint and prettier — then a real
+The config `tools/check.sh` calls: eslint, prettier, and then a real
 application on top, which is the only thing that finds what a test runner
 cannot.

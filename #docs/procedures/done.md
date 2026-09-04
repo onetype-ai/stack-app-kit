@@ -19,11 +19,11 @@ written minutes earlier.
 ## 3. Nothing declared is unreachable
 
 For every field in a contract, find the code that reads it. If nothing does,
-the field does not exist — and it is worse than missing, because the document
+the field does not exist: and it is worse than missing, because the document
 promises it works.
 
 The largest class of defect in the previous build, and neither types nor tests
-caught any of it. `tools/wiring.mjs` is a floor, not a substitute for reading.
+caught any of it. `wiring()` is a floor, not a substitute for reading.
 
 ## 4. It ran where it will really run
 

@@ -197,7 +197,7 @@ export function createKernel(options: Options): Kernel
                 },
             },
 
-            use: <Held,>(name: string): Held =>
+            use: <Api,>(name: string): Api =>
             {
                 const declared = known.get(plugin)?.definition.dependsOn ?? [];
 
@@ -210,7 +210,7 @@ export function createKernel(options: Options): Kernel
                     );
                 }
 
-                return services.get(name) as Held;
+                return services.get(name) as Api;
             },
         };
     }

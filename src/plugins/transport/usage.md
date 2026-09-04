@@ -30,7 +30,7 @@ const subscription = held.subscribe("items", (message) => { … });
 - `start` calls `connect`, which tries the socket once and answers which
   channel is live. A no-op on repeat: a second call joins the first, so two
   sockets never deliver one push twice.
-- `request` returns the body as `unknown` — validate it at the caller.
+- `request` returns the body as `unknown`: validate it at the caller.
 - Idempotent requests retry with growing backoff. `POST` and `PATCH` never
   retry and never move channel, so a request cannot apply twice.
 - With no socket, `subscribe` succeeds and delivers nothing, so a caller needs
@@ -41,7 +41,7 @@ const subscription = held.subscribe("items", (message) => { … });
 ## Refuses
 
 A non-2xx status throws a `TransportFault` carrying a code, the status, the
-method, the path, and the body the server sent — a form needs the field errors
+method, the path, and the body the server sent: a form needs the field errors
 inside it. `code` is one of `NETWORK`, `TIMEOUT`, `ABORTED`, `UNAUTHORIZED`,
 `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `SERVER`, `CLIENT`,
 `MALFORMED`. Messages never expose an internal path.

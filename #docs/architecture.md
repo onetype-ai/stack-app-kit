@@ -22,8 +22,8 @@ The kernel names no plugin; a plugin names only what it declared in `needs`.
 matching text: a relative path climbing out of a folder reaches the same
 private file, and a rule reading the specifier alone calls that clean.
 
-`tools/wiring.mjs` refuses a declared field nothing reads: the largest class of
-defect in the build before this one, and types caught none of it.
+`wiring()` from `/testing` refuses a declared field nothing reads: the largest
+class of defect before this build, and types caught none of it.
 
 ## Two kinds of plugin
 

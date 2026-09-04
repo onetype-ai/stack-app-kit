@@ -3,7 +3,7 @@
 ## Description
 
 The runtime that holds this package's own plugins: registry, boot order,
-events. Not what an application uses — that is `plugins/kernel`.
+events. Not what an application uses: that is `plugins/kernel`.
 
 ## Purpose
 

@@ -10,13 +10,13 @@ export type Failure = {
     at: number;
 };
 
-type Held<Context> = { plugin: string; listener: Listener<Context> };
+type Subscriber<Context> = { plugin: string; listener: Listener<Context> };
 
 /** The event bus: who publishes what, and who hears it. */
 export function events<Context>(now: () => number = Date.now)
 {
     const declared = new Map<string, { owner: string; event: Event }>();
-    const listeners = new Map<string, Held<Context>[]>();
+    const listeners = new Map<string, Subscriber<Context>[]>();
     const failures: Failure[] = [];
 
     return {

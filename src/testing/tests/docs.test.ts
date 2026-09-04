@@ -81,7 +81,7 @@ describe("undocumented", () =>
 
     test("names a key the procedure never mentions", () =>
     {
-        expect(undocumented(contract, "- `version` — the version.")).toEqual(["grants"]);
+        expect(undocumented(contract, "- `version`: the version.")).toEqual(["grants"]);
     });
 
     test("passes when every key is named", () =>
