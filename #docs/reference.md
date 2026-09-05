@@ -55,9 +55,7 @@ commands?: Record<string, Command>;
 setup?: (ctx) => void | Promise<void>; teardown?: (ctx) => void | Promise<void>;
 ```
 
-`services` comes first: everything after it reads `ctx.services`, and
-inference runs left to right. An event or hook name starts with the plugin's
-own name, and naming another plugin's permission makes it a dependency.
+The rules for these keys are in the application's `contract.md`.
 
 ## Kernel
 
@@ -82,8 +80,20 @@ import { transport, cache } from "@onetype/stack-app-kit";
 const held: transport.Socket = openFake();
 ```
 
-`usePlugin<Config, Services>(name)` answers that plugin's `Context` itself,
-not a wrapper: destructure `{ services, config }` from it, never `{ ctx }`.
+```ts
+<Slot name="board.aside" payload={{ id }} />   // payload parses against the slot's schema
+<RouteGuard route={registered} />              // what a router renders for one route
+useKernel(): Kernel
+usePlugin<Config, Services>(name): Context<Config, Services>
+useFrame(): FunctionComponent
+```
+
+`usePlugin` answers that plugin's `Context` itself, not a wrapper:
+destructure `{ services, config }` from it, never `{ ctx }`.
+
+A contribution is rendered as `ComponentType<{ payload: unknown }>`, so it
+takes one prop and parses it. `Slot` filters by `requires` before rendering,
+and wraps each in the contributing plugin's own `fallback`.
 
 `/react` also answers `StartupFailure`, `StatusPageProvider`, `useDismiss`,
 `useEventCallback` and `useFocusTrap`. `NotFound` is not optional: assembling
@@ -93,6 +103,13 @@ routes without it throws.
 
 `Fault` while booting, `KernelFault` from a contract, `TransportFault` from a
 request. Each carries a `code` and sets `name`.
+
+```ts
+TransportFault: { code; status?; method; path; retryable; body }
+```
+
+`body` is what the server sent with its refusal, unread: a form finds its
+field errors there. `retryable` says whether asking again could differ.
 
 ## Testing
 
