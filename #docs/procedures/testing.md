@@ -10,18 +10,17 @@ src/plugins/<name>/tests/
     <subject>.test.ts
 ```
 
-A test imports the plugin the way another plugin does, from `../api`. Never
-from `../internal/`. A test needing an internal tests implementation: either
-`api.ts` lacks something, or the test does not belong.
+A test imports the plugin the way another does, from `../api`, never from
+`../internal/`. One needing an internal tests implementation: either `api.ts`
+lacks something, or the test does not belong.
 
-The kernel's own tests live in `tests/`, against `src/index.ts`.
+The kernel's own live in `tests/`, against `src/index.ts`.
 
 ## Shape
 
-Arrange, Act, Assert, a blank line between:
-
 ```ts
-test("start refuses a plugin needing one that was not passed", async () => {
+test("start refuses a plugin needing one that was not passed", async () =>
+{
     const kernel = createKernel({ plugins: [billing] });
 
     const failed = await kernel.start().catch((error) => error);
@@ -51,6 +50,10 @@ Every refusal in `usage.md` has a test that triggers it. An untested refusal is
 a promise.
 
 Before fixing a bug, write the test that fails because of it.
+
+`render` and `renderHook` do not wrap in `StrictMode`; `main.tsx` does, so an
+updater that runs twice in a browser runs once here. Wrap the case in
+`<StrictMode>` when it proves something happens once.
 
 ## Refuses
 

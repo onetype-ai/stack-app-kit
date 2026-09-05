@@ -37,6 +37,28 @@ plugin's services outside a component, so a plain function can call it.
 
 A plugin aliases its own shape once: `type Inside = Context<Config, Services>`.
 
+## Definition
+
+What `definePlugin(name, { … })` takes. Every key is optional but `version`.
+
+```ts
+version: string; describe: string; dependsOn?: readonly string[];
+config?: ZodType; permissions?: Record<string, { describe: string }>;
+grants?: (ctx) => readonly string[];          // at most one plugin
+services?: (ctx) => Services;                 // ctx.services is never here
+frame?: FunctionComponent; pages?: Pages; fallback?: ComponentType;
+routes?: readonly Route[];
+slots?: Record<string, Slot>; contributes?: readonly Contribution[];
+emits?: Record<string, Event>; listens?: Record<string, Listener>;
+hooks?: Record<string, Hook>; participates?: Record<string, Participant>;
+commands?: Record<string, Command>;
+setup?: (ctx) => void | Promise<void>; teardown?: (ctx) => void | Promise<void>;
+```
+
+`services` comes first: everything after it reads `ctx.services`, and
+inference runs left to right. An event or hook name starts with the plugin's
+own name, and naming another plugin's permission makes it a dependency.
+
 ## Kernel
 
 ```ts
