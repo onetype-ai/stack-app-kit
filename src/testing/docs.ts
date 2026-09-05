@@ -57,13 +57,28 @@ export function missing(root: string, required: readonly string[]): string[]
 
 // Every key the contract accepts is named in the procedure that explains it.
 // A key added to one and not the other is how a document starts lying.
+//
+// `export` is optional because a build emits the shape without it, and a
+// contract that parsed to nothing threw no error: it answered "nothing is
+// undocumented" while reading nothing at all.
 export function undocumented(contract: string, procedure: string): string[]
 {
-    const shape = /export type Definition[\s\S]*?\n\};/.exec(contract)?.[0] ?? "";
+    const shape = /(?:export )?type Definition[\s\S]*?\n\};/.exec(contract)?.[0] ?? "";
+
+    if (shape === "")
+    {
+        throw new Error("No `type Definition` found, so no key would be checked.");
+    }
+
     const keys = [...shape.matchAll(/^\s{4}([a-zA-Z]+)\??:/gm)].map((match) =>
     {
         return match[1] ?? "";
     });
+
+    if (keys.length === 0)
+    {
+        throw new Error("`type Definition` parsed to no keys, so no key would be checked.");
+    }
 
     return keys.filter((key) =>
     {

@@ -88,4 +88,23 @@ describe("undocumented", () =>
     {
         expect(undocumented(contract, "- `version` and `grants`.")).toEqual([]);
     });
+
+    // A build emits the shape without `export`, and reading it as nothing is
+    // how this answered "all documented" while checking no key at all.
+    test("reads a shape a build emitted without export", () =>
+    {
+        const built = contract.replace("export type", "type");
+
+        expect(undocumented(built, "- `version`: the version.")).toEqual(["grants"]);
+    });
+
+    test("refuses a contract holding no Definition", () =>
+    {
+        expect(() => undocumented("type Other = {\n    a: string;\n};", "")).toThrow(/no key would be checked/);
+    });
+
+    test("refuses a Definition that parsed to no keys", () =>
+    {
+        expect(() => undocumented("type Definition = {\n};", "")).toThrow(/no key would be checked/);
+    });
 });
