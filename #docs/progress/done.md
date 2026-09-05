@@ -33,6 +33,9 @@ time the failure was that guarantee and no other.
 - **`check.sh` failed from the first day**, calling prettier and eslint with
   neither configured. Prettier cannot write Allman braces and says it never
   will, so it is gone.
+- **A component could not read what a service keeps.** Three of five builds
+  wrote the same subscribe-and-read by hand. `useKept(watch, read)` is that
+  shape, subscribing once however often a caller passes a new closure.
 - **A component could not hear an event.** `ctx.events.on` hears while a
   caller wants to and answers what stops it; `useHearing` does the same for a
   component and stops when it leaves. A build had written its own subscribers.

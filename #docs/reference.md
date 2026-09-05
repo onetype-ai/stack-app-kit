@@ -85,7 +85,7 @@ context(plugin): Context        pages(): Pages
 
 ```ts
 import { createKernel, definePlugin, boot, Host, KernelFault } from "@onetype/stack-app-kit";
-import { KernelProvider, useKernel, usePlugin, useHearing, NotFound, useFrame } from "@onetype/stack-app-kit/react";
+import { KernelProvider, useKernel, usePlugin, useHearing, useKept, NotFound, useFrame } from "@onetype/stack-app-kit/react";
 import { transport, cache } from "@onetype/stack-app-kit";
 
 // The namespace carries its own types: `transport.Socket` is what
@@ -103,6 +103,10 @@ useFrame(): FunctionComponent
 
 `usePlugin` answers that plugin's `Context` itself, not a wrapper.
 `useHearing(plugin, event, told)` stops when the component leaves.
+
+`useKept(watch, read)` reads a value a service keeps and re-renders when it
+moves. Memoise what `read` answers: a new object each call re-renders
+forever.
 
 A contribution renders as `ComponentType<{ payload: unknown }>`. `Slot` filters
 by `requires` and wraps each in the contributing plugin's `fallback`.

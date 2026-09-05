@@ -1,4 +1,4 @@
-import { Component, createContext, useContext, useEffect, useMemo, useRef, type ComponentType, type FunctionComponent, type ReactNode } from "react";
+import { Component, createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ComponentType, type FunctionComponent, type ReactNode } from "react";
 
 import type { Context, FallbackProps, Registered } from "../api";
 import type { Kernel } from "../internal/kernel";
@@ -108,6 +108,40 @@ export function useHearing(plugin: string, event: string, told: (payload: unknow
             latest.current(payload);
         });
     }, [kernel, plugin, event]);
+}
+
+/**
+ * Reads a value a service keeps, and re-renders when it changes.
+ *
+ * `watch` takes a callback and answers what stops it, which is the shape a
+ * service already has when it keeps anything. `read` answers the value now.
+ *
+ * Both are held in refs, so a component may pass new closures on every render
+ * without resubscribing. Pass a stable `read` or memoise what it answers: a
+ * new object each call makes React re-render forever.
+ */
+export function useKept<Value>(
+    watch: (told: () => void) => () => void,
+    read: () => Value,
+): Value
+{
+    const watching = useRef(watch);
+    const reading = useRef(read);
+
+    watching.current = watch;
+    reading.current = read;
+
+    const subscribe = useCallback((told: () => void) =>
+    {
+        return watching.current(told);
+    }, []);
+
+    const snapshot = useCallback(() =>
+    {
+        return reading.current();
+    }, []);
+
+    return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
 /**
