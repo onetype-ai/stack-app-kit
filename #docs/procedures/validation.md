@@ -2,21 +2,15 @@
 
 Everything crossing into a package is checked where it enters.
 
-## Two inputs
-
 The application sends plugins, options and config: wrong, never hostile. The
 server sends responses and messages: untrusted. Both are validated, and so is
-one of our own plugins: the kernel treats every contract alike. They differ in
-what a failure means: the application gets a thrown error naming its mistake,
-the server a rejected response.
+one of our own plugins: the kernel treats every contract alike.
 
 ## The application
 
 Validated once, at `start`, before anything runs. Everything, then a report: an
-application with four mistakes should learn all four in one run.
-
-`start` brings up every plugin or throws. Nothing partially starts: a
-half-started kernel behaves according to where it stopped.
+application with four mistakes should learn all four in one run. `start` brings
+up every plugin or throws. Nothing partially starts.
 
 Check what the type system cannot: names against a pattern, references against
 what exists, cycles, duplicates, namespaces. TypeScript is erased at runtime,
@@ -29,7 +23,7 @@ never cast: a response that changed shape becomes `undefined` three files later
 with the stack pointing at us.
 
 We return `unknown` rather than validating for the caller: we do not own their
-shapes. What we own is our envelope and our error bodies: we reject as
+shapes. What we own is our envelope and our error bodies, rejected as
 `MALFORMED`.
 
 Anything the other side controls is bounded before it is held: response size,

@@ -5,8 +5,6 @@ plugins we ship behind it.
 
 Read this, then `procedures/`, then the `usage.md` of what you touch.
 
-## Shape
-
 ```
 src/kernel/          our runtime: boot order, offer/take, events
 src/plugins/<name>/  one capability, behind a declared contract
@@ -30,13 +28,10 @@ class of defect before this build, and types caught none of it.
 Ours ship with the package: `transport` is one. The application's are values it
 passes to `createKernel`, and never live here. Both reach a kernel alike.
 
-TypeScript enforces none of this at runtime, and module side effects run in an
-order nothing defines. That is why the registry earns its weight here, and why
-it would not in a language whose compiler already refuses a cycle.
+Module side effects run in an order nothing defines, which is why the registry
+earns its weight here.
 
 ## Validation
 
 Everything is checked before anything starts, and every problem is reported at
-once: four mistakes should take one run to learn, not four.
-
-`start` brings up every plugin or throws. Nothing partially starts.
+once. `start` brings up every plugin or throws. Nothing partially starts.

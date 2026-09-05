@@ -12,22 +12,16 @@ the kernel and for every plugin: a plugin's `api.ts` is pure, and what it puts
 in a view is its `react.tsx`, which imports from `internal/` and never the
 other way.
 
-## What goes where
-
 The kernel holds the registry, validation, events, hooks, permissions and
 state. The React entry holds the Provider, `Slot`, `RouteGuard` and hooks.
 
-The test: could it run in a Node script with no DOM? Then it is core. Does it
-render or read the document? Then it is React.
+The test: could it run in a Node script with no DOM? Then it is core.
 
 A component holds no logic. `Slot` asks the core what contributions exist and
 who may see them; it decides neither.
 
-## Dependencies
-
-React is an optional `peerDependency`, never a dependency: the application owns
-the instance, and a second copy breaks hooks with an error naming neither.
-Optional, because the pure entry needs no React at all.
+React is an optional `peerDependency`, never a dependency. Optional, because
+the pure entry needs no React at all.
 
 ## State reaching React
 

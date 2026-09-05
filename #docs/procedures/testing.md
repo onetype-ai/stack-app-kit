@@ -1,22 +1,9 @@
 # Procedure: testing
 
-Every plugin tests itself, from outside, through its `api.ts`.
-
-## Where
-
-```
-src/plugins/<name>/tests/
-    api.test.ts
-    <subject>.test.ts
-```
-
-A test imports the plugin the way another does, from `../api`, never from
-`../internal/`. One needing an internal tests implementation: either `api.ts`
-lacks something, or the test does not belong.
-
-The kernel's own live in `tests/`, against `src/index.ts`.
-
-## Shape
+Every plugin tests itself, from outside, through its `api.ts`, from `../api`
+and never `../internal/`. A test needing an internal tests implementation:
+either `api.ts` lacks something, or the test does not belong. The kernel's own
+live in `tests/`, against `src/index.ts`.
 
 ```ts
 test("start refuses a plugin needing one that was not passed", async () =>
@@ -29,16 +16,9 @@ test("start refuses a plugin needing one that was not passed", async () =>
 });
 ```
 
-Name the case, not the function.
-
-## Rules
-
-- **Isolated.** Each builds its own. Nothing survives between tests.
-- **Order independent.** Passes alone, and in any order.
-- **No mock of ourselves.** A mocked registry proves the mock works.
-
-Assert on the contract: the thrown code, the returned value, what the
-application can observe. Never a private field.
+Name the case, not the function. Assert on the contract: the thrown code, the
+returned value, what the application can observe. Never a private field, never
+a mock of ourselves.
 
 A plugin takes its world as arguments, so a test passes its own: `openSocket`
 returns a fake socket. A fake accepting what a real one rejects is where bugs
@@ -47,9 +27,7 @@ hide.
 ## What must be proved
 
 Every refusal in `usage.md` has a test that triggers it. An untested refusal is
-a promise.
-
-Before fixing a bug, write the test that fails because of it.
+a promise. Before fixing a bug, write the test that fails because of it.
 
 `render` and `renderHook` do not wrap in `StrictMode`; `main.tsx` does, so an
 updater that runs twice in a browser runs once here. Wrap the case in
@@ -59,5 +37,5 @@ updater that runs twice in a browser runs once here. Wrap the case in
 
 - A test importing another module's `internal/`.
 - Shared state between tests.
-- A skipped test left in the tree: delete it or fix it.
+- A skipped test left in the tree.
 - A refusal in `usage.md` with no test.

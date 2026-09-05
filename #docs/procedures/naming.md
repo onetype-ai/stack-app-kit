@@ -9,40 +9,26 @@ Contract    not Config, Meta, Descriptor
 Slot        not SlotComponent, SlotWrapper
 ```
 
-## Types
-
-Nouns, and specific ones: `Plugin`, `Kernel`, `Route`, `Subscription`.
-
+**Types** are specific nouns: `Plugin`, `Kernel`, `Route`, `Subscription`.
 Never `Manager`, `Handler`, `Helper`, `Util`, `Service`, `Data`, `Info`: a type
 resisting a concrete noun does more than one thing. No `I` prefix, no `Type`
 suffix.
 
-## Functions
+**Functions** are imperative verbs: `start`, `validate`, `subscribe`, `emit`.
+One returning a value is named for the value, without `get`: `failures()`, not
+`getFailures()`. A predicate reads as a question: `granted()`. A factory is
+`create<Thing>`, one per capability.
 
-Verbs, imperative: `start`, `validate`, `subscribe`, `emit`.
+**Components** are nouns in PascalCase: `Slot`, `RouteGuard`,
+`KernelProvider`. A hook is `use<Thing>` and returns the thing:
+`usePlugin("billing")` returns that plugin's context. Not `usePluginData`, not
+`useGetPlugin`.
 
-A function returning a value is named for the value, without `get`:
-`failures()`, not `getFailures()`. A predicate reads as a question:
-`granted()`. A factory is `create<Thing>`, one per capability.
+**Variables** take the word for what they hold: `plugin`, `route`, `left`,
+`asked`. Loop variables take the singular of what they walk. Never `data`,
+`res`, `tmp`, `obj`, `val`, `item`, `x`.
 
-## React
-
-A component is a noun in PascalCase: `Slot`, `RouteGuard`, `KernelProvider`.
-
-A hook is `use<Thing>` and returns the thing: `usePlugin("billing")` returns
-that plugin's context. Not `usePluginData`, not `useGetPlugin`.
-
-## Variables
-
-The word for what it holds: `plugin`, `route`, `left`, `asked`. Loop variables
-take the singular of what they walk.
-
-Never `data`, `res`, `tmp`, `obj`, `val`, `item`, `x`. A variable resisting a
-name is holding two things.
-
-## Files
-
-`internal/` files are named for their subject, singular: `registry.ts`,
+**Files** in `internal/` are named for their subject, singular: `registry.ts`,
 `socket.ts`. A file holding every type is a file with no subject.
 
 ## Refuses

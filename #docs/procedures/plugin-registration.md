@@ -3,10 +3,6 @@
 How one of our plugins joins the kernel. Compile-time only: nothing is loaded
 at runtime.
 
-## Register
-
-One `plugin.ts` per plugin, one declaration:
-
 ```ts
 export const transport: Plugin = {
     name: "transport",
@@ -30,9 +26,9 @@ export { transport } from "./plugins/transport/api";
 The kernel sorts by `needs` and boots in dependency order. A cycle is a startup
 error naming both plugins.
 
-`boot` may: read config, offer an API, subscribe to events, claim hook points.
-It must not do work: no requests, no sockets, no timers, no DOM. Slow or
-failing setup belongs in `start`.
+`boot` may read config, offer an API, subscribe to events and claim hook
+points. It must not do work: no requests, no sockets, no timers, no DOM. Slow
+or failing setup belongs in `start`.
 
 ```ts
 function boot(host: Host)

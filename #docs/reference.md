@@ -50,7 +50,7 @@ config?: ZodType; permissions?: Record<string, { describe: string }>;
 grants?: (ctx) => readonly string[];          // at most one plugin
 services?: (ctx) => Services;                 // ctx.services is never here
 frame?: FunctionComponent; pages?: Pages; fallback?: ComponentType;
-routes?: readonly Route[];   // path, component, title?, requires?, search?
+routes?: readonly Route[];   // path, component, title?, requires?, search?, instead?
 slots?: Record<string, Slot>; contributes?: readonly Contribution[];
 emits?: Record<string, Event>; listens?: Record<string, Listener>;
 hooks?: Record<string, Hook>; participates?: Record<string, Participant>;
@@ -94,18 +94,20 @@ const held: transport.Socket = openFake();
 ```
 
 ```ts
-<Slot name="board.aside" payload={{ id }} />   // payload parses against the slot's schema
-<RouteGuard route={registered} />              // what a router renders for one route
+<Slot name="board.aside" payload={{ id }} />        // parses against the slot's schema
+<RouteGuard route={registered} send={goTo} />       // one route, guarded
 useKernel(): Kernel
-usePlugin<Config, Services>(name): Context<Config, Services>
+usePlugin<Config, Services>(name): Context          // the context itself, not a wrapper
 useFrame(): FunctionComponent
+useHearing(plugin, event, told): void               // stops when the component leaves
+useKept(watch, read): Value                         // a value a service keeps
 ```
 
-`usePlugin` answers that plugin's `Context` itself, not a wrapper.
-`useHearing(plugin, event, told)` stops when the component leaves.
+`Route.instead(ctx)` answers a path when the viewer belongs elsewhere: a
+checkout with an empty cart is early, not forbidden. `send` does the going,
+since the kit imports no router.
 
-`useKept(watch, read)` reads a value a service keeps and re-renders when it
-moves. Memoise what `read` answers, or it re-renders forever.
+Memoise what `useKept`'s `read` answers, or it never stops re-rendering.
 
 A contribution renders as `ComponentType<{ payload: unknown }>`. `Slot` filters
 by `requires` and wraps each in the contributing plugin's `fallback`.

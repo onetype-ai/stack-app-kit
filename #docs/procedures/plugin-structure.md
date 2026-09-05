@@ -2,8 +2,6 @@
 
 One shape, every plugin.
 
-## Layout
-
 ```
 src/plugins/<name>/
     usage.md        contract, <= 1800 characters, required
@@ -19,22 +17,10 @@ src/plugins/<name>/
 `events.ts`, `hooks.ts` and `react.tsx` are omitted when a plugin has none.
 Nothing else lives at the top level.
 
-## Naming
-
-Folder and `name` are the same word: lowercase, no underscores, no `utils` or
-`helpers`. A folder that cannot be named in one word is two plugins.
-
-Inside `internal/`, one file per subject: `socket.ts`, `retry.ts`,
-`request.ts`. Not `manager.ts` or `handler.ts`: those name a pattern, not a
-responsibility.
-
-## Files
-
-A file does one thing. When it stops fitting on a screen, the second thing it
-grew is a separate file or a separate plugin.
-
-One exported thing per `internal/` file, plus the types it needs. Comments
-where a reader would ask why, not what the line does.
+Folder and `name` are the same word, lowercase, no underscores. A folder that
+cannot be named in one word is two plugins. Inside `internal/`, one file per
+subject: `socket.ts`, `retry.ts`, `request.ts`. Not `manager.ts` or
+`handler.ts`: those name a pattern. One exported thing per file.
 
 ## usage.md
 
