@@ -22,4 +22,23 @@ Every test was watched to fail before it was trusted: the kernel, the React
 entry and each of the three transport traps were broken on purpose, and each
 time the failure was that guarantee and no other.
 
-Nothing here has run outside a test runner.
+## Found by running it, and by five builds on it
+
+- **A rule nobody proved is a rule nobody has.** Two lint patterns, one test
+  check and eleven stylesheets were all inert. A flat config replaces
+  `no-restricted-imports` rather than merging it; a folder check asked whether
+  `tests/` exists rather than what is in it; and CSS resolves an undeclared
+  token to nothing, so a stylesheet against the wrong names builds green and
+  moves no pixel. `styling()` in `/testing` refuses that last one now.
+- **`check.sh` failed from the first day**, calling prettier and eslint with
+  neither configured. Prettier cannot write Allman braces and says it never
+  will, so it is gone.
+- **The kernel emitted an event no plugin owned.** A 401 on the session threw
+  `UNDECLARED_EVENT` and took the boot with it.
+- **`Held` meant four things** in one package. Now `Subscriber`,
+  `Participating`, `Running`, `Api`.
+- **Eight documents said things the code did not**, including an example whose
+  `dependsOn` would refuse the boot it was teaching.
+
+Five builds, five domains, 662 tests between them. Every one read the source
+for the same five things, and all five are in `reference.md` now.
