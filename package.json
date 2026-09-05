@@ -1,19 +1,16 @@
 {
     "name": "@onetype/stack-app-kit",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "type": "module",
     "sideEffects": false,
-    "exports": {
-        ".": "./src/index.ts",
-        "./react": "./src/plugins/kernel/react/index.tsx",
-        "./testing": "./src/testing.ts"
-    },
     "scripts": {
         "check": "tools/check.sh",
         "test": "vitest run",
         "typecheck": "tsc --noEmit",
         "boundaries": "node tools/boundaries.mjs",
-        "docs": "node tools/docs.mjs"
+        "docs": "node tools/docs.mjs",
+        "build": "tsup",
+        "prepublishOnly": "tools/check.sh && tsup"
     },
     "dependencies": {
         "zod": "^4.5.4"
@@ -35,8 +32,53 @@
         "jsdom": "^29.1.1",
         "react": "^19.2.8",
         "react-dom": "^19.2.8",
+        "tsup": "^8.5.1",
         "typescript": "^5.7.0",
         "typescript-eslint": "^8.69.0",
         "vitest": "^2.1.0"
+    },
+    "description": "A kernel that holds frontend plugins apart: contracts, routes, slots, events, hooks and permissions, refused at startup rather than in review.",
+    "license": "MIT",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/onetype-ai/stack-app-kit.git"
+    },
+    "homepage": "https://github.com/onetype-ai/stack-app-kit#readme",
+    "bugs": {
+        "url": "https://github.com/onetype-ai/stack-app-kit/issues"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "keywords": [
+        "plugins",
+        "kernel",
+        "react",
+        "frontend",
+        "typescript",
+        "plugin-architecture"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./react": {
+            "types": "./dist/react.d.ts",
+            "import": "./dist/react.js"
+        },
+        "./testing": {
+            "types": "./dist/testing.d.ts",
+            "import": "./dist/testing.js"
+        }
     }
 }
