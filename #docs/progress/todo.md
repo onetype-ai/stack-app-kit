@@ -3,13 +3,13 @@
 1. **An eslint config**: `check.sh` no longer calls it, because calling an
    unconfigured tool is the same as checking nothing. Prettier is gone for
    good: it cannot write Allman braces and says it never will
-2. **Run it in a browser**: nothing here has left a test runner. A `Slot`
-   rendering nothing and a boot rejection reaching no screen are both invisible
-   to vitest, and both happened to the build before this one
+2. **Run it in a browser, every time**: one pass was done. Routes render, the
+   guard refuses naming the permission it wanted, and the tokens reach the
+   page. It also showed that no unit has a style yet, which vitest cannot see
 3. **A worked example**: one small application using the kit, tested like any
    other, so the contract is proved by something that can break
-4. **`ctx.cache` and `ctx.realtime` have no test**: `ctx.http` now has five,
-   and the other two are reached the same way and refused the same way
+4. **A socket nobody opened is a state, not a fault**: `channel()` answers
+   `http` and `subscribe` delivers nothing. Tested, and easy to "fix" wrongly
 5. **A refused start reaches no screen**: `start` throws a message naming the
    plugin, the key and the fix, and an application that does not catch it
    renders white. The best text in the kit reached nobody last time

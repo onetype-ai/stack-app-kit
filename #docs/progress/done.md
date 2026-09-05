@@ -1,6 +1,6 @@
 # done
 
-Both plugins, 87 tests, ~3k lines.
+Five plugins, 155 tests.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events. A listener that
   throws reaches neither the emitter nor the others

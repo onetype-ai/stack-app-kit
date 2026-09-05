@@ -2,7 +2,7 @@
 
 ## Where we are
 
-Five plugins work. 139 tests, every one watched to fail before it was trusted.
+Five plugins work. 155 tests, every one watched to fail before it was trusted.
 
 An application declares plugins with `definePlugin`, builds a kernel with
 `createKernel`, and renders through `Slot` and `RouteGuard`. `transport`
