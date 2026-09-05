@@ -40,16 +40,17 @@ refuses it before anything starts.
 
 ## Work on it
 
-`#docs/architecture.md` is the map, `#docs/procedures/` the rules, and each
-plugin's `usage.md` its contract. That is the whole context needed for one
+`#docs/architecture.md` is the map, `#docs/reference.md` what a context and a
+kernel hand you, `#docs/procedures/` the rules, and each plugin's `usage.md`
+its contract. That is the whole context needed for one
 plugin.
 
 ```sh
 tools/check.sh
 ```
 
-Runs what CI runs: format, types, lint, tests, the 1800-character limit, and
-the plugin boundaries.
+Runs what CI runs: types, lint, tests, the 1800-character limit, and the
+plugin boundaries.
 
 Every check here was broken on purpose and watched to fail. One that has never
 been red proves only that it runs.
