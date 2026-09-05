@@ -55,7 +55,7 @@ export type Contribution = {
 };
 
 /** A page, and what it takes to see it. */
-export type Route = {
+export type Route<Config = unknown, Services = unknown> = {
     path: string;
     component: ComponentType;
     title?: string;
@@ -77,7 +77,7 @@ export type Route = {
      * forbidden, it is early. Answering a path sends them there before
      * anything renders, so the wrong screen never flashes.
      */
-    instead?: (ctx: Context) => string | undefined;
+    instead?: (ctx: Context<Config, Services>) => string | undefined;
 };
 
 /** What a component sees when a contribution or a page threw. */
@@ -229,7 +229,7 @@ export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown>
      */
     pages?: Pages;
 
-    routes?: readonly Route[];
+    routes?: readonly Route<z.infer<Schema>, Given<Services>>[];
     slots?: Readonly<Record<string, Slot>>;
     contributes?: readonly Contribution[];
 

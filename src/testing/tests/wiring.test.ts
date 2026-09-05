@@ -70,6 +70,18 @@ describe("a declared field", () =>
         expect(found).toEqual([]);
     });
 
+    test("and one that destructures with a default", () =>
+    {
+        const found = wiring(
+            tree({
+                "shape.ts": "export type State = { loading?: boolean };",
+                "use.ts": 'import type { State } from "./shape";\nexport const busy = (one: State) => { const { loading = false } = one; return loading; };',
+            }),
+        );
+
+        expect(found).toEqual([]);
+    });
+
     test("does not count a parameter inside a function type", () =>
     {
         const found = wiring(tree({ "shape.ts": "export type Log = { info: (line: string, about?: object) => void };\nexport const write = (log: Log) => log.info(\"x\");" }));

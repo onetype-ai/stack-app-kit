@@ -137,6 +137,7 @@ function reads(field: string, sources: readonly [string, string][], where: strin
         new RegExp(`\\.${field}\\b`),
         new RegExp(`\\b${field}\\s*[,}]`),
         new RegExp(`\\b${field}\\s*:`),
+        new RegExp(`\\b${field}\\s*=[^=]`),
         new RegExp(`\\[["']${field}["']\\]`),
         new RegExp(`["']${field}["']`),
     ];
