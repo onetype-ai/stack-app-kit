@@ -1,8 +1,9 @@
 # todo
 
-1. **An eslint config**: `check.sh` no longer calls it, because calling an
-   unconfigured tool is the same as checking nothing. Prettier is gone for
-   good: it cannot write Allman braces and says it never will
+1. **A lint rule nobody proved is a lint rule nobody has**: both patterns here
+   were dead until a file that breaks them was written. A flat config replaces
+   `no-restricted-imports` rather than merging it, so two blocks naming it
+   leave one silently doing nothing
 2. **Run it in a browser, every time**: one pass was done. Routes render, the
    guard refuses naming the permission it wanted, and the tokens reach the
    page. It also showed that no unit has a style yet, which vitest cannot see

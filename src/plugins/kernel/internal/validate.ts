@@ -1,5 +1,5 @@
 import type { Plugin } from "./contract";
-import { KernelFault } from "./faults";
+import type { KernelFault } from "./faults";
 import * as names from "./names";
 
 /** One thing wrong, and everything needed to fix it. */
@@ -99,28 +99,44 @@ function declares(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     for (const [key, one] of Object.entries(plugin.definition.permissions ?? {}))
     {
-        named(name, key, "permission", say) && claim("permissions", key, "DUPLICATE_PERMISSION", "Permission");
+        if (named(name, key, "permission", say))
+        {
+            claim("permissions", key, "DUPLICATE_PERMISSION", "Permission");
+        }
+
         void one;
     }
 
     for (const [key] of Object.entries(plugin.definition.emits ?? {}))
     {
-        named(name, key, "event", say) && claim("events", key, "DUPLICATE_EVENT", "Event");
+        if (named(name, key, "event", say))
+        {
+            claim("events", key, "DUPLICATE_EVENT", "Event");
+        }
     }
 
     for (const [key] of Object.entries(plugin.definition.hooks ?? {}))
     {
-        named(name, key, "hook", say) && claim("hooks", key, "DUPLICATE_HOOK", "Hook");
+        if (named(name, key, "hook", say))
+        {
+            claim("hooks", key, "DUPLICATE_HOOK", "Hook");
+        }
     }
 
     for (const [key] of Object.entries(plugin.definition.slots ?? {}))
     {
-        named(name, key, "slot", say) && claim("slots", key, "DUPLICATE_SLOT", "Slot");
+        if (named(name, key, "slot", say))
+        {
+            claim("slots", key, "DUPLICATE_SLOT", "Slot");
+        }
     }
 
     for (const [key] of Object.entries(plugin.definition.commands ?? {}))
     {
-        named(name, key, "command", say) && claim("commands", key, "DUPLICATE_COMMAND", "Command");
+        if (named(name, key, "command", say))
+        {
+            claim("commands", key, "DUPLICATE_COMMAND", "Command");
+        }
     }
 
     for (const route of plugin.definition.routes ?? [])

@@ -10,7 +10,7 @@ function made(name: string, held: Partial<Definition> = {}): Plugin
         version: "1.0.0",
         describe: `The ${name} plugin.`,
         ...held,
-    } as Definition);
+    });
 }
 
 /** A client that answers whatever it was told to, and remembers being asked. */

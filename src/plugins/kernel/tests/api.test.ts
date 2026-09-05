@@ -11,7 +11,7 @@ function made(name: string, held: Partial<Definition> = {}): Plugin
         version: "1.0.0",
         describe: `The ${name} plugin.`,
         ...held,
-    } as Definition);
+    });
 }
 
 /** Starts a kernel and answers what it refused, or undefined. */

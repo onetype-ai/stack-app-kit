@@ -10,7 +10,7 @@ afterEach(cleanup);
 
 function made(name: string, held: Partial<Definition> = {}): Plugin
 {
-    return definePlugin(name, { version: "1.0.0", describe: `The ${name} plugin.`, ...held } as Definition);
+    return definePlugin(name, { version: "1.0.0", describe: `The ${name} plugin.`, ...held });
 }
 
 /** A started kernel, rendered under a provider. */

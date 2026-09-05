@@ -25,23 +25,23 @@ function serving(routes: readonly Registered[])
     const building: Building = {
         createRootRoute: (options) =>
         {
-            roots.push(options as Record<string, unknown>);
+            roots.push(options);
 
             return { addChildren: (children: unknown[]) => ({ root: options, children }) } as never;
         },
         createRoute: (options) =>
         {
-            made.push(options as Record<string, unknown>);
+            made.push(options);
 
-            return options as never;
+            return options;
         },
         createRouter: (options) =>
         {
             handed = options;
 
-            return options as never;
+            return options;
         },
-    } as Building;
+    };
 
     const kernel = { routes: () => routes } as Kernel;
     const frame: Frame = { shell: Shell, missing: Missing };

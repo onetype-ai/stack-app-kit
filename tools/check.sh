@@ -18,6 +18,7 @@ step()
 }
 
 step "types" npx tsc --noEmit
+step "lint" npx eslint src
 step "test" npx vitest run
 step "docs" node tools/docs.mjs
 step "boundaries" node tools/boundaries.mjs
