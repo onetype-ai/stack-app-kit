@@ -1,7 +1,6 @@
 # Procedure: dependencies
 
 Every dependency is carried by every application that installs us, forever.
-The cheapest one is the one not taken.
 
 ## Between our plugins
 
@@ -14,25 +13,20 @@ kernel offers a registry, and what fills it is passed in.
 
 ## From outside
 
-Runtime dependencies are close to none. A front-end library is measured by
-what it adds to a bundle, and ours is in every application that takes us.
-
-Before adding one: does the platform already do it? `fetch`, `URL`,
-`AbortController` are everywhere we run. Is it smaller to write the part we
-use? Would we still take it at ten times the size?
+Runtime dependencies are close to none. Before adding one: does the platform
+already do it? `fetch`, `URL`, `AbortController` are everywhere we run. Is it
+smaller to write the part we use? Would we still take it at ten times the size?
 
 A validation library is the usual temptation. We take a schema *interface* the
 application fills, rather than a library everyone must now install.
 
 Types-only dependencies are `devDependencies`. Anything the application also
-holds is a peer: React, and anything with identity that breaks when
-duplicated.
+holds is a peer: React, and anything with identity that breaks when duplicated.
 
 ## Side effects
 
-`"sideEffects": false` in every `package.json`, and it must be true: a module
-doing work on import cannot be dropped by a bundler, so an application taking
-one entry pays for all of them.
+`"sideEffects": false` in every `package.json`, and it must be true: an
+application taking one entry otherwise pays for all of them.
 
 ## Refuses
 

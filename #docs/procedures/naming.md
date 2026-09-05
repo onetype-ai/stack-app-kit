@@ -1,11 +1,5 @@
 # Procedure: naming
 
-Names are chosen, never inherited. Ours are read twice: by us, and by an
-application developer reading autocomplete. A public name is documentation
-nobody has to open.
-
-## Rule
-
 A name says what the thing **is**, in the plainest word that fits. Not what
 happened to it, not the pattern it implements.
 
@@ -19,9 +13,9 @@ Slot        not SlotComponent, SlotWrapper
 
 Nouns, and specific ones: `Plugin`, `Kernel`, `Route`, `Subscription`.
 
-Never `Manager`, `Handler`, `Helper`, `Util`, `Service`, `Data`, `Info`: a
-type resisting a concrete noun does more than one thing. No `I` prefix, no
-`Type` suffix.
+Never `Manager`, `Handler`, `Helper`, `Util`, `Service`, `Data`, `Info`: a type
+resisting a concrete noun does more than one thing. No `I` prefix, no `Type`
+suffix.
 
 ## Functions
 

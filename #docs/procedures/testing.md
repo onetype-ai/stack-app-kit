@@ -18,7 +18,7 @@ The kernel's own tests live in `tests/`, against `src/index.ts`.
 
 ## Shape
 
-Arrange, Act, Assert. In that order, with a blank line between:
+Arrange, Act, Assert, a blank line between:
 
 ```ts
 test("start refuses a plugin needing one that was not passed", async () => {
@@ -36,7 +36,6 @@ Name the case, not the function.
 
 - **Isolated.** Each builds its own. Nothing survives between tests.
 - **Order independent.** Passes alone, and in any order.
-- **Proves something.** A test that cannot fail is deleted.
 - **No mock of ourselves.** A mocked registry proves the mock works.
 
 Assert on the contract: the thrown code, the returned value, what the
@@ -48,11 +47,10 @@ hide.
 
 ## What must be proved
 
-Every refusal in `usage.md` has a test that triggers it. An untested refusal
-is a promise.
+Every refusal in `usage.md` has a test that triggers it. An untested refusal is
+a promise.
 
-Before fixing a bug, write the test that fails because of it. A test that
-passes without the fix proves nothing.
+Before fixing a bug, write the test that fails because of it.
 
 ## Refuses
 

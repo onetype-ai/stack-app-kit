@@ -1,7 +1,6 @@
 # Procedure: plugin structure
 
-One shape, every plugin: someone who has read one knows where to look in all
-of them.
+One shape, every plugin.
 
 ## Layout
 

@@ -8,8 +8,8 @@
    to vitest, and both happened to the build before this one
 3. **A worked example**: one small application using the kit, tested like any
    other, so the contract is proved by something that can break
-4. **`ctx.http` has no test**: it is declared, passed and reachable, but no
-   case makes a request through a plugin context
+4. **`ctx.cache` and `ctx.realtime` have no test**: `ctx.http` now has five,
+   and the other two are reached the same way and refused the same way
 5. **A refused start reaches no screen**: `start` throws a message naming the
    plugin, the key and the fix, and an application that does not catch it
    renders white. The best text in the kit reached nobody last time

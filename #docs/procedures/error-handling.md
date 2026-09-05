@@ -8,8 +8,8 @@ console, so every failure names what we rejected.
 One class per package, declared in the entry, matched by callers:
 `KernelFault`, `TransportFault`. Each carries a `code` and sets `name`.
 
-`code` is a closed union, not a string: a caller branches on it, and a new
-member is a compile error wherever it is handled exhaustively.
+`code` is a closed union, not a string: a new member is a compile error
+wherever it is handled exhaustively.
 
 Never throw a bare `Error`, a string or an object literal: a caller cannot
 match those, so they become "something went wrong" in someone else's UI.
@@ -32,8 +32,7 @@ never what it sent.
 
 ## Where we throw
 
-Validation throws: a contract that does not hold is a programming error, and
-it must be loud.
+Validation throws: a contract that does not hold is a programming error.
 
 Runtime does not, unless the application asked. A listener that fails is
 caught, logged and recorded, where the application can read it: one plugin's

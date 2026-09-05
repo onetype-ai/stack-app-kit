@@ -5,13 +5,11 @@ learned from a build that shipped without it.
 
 ## 1. The document is true today
 
-`usage.md` describes what the code does now, never what it will do. Every
-claim in it is a claim someone will rely on.
+`usage.md` describes what the code does now, never what it will do.
 
 ## 2. Every guarantee was watched to fail
 
-Break the code on purpose, see the test fail, put it back. A test never seen
-red proves the test runs, not that the code works.
+Break the code on purpose, see the test fail, put it back.
 
 This caught tautological assertions twice in the previous build, including one
 written minutes earlier.
@@ -19,7 +17,7 @@ written minutes earlier.
 ## 3. Nothing declared is unreachable
 
 For every field in a contract, find the code that reads it. If nothing does,
-the field does not exist: and it is worse than missing, because the document
+the field does not exist, and it is worse than missing, because the document
 promises it works.
 
 The largest class of defect in the previous build, and neither types nor tests
@@ -34,7 +32,7 @@ delivering, or a boot rejection reaching no screen.
 ## 5. Every check is as strong as its rule
 
 Violate the rule on purpose and confirm the check names the violation. A check
-that passes on a deliberate breach is worse than none: it certifies.
+that passes on a deliberate breach certifies.
 
 Parse what the code actually does, never what it declares. Cycle detection over
 a declared list catches metadata; the real cycle is in the imports.

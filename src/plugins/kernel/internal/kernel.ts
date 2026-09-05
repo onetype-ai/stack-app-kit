@@ -98,6 +98,10 @@ const noRealtime: Realtime = {
     {
         return "http";
     },
+
+    // Answers a subscription that never delivers, on purpose: `channel()`
+    // already said there is no socket, so a plugin polls instead. Refusing
+    // here would make the absence of a socket an error rather than a state.
     subscribe: () => ({ close: () => {} }),
 };
 

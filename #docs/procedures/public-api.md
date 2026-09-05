@@ -1,7 +1,5 @@
 # Procedure: public API
 
-What a plugin exposes, and what it never does.
-
 ## The rule
 
 `src/plugins/<name>/api.ts` is the only file another plugin may import.
@@ -14,8 +12,8 @@ wildcard in `exports`, ever.
 
 ## api.ts holds
 
-The interfaces the plugin satisfies, the types crossing the boundary, the
-error classes callers match on, and one factory or accessor.
+The interfaces the plugin satisfies, the types crossing the boundary, the error
+classes callers match on, and one factory or accessor.
 
 ```ts
 export type { Transport, Request } from "./internal/contract";
@@ -41,8 +39,8 @@ own.
 
 ## Types
 
-A public type is owned by the plugin defining it. Never expose an internal
-one: if a caller cannot construct it, it is not on the boundary.
+A public type is owned by the plugin defining it. Never expose an internal one:
+if a caller cannot construct it, it is not on the boundary.
 
 `api.ts` and `usage.md` change in the same commit, or the contract is a lie.
 
