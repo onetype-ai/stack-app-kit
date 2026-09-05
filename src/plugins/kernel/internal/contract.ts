@@ -129,6 +129,16 @@ export type Context<Config = unknown, Services = unknown> = {
 
     events: {
         emit: (event: string, payload: unknown) => void;
+
+        /**
+         * Hears an event for as long as the caller wants, and answers what
+         * stops it.
+         *
+         * A contract's `listens` is for a plugin: it starts with the kernel
+         * and never stops. This is for a view, which arrives and leaves, and
+         * must take its ear with it.
+         */
+        on: (event: string, told: (payload: unknown) => void) => () => void;
     };
 
     hooks: {

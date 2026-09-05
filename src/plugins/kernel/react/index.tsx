@@ -1,4 +1,4 @@
-import { Component, createContext, useContext, useMemo, type ComponentType, type FunctionComponent, type ReactNode } from "react";
+import { Component, createContext, useContext, useEffect, useMemo, useRef, type ComponentType, type FunctionComponent, type ReactNode } from "react";
 
 import type { Context, FallbackProps, Registered } from "../api";
 import type { Kernel } from "../internal/kernel";
@@ -85,6 +85,29 @@ export type PluginHandle<Config = unknown, Services = unknown> = Context<Config,
 export function usePlugin<Config = unknown, Services = unknown>(name: string): PluginHandle<Config, Services>
 {
     return useKernel().context(name) as PluginHandle<Config, Services>;
+}
+
+/**
+ * Hears an event for as long as this component is on screen.
+ *
+ * `told` is held in a ref, so a component may pass a new closure on every
+ * render without the subscription being torn down and rebuilt. What decides
+ * that is `plugin` and `event`, and nothing else.
+ */
+export function useHearing(plugin: string, event: string, told: (payload: unknown) => void): void
+{
+    const kernel = useKernel();
+    const latest = useRef(told);
+
+    latest.current = told;
+
+    useEffect(() =>
+    {
+        return kernel.context(plugin).events.on(event, (payload) =>
+        {
+            latest.current(payload);
+        });
+    }, [kernel, plugin, event]);
 }
 
 /**

@@ -183,6 +183,17 @@ export function createKernel(options: Options): Kernel
                 {
                     bus.emit(plugin, event, payload, context);
                 },
+
+                on: (event, told) =>
+                {
+                    return bus.listen(plugin, event, {
+                        describe: `${plugin} listening while it runs`,
+                        handle: (payload) =>
+                        {
+                            told(payload);
+                        },
+                    });
+                },
             },
 
             hooks: {

@@ -33,6 +33,9 @@ time the failure was that guarantee and no other.
 - **`check.sh` failed from the first day**, calling prettier and eslint with
   neither configured. Prettier cannot write Allman braces and says it never
   will, so it is gone.
+- **A component could not hear an event.** `ctx.events.on` hears while a
+  caller wants to and answers what stops it; `useHearing` does the same for a
+  component and stops when it leaves. A build had written its own subscribers.
 - **The kernel emitted an event no plugin owned.** A 401 on the session threw
   `UNDECLARED_EVENT` and took the boot with it.
 - **`Held` meant four things** in one package. Now `Subscriber`,

@@ -40,7 +40,7 @@ check("#docs/architecture.md");
 
 // A procedure is read, so it fits a screen. A reference is searched, and
 // split across files it answers the wrong one half the time.
-check("#docs/reference.md", 5400);
+check("#docs/reference.md", 5600);
 check("src/kernel/usage.md");
 
 for (const name of readdirSync("src/plugins"))

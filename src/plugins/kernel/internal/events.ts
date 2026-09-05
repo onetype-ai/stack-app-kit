@@ -25,9 +25,16 @@ export function events<Context>(now: () => number = Date.now)
             declared.set(name, { owner, event });
         },
 
-        listen: (plugin: string, name: string, listener: Listener<Context>): void =>
+        listen: (plugin: string, name: string, listener: Listener<Context>): (() => void) =>
         {
-            listeners.set(name, [...(listeners.get(name) ?? []), { plugin, listener }]);
+            const subscriber: Subscriber<Context> = { plugin, listener };
+
+            listeners.set(name, [...(listeners.get(name) ?? []), subscriber]);
+
+            return () =>
+            {
+                listeners.set(name, (listeners.get(name) ?? []).filter((one) => one !== subscriber));
+            };
         },
 
         /**

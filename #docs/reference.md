@@ -8,7 +8,10 @@ What every service, listener, participant and command is handed.
 type Context<Config = unknown, Services = unknown> = {
     name: string; config: Config; services: Services;
     log: Logger; http: Client; cache: Cache; realtime: Realtime;
-    events: { emit: (event: string, payload: unknown) => void };
+    events: {
+        emit: (event: string, payload: unknown) => void;
+        on: (event: string, told: (payload: unknown) => void) => () => void;
+    };
     hooks: { run: (hook: string, payload: unknown) => Promise<string | undefined> };
     permissions: { has: (one: string) => boolean; all: (many: readonly string[]) => boolean };
     commands: { run: (command: string, input: unknown) => Promise<void> };
@@ -32,6 +35,9 @@ no client at all, `http` and `cache` throw naming what to pass.
 `hooks.run` answers the first refusal, or nothing. `use` reaches another
 plugin's services outside a component, so a plain function can call it.
 
+`events.on` hears while a caller wants to and answers what stops it; a
+contract's `listens` never stops. Neither hears its own plugin's events.
+
 A plugin aliases its shape once: `type Inside = Context<Config, Services>`.
 
 ## Definition
@@ -52,7 +58,7 @@ commands?: Record<string, Command>;
 setup?: (ctx) => void | Promise<void>; teardown?: (ctx) => void | Promise<void>;
 ```
 
-The rules for these keys are in the application's `contract.md`.
+Rules for these keys: the application's `contract.md`.
 
 ## What a start refuses
 
@@ -61,8 +67,8 @@ The rules for these keys are in the application's `contract.md`.
 `INVALID_ROUTE`, `INVALID_CONFIG`. Every one names the plugin and the key.
 
 A plugin name is lowercase letters, digits and hyphens, starting with a
-letter. Everything it declares is `plugin.thing`, in the same alphabet: an
-event, hook, slot or command not starting with its own name is refused.
+letter. Everything it declares is `plugin.thing`: an event, hook, slot or
+command not starting with its own name is refused.
 
 ## Kernel
 
@@ -79,7 +85,7 @@ context(plugin): Context        pages(): Pages
 
 ```ts
 import { createKernel, definePlugin, boot, Host, KernelFault } from "@onetype/stack-app-kit";
-import { KernelProvider, useKernel, usePlugin, NotFound, useFrame } from "@onetype/stack-app-kit/react";
+import { KernelProvider, useKernel, usePlugin, useHearing, NotFound, useFrame } from "@onetype/stack-app-kit/react";
 import { transport, cache } from "@onetype/stack-app-kit";
 
 // The namespace carries its own types: `transport.Socket` is what
@@ -96,10 +102,10 @@ useFrame(): FunctionComponent
 ```
 
 `usePlugin` answers that plugin's `Context` itself, not a wrapper.
+`useHearing(plugin, event, told)` stops when the component leaves.
 
-A contribution renders as `ComponentType<{ payload: unknown }>`: one prop, and
-it parses it. `Slot` filters by `requires` and wraps each in the contributing
-plugin's `fallback`.
+A contribution renders as `ComponentType<{ payload: unknown }>`. `Slot` filters
+by `requires` and wraps each in the contributing plugin's `fallback`.
 
 `/react` also answers `StartupFailure`, `StatusPageProvider`, `useDismiss`,
 `useEventCallback` and `useFocusTrap`. `NotFound` is not optional: routes
@@ -115,7 +121,7 @@ TransportFault: { code; status?; method; path; retryable; body }
 ```
 
 `body` is what the server sent with its refusal, unread: a form finds its
-field errors there. `retryable` says whether asking again could differ.
+field errors there.
 
 A 401 is also announced as `transport.unauthorized` carrying `{ path }`. The
 mount owns it, so a plugin that listens names `transport` in `dependsOn`.

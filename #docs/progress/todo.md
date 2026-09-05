@@ -2,22 +2,18 @@
 
 Ordered by what blocks the most. What is done is in `done.md`.
 
-1. **A component cannot hear an event.** `ctx.events` emits and a contract
-   listens, but nothing subscribes while running. A build wrote its own
-   subscribers in a service to work around it, which is the parallel mechanism
-   every other rule here exists to prevent.
-2. **State that outlives a route.** A flow spanning three routes unmounts each
+1. **State that outlives a route.** A flow spanning three routes unmounts each
    page, and nothing says where what it collected lives. Five builds solved it
    five ways.
-3. **URL state.** A route declares no search parameters, in a kit whose rule is
+2. **URL state.** A route declares no search parameters, in a kit whose rule is
    that undeclared means it does not exist. A build reached past the kernel to
    the router for `useSearch`.
-4. **Guards that depend on data.** A route guard expresses permissions only,
+3. **Guards that depend on data.** A route guard expresses permissions only,
    so anything else becomes a redirect that flashes the wrong screen first.
-5. **Nothing runs in a real browser on its own.** One manual pass found what
+4. **Nothing runs in a real browser on its own.** One manual pass found what
    no test here can see: a stylesheet against tokens that do not exist, and a
    double render `renderHook` will not reproduce.
-6. **The demo is one plugin.** It uses every crossing once, which is what it is
+5. **The demo is one plugin.** It uses every crossing once, which is what it is
    for, but nothing in this repository shows two plugins that need each other.
 
 ## Known, and deliberate
