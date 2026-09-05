@@ -147,9 +147,9 @@ export function useKept<Value>(
 /**
  * Renders every contribution to a slot.
  *
- * Each gets the validated payload: a contribution that could not learn what
- * it was decorating was the whole point of the mechanism, missed: and each
- * renders behind its own boundary, so one throwing does not blank the rest.
+ * Each gets the validated payload, because a contribution that cannot learn
+ * what it decorates is the mechanism missed. Each renders behind its own
+ * boundary, so one throwing does not blank the rest.
  */
 export function Slot({ name, payload }: { name: string; payload?: unknown }): ReactNode
 {
@@ -179,7 +179,7 @@ export function Slot({ name, payload }: { name: string; payload?: unknown }): Re
 }
 
 /** A page, and what it takes to see it. */
-export function RouteGuard({ route }: { route: Registered }): ReactNode
+export function RouteGuard({ route, send }: { route: Registered; send?: (to: string) => ReactNode }): ReactNode
 {
     const kernel = useKernel();
     const pages = usePages();
@@ -189,6 +189,13 @@ export function RouteGuard({ route }: { route: Registered }): ReactNode
     if (lacking.length > 0)
     {
         return <pages.forbidden permission={lacking[0]} />;
+    }
+
+    const elsewhere = route.instead?.(kernel.context(route.plugin));
+
+    if (elsewhere !== undefined)
+    {
+        return send === undefined ? null : send(elsewhere);
     }
 
     if (route.title !== undefined && typeof document !== "undefined")

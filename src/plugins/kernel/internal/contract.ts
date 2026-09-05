@@ -68,6 +68,16 @@ export type Route = {
      * page may read, and a value that fails this never reaches a component.
      */
     search?: z.ZodType;
+
+    /**
+     * Where the viewer belongs instead, when this page is not it.
+     *
+     * `requires` answers whether they may see it. This answers a page they
+     * may see but should not be on yet: a checkout with an empty cart is not
+     * forbidden, it is early. Answering a path sends them there before
+     * anything renders, so the wrong screen never flashes.
+     */
+    instead?: (ctx: Context) => string | undefined;
 };
 
 /** What a component sees when a contribution or a page threw. */
