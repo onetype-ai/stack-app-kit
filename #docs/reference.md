@@ -25,17 +25,14 @@ type Realtime = {
 };
 ```
 
-These three arrive without being declared: they are the kit's own plugins, and
-naming one in `dependsOn` fails startup.
-
-With no socket, `channel()` answers `"http"` and `subscribe` delivers nothing,
-so a caller needs no branch. With no client at all, `http` and `cache` throw
-naming what to pass.
+These three arrive without being declared. With no socket, `channel()` answers
+`"http"` and `subscribe` delivers nothing, so a caller needs no branch. With
+no client at all, `http` and `cache` throw naming what to pass.
 
 `hooks.run` answers the first refusal, or nothing. `use` reaches another
 plugin's services outside a component, so a plain function can call it.
 
-A plugin aliases its own shape once: `type Inside = Context<Config, Services>`.
+A plugin aliases its shape once: `type Inside = Context<Config, Services>`.
 
 ## Definition
 
@@ -56,6 +53,16 @@ setup?: (ctx) => void | Promise<void>; teardown?: (ctx) => void | Promise<void>;
 ```
 
 The rules for these keys are in the application's `contract.md`.
+
+## What a start refuses
+
+`INVALID_NAME`, `DUPLICATE_PLUGIN`, `UNKNOWN_DEPENDENCY`,
+`UNDECLARED_DEPENDENCY`, `DEPENDENCY_CYCLE`, `DUPLICATE_ROUTE`,
+`INVALID_ROUTE`, `INVALID_CONFIG`. Every one names the plugin and the key.
+
+A plugin name is lowercase letters, digits and hyphens, starting with a
+letter. Everything it declares is `plugin.thing`, in the same alphabet: an
+event, hook, slot or command not starting with its own name is refused.
 
 ## Kernel
 
@@ -88,16 +95,15 @@ usePlugin<Config, Services>(name): Context<Config, Services>
 useFrame(): FunctionComponent
 ```
 
-`usePlugin` answers that plugin's `Context` itself, not a wrapper:
-destructure `{ services, config }` from it, never `{ ctx }`.
+`usePlugin` answers that plugin's `Context` itself, not a wrapper.
 
-A contribution is rendered as `ComponentType<{ payload: unknown }>`, so it
-takes one prop and parses it. `Slot` filters by `requires` before rendering,
-and wraps each in the contributing plugin's own `fallback`.
+A contribution renders as `ComponentType<{ payload: unknown }>`: one prop, and
+it parses it. `Slot` filters by `requires` and wraps each in the contributing
+plugin's `fallback`.
 
 `/react` also answers `StartupFailure`, `StatusPageProvider`, `useDismiss`,
-`useEventCallback` and `useFocusTrap`. `NotFound` is not optional: assembling
-routes without it throws.
+`useEventCallback` and `useFocusTrap`. `NotFound` is not optional: routes
+assembled without it throw.
 
 ## Faults
 
@@ -110,6 +116,9 @@ TransportFault: { code; status?; method; path; retryable; body }
 
 `body` is what the server sent with its refusal, unread: a form finds its
 field errors there. `retryable` says whether asking again could differ.
+
+A 401 is also announced as `transport.unauthorized` carrying `{ path }`. The
+mount owns it, so a plugin that listens names `transport` in `dependsOn`.
 
 ## Testing
 

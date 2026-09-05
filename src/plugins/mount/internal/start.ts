@@ -1,6 +1,8 @@
 import { boot } from "../../../kernel/boot";
 import type { Say } from "../../../kernel/host";
-import { createKernel } from "../../kernel/api";
+import { z } from "zod";
+
+import { createKernel, definePlugin } from "../../kernel/api";
 import type { Realtime } from "../../kernel/api";
 import { from as transportFrom } from "../../transport/api";
 import { plugin as transportPlugin } from "../../transport/plugin";
@@ -64,8 +66,26 @@ export async function start(starting: Starting): Promise<Started>
         },
     };
 
+    /**
+     * What the mount announces on its own behalf.
+     *
+     * A 401 is heard by whoever wants to send the viewer somewhere, so it is
+     * an event. Declared here because the kernel emits it, and an event no
+     * plugin owns throws where it is emitted.
+     */
+    const announcer = definePlugin("transport", {
+        version: "1.0.0",
+        describe: "What the transport announces to the application.",
+        emits: {
+            "transport.unauthorized": {
+                describe: "A request was refused for want of a session.",
+                schema: z.object({ path: z.string() }),
+            },
+        },
+    });
+
     const kernel = createKernel({
-        plugins: starting.plugins,
+        plugins: [announcer, ...starting.plugins],
         http: client(live),
         realtime,
         ...(starting.cache !== undefined && { cache: starting.cache }),
