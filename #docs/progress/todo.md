@@ -11,9 +11,8 @@
    plugins in a test now, but the demo is still one plugin with no styling
 4. **A socket nobody opened is a state, not a fault**: `channel()` answers
    `http` and `subscribe` delivers nothing. Tested, and easy to "fix" wrongly
-5. **A refused start reaches no screen**: `start` throws a message naming the
-   plugin, the key and the fix, and an application that does not catch it
-   renders white. The best text in the kit reached nobody last time
+5. **The failure screen is the best page here**: `StartupFailure` has spacing,
+   hierarchy and a monospace body. Nothing a reader is meant to see does
 6. **State that outlives a route**: a flow spanning routes unmounts each page,
    and nothing here says where that state lives
 7. **URL state**: a route declares no search parameters, in a kit whose rule
