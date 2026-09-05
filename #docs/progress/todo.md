@@ -6,8 +6,8 @@
 2. **Run it in a browser, every time**: one pass was done. Routes render, the
    guard refuses naming the permission it wanted, and the tokens reach the
    page. It also showed that no unit has a style yet, which vitest cannot see
-3. **A worked example**: one small application using the kit, tested like any
-   other, so the contract is proved by something that can break
+3. **A worked example that does something**: the application boots its own
+   plugins in a test now, but the demo is still one plugin with no styling
 4. **A socket nobody opened is a state, not a fault**: `channel()` answers
    `http` and `subscribe` delivers nothing. Tested, and easy to "fix" wrongly
 5. **A refused start reaches no screen**: `start` throws a message naming the
