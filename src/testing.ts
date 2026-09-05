@@ -6,3 +6,6 @@ export type { Oversized, Undocumented } from "./testing/docs";
 
 export { wiring } from "./testing/wiring";
 export type { Unread } from "./testing/wiring";
+
+export { styling } from "./testing/styling";
+export type { Unknown } from "./testing/styling";

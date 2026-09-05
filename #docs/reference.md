@@ -55,9 +55,10 @@ request. Each carries a `code` and sets `name`.
 ## Testing
 
 ```ts
-import { boundaries, wiring, missing, oversized, undocumented } from "@onetype/stack-app-kit/testing";
+import { boundaries, wiring, styling, missing, oversized, undocumented } from "@onetype/stack-app-kit/testing";
 ```
 
 Each takes a path and answers what is wrong, so a test asserts an empty array.
-`wiring` finds a declared field nothing reads, `boundaries` an import that
+`wiring` finds a declared field nothing reads, `styling` a `var()` naming a
+token nothing declares, `boundaries` an import that
 crossed one, and the last three what a document promised and does not hold.
