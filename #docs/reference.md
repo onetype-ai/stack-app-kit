@@ -16,8 +16,21 @@ type Context<Config = unknown, Services = unknown> = {
 };
 ```
 
-`http`, `cache` and `realtime` arrive without being declared: they are the
-kit's own plugins, and naming one in `dependsOn` fails startup.
+```ts
+type Client = { get; post; put; patch; delete: (path: string, request?: Request) => Promise<unknown> };
+type Cache = { invalidate: (key: readonly unknown[]) => void };
+type Realtime = {
+    channel: () => "ws" | "http";
+    subscribe: (channel: string, told: (message: unknown) => void) => { close: () => void };
+};
+```
+
+These three arrive without being declared: they are the kit's own plugins, and
+naming one in `dependsOn` fails startup.
+
+With no socket, `channel()` answers `"http"` and `subscribe` delivers nothing,
+so a caller needs no branch. With no client at all, `http` and `cache` throw
+naming what to pass.
 
 `hooks.run` answers the first refusal, or nothing. `use` reaches another
 plugin's services outside a component, so a plain function can call it.
@@ -41,7 +54,14 @@ context(plugin): Context        pages(): Pages
 import { createKernel, definePlugin, boot, Host, KernelFault } from "@onetype/stack-app-kit";
 import { KernelProvider, useKernel, usePlugin, NotFound, useFrame } from "@onetype/stack-app-kit/react";
 import { transport, cache } from "@onetype/stack-app-kit";
+
+// The namespace carries its own types: `transport.Socket` is what
+// `openSocket` must answer, and what a fake source implements.
+const held: transport.Socket = openFake();
 ```
+
+`usePlugin<Config, Services>(name)` answers that plugin's `Context` itself,
+not a wrapper: destructure `{ services, config }` from it, never `{ ctx }`.
 
 `/react` also answers `StartupFailure`, `StatusPageProvider`, `useDismiss`,
 `useEventCallback` and `useFocusTrap`. `NotFound` is not optional: assembling
