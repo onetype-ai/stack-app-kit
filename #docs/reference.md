@@ -50,7 +50,7 @@ config?: ZodType; permissions?: Record<string, { describe: string }>;
 grants?: (ctx) => readonly string[];          // at most one plugin
 services?: (ctx) => Services;                 // ctx.services is never here
 frame?: FunctionComponent; pages?: Pages; fallback?: ComponentType;
-routes?: readonly Route[];
+routes?: readonly Route[];   // path, component, title?, requires?, search?
 slots?: Record<string, Slot>; contributes?: readonly Contribution[];
 emits?: Record<string, Event>; listens?: Record<string, Listener>;
 hooks?: Record<string, Hook>; participates?: Record<string, Participant>;
@@ -58,7 +58,7 @@ commands?: Record<string, Command>;
 setup?: (ctx) => void | Promise<void>; teardown?: (ctx) => void | Promise<void>;
 ```
 
-Rules for these keys: the application's `contract.md`.
+Rules: the application's `contract.md`.
 
 ## What a start refuses
 
@@ -105,8 +105,7 @@ useFrame(): FunctionComponent
 `useHearing(plugin, event, told)` stops when the component leaves.
 
 `useKept(watch, read)` reads a value a service keeps and re-renders when it
-moves. Memoise what `read` answers: a new object each call re-renders
-forever.
+moves. Memoise what `read` answers, or it re-renders forever.
 
 A contribution renders as `ComponentType<{ payload: unknown }>`. `Slot` filters
 by `requires` and wraps each in the contributing plugin's `fallback`.

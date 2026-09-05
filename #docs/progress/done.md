@@ -33,6 +33,10 @@ time the failure was that guarantee and no other.
 - **`check.sh` failed from the first day**, calling prettier and eslint with
   neither configured. Prettier cannot write Allman braces and says it never
   will, so it is gone.
+- **A route declared no query parameters**, in a kit whose rule is that
+  undeclared means it does not exist. A build reached past the kernel to the
+  router for `useSearch`. `Route.search` takes a schema now, and a route that
+  names none takes nothing.
 - **A component could not read what a service keeps.** Three of five builds
   wrote the same subscribe-and-read by hand. `useKept(watch, read)` is that
   shape, subscribing once however often a caller passes a new closure.

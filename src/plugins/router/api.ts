@@ -18,6 +18,7 @@ export type Building = {
         getParentRoute: () => Root;
         path: string;
         component: ComponentType;
+        validateSearch?: (raw: Record<string, unknown>) => unknown;
     }) => Child;
     createRouter: (options: { routeTree: Root }) => unknown;
 };

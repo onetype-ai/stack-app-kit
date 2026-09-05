@@ -60,6 +60,14 @@ export type Route = {
     component: ComponentType;
     title?: string;
     requires?: readonly string[];
+
+    /**
+     * What this route reads from the query string.
+     *
+     * Declared, like everything else: a parameter no route names is one no
+     * page may read, and a value that fails this never reaches a component.
+     */
+    search?: z.ZodType;
 };
 
 /** What a component sees when a contribution or a page threw. */

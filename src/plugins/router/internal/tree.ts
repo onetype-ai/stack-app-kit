@@ -27,6 +27,13 @@ export function tree(
             getParentRoute: () => root,
             path: route.path,
             component: guard(route),
+
+            // Declared or not at all: a route that named no schema takes
+            // nothing from the query, so nothing reaches its page.
+            validateSearch: (raw) =>
+            {
+                return route.search === undefined ? {} : route.search.parse(raw);
+            },
         }),
     );
 

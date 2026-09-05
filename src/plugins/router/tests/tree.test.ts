@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { z } from "zod";
 
 import { tree } from "../internal/tree";
 
@@ -117,5 +118,46 @@ describe("the route tree", () =>
 
         expect(tree(held.kernel, held.building, held.frame, () => Page)).toBeDefined();
         expect(held.made).toEqual([]);
+    });
+});
+
+describe("what a route takes from the query", () =>
+{
+    test("is parsed by the schema it declared", () =>
+    {
+        const held = serving([{ ...registered("/items"), search: z.object({ page: z.coerce.number().default(1) }) }]);
+
+        tree(held.kernel, held.building, held.frame, () => Page);
+
+        const validate = held.made[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
+
+        expect(validate({ page: "3" })).toEqual({ page: 3 });
+        expect(validate({})).toEqual({ page: 1 });
+    });
+
+    /**
+     * Undeclared means it does not exist, here as everywhere: a page reads
+     * what its route named, and a query carrying more hands over none of it.
+     */
+    test("and is nothing at all when it declared none", () =>
+    {
+        const held = serving([registered("/items")]);
+
+        tree(held.kernel, held.building, held.frame, () => Page);
+
+        const validate = held.made[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
+
+        expect(validate({ page: "3", anything: "else" })).toEqual({});
+    });
+
+    test("refuses a value the schema does not take, rather than passing it on", () =>
+    {
+        const held = serving([{ ...registered("/items"), search: z.object({ page: z.number() }) }]);
+
+        tree(held.kernel, held.building, held.frame, () => Page);
+
+        const validate = held.made[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
+
+        expect(() => validate({ page: "not a number" })).toThrow();
     });
 });
