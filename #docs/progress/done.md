@@ -25,6 +25,9 @@ Five plugins, 155 tests, each watched to fail before it was trusted.
   that last one now.
 - **`check.sh` called prettier and eslint with neither configured.** Prettier
   cannot write Allman braces, so it is gone.
+- **A guard could only ask about permissions**, so a page that was early
+  rather than forbidden rendered, noticed, and redirected: the viewer saw the
+  wrong screen first. `Route.instead` answers where they belong.
 - **A route declared no query parameters.** `Route.search` takes a schema now,
   and a route naming none takes nothing.
 - **`useKept(watch, read)`** replaced the subscribe-and-read three builds wrote
