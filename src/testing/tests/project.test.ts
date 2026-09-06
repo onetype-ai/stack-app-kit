@@ -48,6 +48,22 @@ describe("what a project refuses", () =>
         expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("unexplained");
     });
 
+    /* Code shared between plugins belongs to nobody, which is exactly why a
+       stale field there goes unnoticed longer than one inside a plugin. */
+    test("and reaches code shared between plugins, not only the plugins", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "src", "utils"), { recursive: true });
+        /* Built rather than written whole: a shape spelled out here would be
+           read by the very check this package runs on itself. */
+        const shape = ["export", "type", "Price", "=", "{ cents: number; unread: string };"].join(" ");
+
+        writeFileSync(join(at, "src", "utils", "Money.ts"), `${shape}\n`);
+
+        expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("wiring");
+    });
+
     test("and names a class a module never declared", () =>
     {
         const at = createProject();

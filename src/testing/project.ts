@@ -14,6 +14,9 @@ export type ProjectProblem = {
 export type ProjectCheckOptions = {
     root?: string;
     plugins?: string;
+
+    /** Where pure code shared between plugins lives. */
+    utils?: string;
     docs?: string;
     required?: readonly string[];
     limit?: number;
@@ -45,6 +48,14 @@ export const Project = {
             ...findImportViolations(plugins).map((wrong) => ({ check: "boundaries" as const, message: wrong.message })),
 
             ...findUnusedFields(plugins).map((unread) => ({
+                check: "wiring" as const,
+                message: `${unread.file}: ${unread.shape}.${unread.field} is declared and nothing reads it.`,
+            })),
+
+            // Code shared between plugins is checked too: a field nothing
+            // reads is the same defect wherever it is declared, and code no
+            // plugin owns is code nobody notices going stale.
+            ...findUnusedFields(checking.utils ?? join(root, "src", "utils")).map((unread) => ({
                 check: "wiring" as const,
                 message: `${unread.file}: ${unread.shape}.${unread.field} is declared and nothing reads it.`,
             })),
