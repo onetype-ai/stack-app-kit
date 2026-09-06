@@ -4,7 +4,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { z } from "zod";
 
 import { createKernel, definePlugin } from "../api";
-import { KernelProvider, useHearing } from "../react/index";
+import { KernelProvider, useEvent } from "../react/index";
 
 import type { Definition, Kernel, Plugin } from "../api";
 import type { ReactNode } from "react";
@@ -35,7 +35,7 @@ function Counter(): ReactNode
 {
     const [seen, setSeen] = useState<string[]>([]);
 
-    useHearing("badge", "mail.arrived", (payload) =>
+    useEvent("badge", "mail.arrived", (payload) =>
     {
         setSeen((seen) => [...seen, (payload as { id: string }).id]);
     });

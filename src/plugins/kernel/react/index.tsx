@@ -10,7 +10,7 @@ export { useDismiss } from "./hooks/useDismiss";
 export { useEventCallback } from "./hooks/useEventCallback";
 export { useFocusTrap } from "./hooks/useFocusTrap";
 
-const Running = createContext<Kernel | undefined>(undefined);
+const KernelContext = createContext<Kernel | undefined>(undefined);
 
 /** The pages shown when a viewer may not see something, or nothing matched. */
 export type StatusPages = {
@@ -46,7 +46,7 @@ function usePages(): StatusPages
 /** Puts a kernel in reach of everything below it. */
 export function KernelProvider({ kernel, children }: { kernel: Kernel; children: ReactNode }): ReactNode
 {
-    return <Running.Provider value={kernel}>{children}</Running.Provider>;
+    return <KernelContext.Provider value={kernel}>{children}</KernelContext.Provider>;
 }
 
 /** Replaces the built-in 403 and 404. */
@@ -61,7 +61,7 @@ export function StatusPageProvider({ pages, children }: { pages: Partial<StatusP
 /** The kernel, for a component under a provider. */
 export function useKernel(): Kernel
 {
-    const kernel = useContext(Running);
+    const kernel = useContext(KernelContext);
 
     if (kernel === undefined)
     {
@@ -90,16 +90,16 @@ export function usePlugin<Config = unknown, Services = unknown>(name: string): P
 /**
  * Hears an event for as long as this component is on screen.
  *
- * `told` is held in a ref, so a component may pass a new closure on every
+ * `handle` is held in a ref, so a component may pass a new closure on every
  * render without the subscription being torn down and rebuilt. What decides
  * that is `plugin` and `event`, and nothing else.
  */
-export function useHearing(plugin: string, event: string, told: (payload: unknown) => void): void
+export function useEvent(plugin: string, event: string, handle: (payload: unknown) => void): void
 {
     const kernel = useKernel();
-    const latest = useRef(told);
+    const latest = useRef(handle);
 
-    latest.current = told;
+    latest.current = handle;
 
     useEffect(() =>
     {

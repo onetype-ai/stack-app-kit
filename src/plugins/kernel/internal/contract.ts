@@ -156,7 +156,7 @@ export type Context<Config = unknown, Services = unknown> = {
          * and never stops. This is for a view, which arrives and leaves, and
          * must take its ear with it.
          */
-        on: (event: string, told: (payload: unknown) => void) => () => void;
+        on: (event: string, handle: (payload: unknown) => void) => () => void;
     };
 
     hooks: {
