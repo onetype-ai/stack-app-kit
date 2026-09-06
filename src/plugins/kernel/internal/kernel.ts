@@ -465,9 +465,9 @@ function sorted(known: ReadonlyMap<string, Plugin>): Plugin[]
 
         state.set(name, "open");
 
-        const one = known.get(name);
+        const plugin = known.get(name);
 
-        for (const need of [...(one?.definition.dependsOn ?? [])].sort())
+        for (const need of [...(plugin?.definition.dependsOn ?? [])].sort())
         {
             if (known.has(need))
             {
@@ -477,9 +477,9 @@ function sorted(known: ReadonlyMap<string, Plugin>): Plugin[]
 
         state.set(name, "done");
 
-        if (one !== undefined)
+        if (plugin !== undefined)
         {
-            out.push(one);
+            out.push(plugin);
         }
     }
 
