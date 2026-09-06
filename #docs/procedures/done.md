@@ -9,7 +9,7 @@ that shipped without it.
 3. **Nothing declared is unreachable.** For every field in a contract, find the
    code that reads it. A declared field nothing reads is worse than a missing
    one, because the document promises it works: the largest class of defect in
-   the previous build, and neither types nor tests caught any of it. `wiring()`
+   the previous build, and neither types nor tests caught any of it. `findUnusedFields()`
    is a floor, not a substitute for reading.
 4. **It ran in a browser.** A test runner cannot see a `Slot` rendering
    nothing, a subscription never delivering, or a boot rejection reaching no

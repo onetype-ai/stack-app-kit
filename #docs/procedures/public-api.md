@@ -22,13 +22,14 @@ No logic, no state, no work at import time.
 
 ## Calling another plugin
 
-Declare it in `needs`, then take it in `boot`: `const held =
+Declare it in `needs`, then take it in `boot`: `const client =
 transport.from(host)`. Take once, at boot, and hold it. Never on a hot path.
 
-`createTransport(options)`, not `new Transport(options)`: the factory returns
-an interface, so a caller holds the contract, not the implementation.
-Dependencies are arguments. `openSocket` is a parameter, so the plugin runs
-where there is no socket and a test passes its own.
+A plugin is a factory taking its settings, `plugin(settings)`, never a class:
+the factory answers an interface, so a caller holds the contract rather than
+the implementation, and two of them can exist in one process without seeing
+each other. Dependencies are arguments. `openSocket` is a parameter, so the
+plugin runs where there is no socket and a test passes its own.
 
 A public type is owned by the plugin defining it. Never expose an internal one:
 if a caller cannot construct it, it is not on the boundary.

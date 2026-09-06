@@ -75,7 +75,7 @@ command not starting with its own name is refused.
 ```ts
 start(): Promise<void>          stop(): Promise<void>       started(): boolean
 routes(): readonly Registered[] frame(): FunctionComponent | undefined
-slot(name, payload): { contributions: readonly Filled[]; wrong?: string }
+slot(name, payload): { contributions: readonly PlacedContribution[]; problem?: string }
 context(plugin): Context        pages(): Pages
 ```
 
@@ -85,7 +85,7 @@ context(plugin): Context        pages(): Pages
 
 ```ts
 import { createKernel, definePlugin, boot, Host, KernelFault } from "@onetype/stack-app-kit";
-import { KernelProvider, useKernel, usePlugin, useHearing, useKept, NotFound, useFrame } from "@onetype/stack-app-kit/react";
+import { KernelProvider, useKernel, usePlugin, useEvent, useStore, NotFound, useFrame } from "@onetype/stack-app-kit/react";
 import { transport, cache } from "@onetype/stack-app-kit";
 
 // The namespace carries its own types: `transport.Socket` is what
@@ -99,15 +99,15 @@ const held: transport.Socket = openFake();
 useKernel(): Kernel
 usePlugin<Config, Services>(name): Context          // the context itself, not a wrapper
 useFrame(): FunctionComponent
-useHearing(plugin, event, told): void               // stops when the component leaves
-useKept(watch, read): Value                         // a value a service keeps
+useEvent(plugin, event, handle): void               // stops when the component leaves
+useStore(watch, read): Value                         // a value a service keeps
 ```
 
 `Route.instead(ctx)` answers a path when the viewer belongs elsewhere: a
 checkout with an empty cart is early, not forbidden. `send` does the going,
 since the kit imports no router.
 
-Memoise what `useKept`'s `read` answers, or it never stops re-rendering.
+Memoise what `useStore`'s `read` answers, or it never stops re-rendering.
 
 A contribution renders as `ComponentType<{ payload: unknown }>`. `Slot` filters
 by `requires` and wraps each in the contributing plugin's `fallback`.

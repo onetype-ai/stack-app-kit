@@ -13,7 +13,7 @@ Five plugins, 155 tests, each watched to fail before it was trusted.
   requests retry; `POST` and `PATCH` never retry and never move channel
 - `connect` is a no-op on repeat, so two sockets never deliver one push twice
 - `tools/boundaries.mjs` resolves import paths rather than matching text
-- `wiring()` found a declared field nothing read
+- `findUnusedFields()` found a declared field nothing read
 
 ## Found by running it, and by five builds on it
 
@@ -21,7 +21,7 @@ Five plugins, 155 tests, each watched to fail before it was trusted.
   check and eleven stylesheets were inert. A flat config replaces
   `no-restricted-imports` rather than merging it; a folder check asked whether
   `tests/` exists rather than what is in it; CSS resolves an undeclared token
-  to nothing, so a wrong-named stylesheet builds green. `styling()` refuses
+  to nothing, so a wrong-named stylesheet builds green. `findUnknownTokens()` refuses
   that last one now.
 - **`check.sh` called prettier and eslint with neither configured.** Prettier
   cannot write Allman braces, so it is gone.
@@ -30,9 +30,9 @@ Five plugins, 155 tests, each watched to fail before it was trusted.
   wrong screen first. `Route.instead` answers where they belong.
 - **A route declared no query parameters.** `Route.search` takes a schema now,
   and a route naming none takes nothing.
-- **`useKept(watch, read)`** replaced the subscribe-and-read three builds wrote
+- **`useStore(watch, read)`** replaced the subscribe-and-read three builds wrote
   by hand; it subscribes once however often a caller passes a new closure.
-- **`useHearing`** lets a component hear an event and stops when it leaves.
+- **`useEvent`** lets a component hear an event and stops when it leaves.
 - **The kernel emitted an event no plugin owned.** A 401 on the session threw
   `UNDECLARED_EVENT` and took the boot with it.
 - **`Held` meant four things.** Now `Subscriber`, `Participating`, `Running`,

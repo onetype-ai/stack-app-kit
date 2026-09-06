@@ -23,7 +23,7 @@ const app = await start({
 });
 
 app.kernel;     // what the React entry renders through
-app.carrying;   // "ws" or "http"
+app.channel;   // "ws" or "http"
 await app.stop();
 ```
 
