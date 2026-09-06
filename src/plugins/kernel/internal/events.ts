@@ -33,7 +33,7 @@ export function events<Context>(now: () => number = Date.now)
 
             return () =>
             {
-                listeners.set(name, (listeners.get(name) ?? []).filter((listener) => listener !== subscriber));
+                listeners.set(name, (listeners.get(name) ?? []).filter((each) => each !== subscriber));
             };
         },
 

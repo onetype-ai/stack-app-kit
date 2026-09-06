@@ -13,8 +13,8 @@ type Settings = {
     now?: (() => number) | undefined;
 };
 
-type Waiting = {
-    keep: (answered: Answer) => void;
+type InFlight = {
+    resolve: (answer: Answer) => void;
     fail: (cause: Error) => void;
     timer: ReturnType<typeof setTimeout>;
 };
@@ -22,13 +22,13 @@ type Waiting = {
 /** The socket channel, and the reconnect loop behind it. */
 export function socket(settings: Settings)
 {
-    const waiting = new Map<string, Waiting>();
+    const waiting = new Map<string, InFlight>();
     const subscribers = new Map<string, Set<(message: unknown) => void>>();
 
     let wire: Socket | undefined;
     let open = false;
     let tries = 0;
-    let ours = false;
+    let closedByUs = false;
     let later: ReturnType<typeof setTimeout> | undefined;
     let counter = 0;
 
@@ -40,10 +40,10 @@ export function socket(settings: Settings)
      */
     function failAll(cause: TransportFault): void
     {
-        for (const [, one] of waiting)
+        for (const [, pending] of waiting)
         {
-            clearTimeout(one.timer);
-            one.fail(cause);
+            clearTimeout(pending.timer);
+            pending.fail(cause);
         }
 
         waiting.clear();
@@ -79,7 +79,7 @@ export function socket(settings: Settings)
                 return;
             }
 
-            pending.keep({ status: read.status, body: read.body, channel: "ws" });
+            pending.resolve({ status: read.status, body: read.body, channel: "ws" });
 
             return;
         }
@@ -161,7 +161,7 @@ export function socket(settings: Settings)
 
                 settle(false);
 
-                if (ours)
+                if (closedByUs)
                 {
                     return;
                 }
@@ -202,7 +202,7 @@ export function socket(settings: Settings)
 
             const id = `${settings.now?.() ?? Date.now()}-${counter}`;
 
-            return new Promise<Answer>((keep, fail) =>
+            return new Promise<Answer>((resolve, fail) =>
             {
                 const timer = setTimeout(() =>
                 {
@@ -214,7 +214,7 @@ export function socket(settings: Settings)
                     }));
                 }, settings.timeout);
 
-                waiting.set(id, { keep, fail, timer });
+                waiting.set(id, { resolve, fail, timer });
 
                 try
                 {
@@ -269,7 +269,7 @@ export function socket(settings: Settings)
 
         close: (): void =>
         {
-            ours = true;
+            closedByUs = true;
 
             if (later !== undefined)
             {
