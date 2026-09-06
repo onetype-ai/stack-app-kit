@@ -134,10 +134,13 @@ mount owns it, so a plugin that listens names `transport` in `dependsOn`.
 ## Testing
 
 ```ts
-import { boundaries, wiring, styling, missing, oversized, undocumented } from "@onetype/stack-app-kit/testing";
+import { Project } from "@onetype/stack-app-kit/testing";
+
+expect(Project.checks()).toEqual([]);
 ```
 
-Each takes a path and answers what is wrong, so a test asserts an empty array.
-`wiring` finds a declared field nothing reads, `styling` a `var()` naming a
-token nothing declares, `boundaries` an import that
-crossed one, and the last three what a document promised and does not hold.
+One call runs every check, so one the kit adds later needs no new test here.
+Each answers `{ check, message }`: an import that crossed a boundary, a field
+nothing reads, a plugin with no `usage.md`, a `var()` or `styles.name` nothing
+declares, and what a document promised. Document checks skip when `#docs` is
+packed; the rest always run. Each `find*` is exported alone as well.
