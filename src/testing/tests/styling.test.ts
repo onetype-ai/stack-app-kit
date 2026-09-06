@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
-import { styling } from "../styling";
+import { findUnknownTokens } from "../styling";
 
 /** A folder holding exactly the files a case needs. */
-function holding(files: Record<string, string>): string
+function folderWith(files: Record<string, string>): string
 {
     const at = mkdtempSync(join(tmpdir(), "styling-"));
 
@@ -25,12 +25,12 @@ describe("a token a stylesheet asks for", () =>
 {
     test("passes when something declares it", () =>
     {
-        const at = holding({
+        const at = folderWith({
             "tokens.css": ":root { --ink: #000; }",
             "card.module.css": ".root { color: var(--ink); }",
         });
 
-        expect(styling(at)).toEqual([]);
+        expect(findUnknownTokens(at)).toEqual([]);
     });
 
     /**
@@ -39,40 +39,40 @@ describe("a token a stylesheet asks for", () =>
      */
     test("is reported when nothing does, naming the file and the token", () =>
     {
-        const at = holding({
+        const at = folderWith({
             "tokens.css": ":root { --ink: #000; }",
             "card.module.css": ".root { padding: var(--space-6); }",
         });
 
-        expect(styling(at)).toEqual([{ file: "card.module.css", token: "--space-6" }]);
+        expect(findUnknownTokens(at)).toEqual([{ file: "card.module.css", token: "--space-6" }]);
     });
 
     test("counts one a stylesheet declares for itself", () =>
     {
-        const at = holding({
+        const at = folderWith({
             "card.module.css": ".root { --mark: #eee; }\n.body { background: var(--mark); }",
         });
 
-        expect(styling(at)).toEqual([]);
+        expect(findUnknownTokens(at)).toEqual([]);
     });
 
     test("and one a component hands in through style", () =>
     {
-        const at = holding({
+        const at = folderWith({
             "Avatar.module.css": ".root { color: oklch(0.4 0.1 calc(var(--seed) * 1deg)); }",
             "Avatar.tsx": 'const held = { "--seed": "120" };',
         });
 
-        expect(styling(at)).toEqual([]);
+        expect(findUnknownTokens(at)).toEqual([]);
     });
 
     test("reads every stylesheet, however deep", () =>
     {
-        const at = holding({
+        const at = folderWith({
             "tokens.css": ":root { --ink: #000; }",
             "components/Deep/Deep.module.css": ".root { color: var(--gone); }",
         });
 
-        expect(styling(at).map((one) => one.token)).toEqual(["--gone"]);
+        expect(findUnknownTokens(at).map((one) => one.token)).toEqual(["--gone"]);
     });
 });

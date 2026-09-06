@@ -22,7 +22,7 @@ const mail = createPlugin("mail", {
     },
 });
 
-async function serving(): Promise<Kernel>
+async function startKernel(): Promise<Kernel>
 {
     const kernel = createKernel({ plugins: [mail, createPlugin("badge", { dependsOn: ["mail"] })] });
 
@@ -47,7 +47,7 @@ describe("a component hearing an event", () =>
 {
     test("shows what arrived while it was on screen", async () =>
     {
-        const kernel = await serving();
+        const kernel = await startKernel();
 
         render(<KernelProvider kernel={kernel}><Counter /></KernelProvider>);
 
@@ -66,7 +66,7 @@ describe("a component hearing an event", () =>
      */
     test("stops hearing once it leaves", async () =>
     {
-        const kernel = await serving();
+        const kernel = await startKernel();
         const view = render(<KernelProvider kernel={kernel}><Counter /></KernelProvider>);
 
         kernel.context("mail").events.emit("mail.arrived", { id: "one" });
@@ -85,7 +85,7 @@ describe("a component hearing an event", () =>
      */
     test("hears once under StrictMode, not twice", async () =>
     {
-        const kernel = await serving();
+        const kernel = await startKernel();
 
         render(<StrictMode><KernelProvider kernel={kernel}><Counter /></KernelProvider></StrictMode>);
 

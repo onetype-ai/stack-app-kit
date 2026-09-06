@@ -195,7 +195,7 @@ describe("without a socket", () =>
 describe("with a socket", () =>
 {
     /** A transport whose socket the test drives. */
-    function wired(answers: Answering[] = [{ body: {} }])
+    function startSocket(answers: Answering[] = [{ body: {} }])
     {
         const fetches = fakeFetch(answers);
 
@@ -225,7 +225,7 @@ describe("with a socket", () =>
 
     test("connect opens one socket and answers ws", async () =>
     {
-        const { transport, sockets } = wired();
+        const { transport, sockets } = startSocket();
 
         const opening = transport.connect();
 
@@ -237,7 +237,7 @@ describe("with a socket", () =>
 
     test("connect twice opens one socket, not two", async () =>
     {
-        const { transport, sockets } = wired();
+        const { transport, sockets } = startSocket();
 
         const first = transport.connect();
         const second = transport.connect();
@@ -252,7 +252,7 @@ describe("with a socket", () =>
 
     test("a push reaches every subscriber on its channel", async () =>
     {
-        const { transport, sockets } = wired();
+        const { transport, sockets } = startSocket();
         const heard: unknown[] = [];
 
         const opening = transport.connect();
@@ -268,7 +268,7 @@ describe("with a socket", () =>
 
     test("a closed subscription stops hearing", async () =>
     {
-        const { transport, sockets } = wired();
+        const { transport, sockets } = startSocket();
         const heard: unknown[] = [];
 
         const opening = transport.connect();
@@ -284,7 +284,7 @@ describe("with a socket", () =>
 
     test("a frame it cannot read is dropped rather than delivered", async () =>
     {
-        const { transport, sockets } = wired();
+        const { transport, sockets } = startSocket();
         const heard: unknown[] = [];
 
         const opening = transport.connect();
@@ -301,7 +301,7 @@ describe("with a socket", () =>
 
     test("a dropped socket fails what was in flight rather than hanging", async () =>
     {
-        const { transport, sockets } = wired();
+        const { transport, sockets } = startSocket();
 
         const opening = transport.connect();
 
@@ -319,7 +319,7 @@ describe("with a socket", () =>
 
     test("a dropped socket does not re-send a POST over http", async () =>
     {
-        const { transport, sockets, fetches } = wired();
+        const { transport, sockets, fetches } = startSocket();
 
         const opening = transport.connect();
 
@@ -336,7 +336,7 @@ describe("with a socket", () =>
 
     test("requests move to http once the socket is gone", async () =>
     {
-        const { transport, sockets, fetches } = wired([{ body: { ok: true } }]);
+        const { transport, sockets, fetches } = startSocket([{ body: { ok: true } }]);
 
         const opening = transport.connect();
 
@@ -353,7 +353,7 @@ describe("with a socket", () =>
 
     test("close stops it for good", async () =>
     {
-        const { transport, sockets } = wired();
+        const { transport, sockets } = startSocket();
 
         const opening = transport.connect();
 

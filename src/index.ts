@@ -44,7 +44,7 @@ export type {
     Schematic,
     Slot,
     Source,
-    Wrong,
+    ImportViolation,
 } from "./plugins/kernel/api";
 
 export * as transport from "./plugins/transport/api";

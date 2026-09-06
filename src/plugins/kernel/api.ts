@@ -37,7 +37,7 @@ export type { Failure } from "./internal/events";
 export type { Filled } from "./internal/slots";
 export type { Source } from "./internal/permissions";
 export type { Kernel, Log, Options, Registered } from "./internal/kernel";
-export type { Wrong } from "./internal/validate";
+export type { ImportViolation } from "./internal/validate";
 
 /** What this plugin offers: the way to build a kernel for an application. */
 export type Runtime = {

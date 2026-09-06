@@ -1,22 +1,22 @@
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-export type Unread = {
+export type UnusedField = {
     file: string;
     shape: string;
     field: string;
 };
 
-export function wiring(root: string): Unread[]
+export function findUnusedFields(root: string): UnusedField[]
 {
     const sources = walk(root).map((file): [string, string] => [file, readFileSync(file, "utf8")]);
-    const unread: Unread[] = [];
+    const unread: UnusedField[] = [];
 
     for (const [file, source] of sources)
     {
         for (const { shape, field } of declared(source))
         {
-            if (!reads(field, sources, file))
+            if (!isRead(field, sources, file))
             {
                 unread.push({ file: relative(root, file), shape, field });
             }
@@ -33,7 +33,7 @@ function walk(path: string): string[]
         return [];
     }
 
-    const found: string[] = [];
+    const files: string[] = [];
 
     for (const entry of readdirSync(path))
     {
@@ -41,24 +41,24 @@ function walk(path: string): string[]
 
         if (statSync(full).isDirectory())
         {
-            found.push(...walk(full));
+            files.push(...walk(full));
             continue;
         }
 
         if (/\.tsx?$/.test(entry))
         {
-            found.push(full);
+            files.push(full);
         }
     }
 
-    return found;
+    return files;
 }
 
 // A contract is what crosses a boundary, so only exported shapes count: an
 // internal type is read by whoever wrote it or it would not compile.
 function declared(source: string): { shape: string; field: string }[]
 {
-    const found: { shape: string; field: string }[] = [];
+    const fields: { shape: string; field: string }[] = [];
 
     for (const shape of source.matchAll(/export\s+(?:type\s+(\w+)\s*=\s*\{|interface\s+(\w+)[^{]*\{)/g))
     {
@@ -68,11 +68,11 @@ function declared(source: string): { shape: string; field: string }[]
 
         for (const field of body.matchAll(/(?:^|[;,{\n])\s*(?:readonly\s+)?(\w+)\s*\??\s*:/g))
         {
-            found.push({ shape: name, field: field[1] ?? "" });
+            fields.push({ shape: name, field: field[1] ?? "" });
         }
     }
 
-    return found;
+    return fields;
 }
 
 // Where the brace opened at `from` closes. Walking counts nested shapes as
@@ -131,7 +131,7 @@ function withoutParameters(body: string): string
 
 // Property access, destructuring, an object literal built from it, a string
 // key. A name in none of those is a name nothing consumes.
-function reads(field: string, sources: readonly [string, string][], where: string): boolean
+function isRead(field: string, sources: readonly [string, string][], where: string): boolean
 {
     const patterns = [
         new RegExp(`\\.${field}\\b`),

@@ -1,11 +1,11 @@
-export { boundaries } from "./testing/boundaries";
-export type { Crossing, Wrong } from "./testing/boundaries";
+export { findImportViolations } from "./testing/boundaries";
+export type { ImportEdge, ImportViolation } from "./testing/boundaries";
 
-export { missing, oversized, undocumented } from "./testing/docs";
-export type { Oversized, Undocumented } from "./testing/docs";
+export { findMissingDocs, findOversizedDocs, findUndocumentedKeys } from "./testing/docs";
+export type { OversizedDoc, UndocumentedKey } from "./testing/docs";
 
-export { wiring } from "./testing/wiring";
-export type { Unread } from "./testing/wiring";
+export { findUnusedFields } from "./testing/wiring";
+export type { UnusedField } from "./testing/wiring";
 
-export { styling } from "./testing/styling";
-export type { Unknown } from "./testing/styling";
+export { findUnknownTokens } from "./testing/styling";
+export type { UnknownToken } from "./testing/styling";

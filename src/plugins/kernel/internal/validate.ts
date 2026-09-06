@@ -3,7 +3,7 @@ import type { KernelFault } from "./faults";
 import * as names from "./names";
 
 /** One thing wrong, and everything needed to fix it. */
-export type Wrong = {
+export type ImportViolation = {
     code: KernelFault["code"];
     plugin: string;
     message: string;
@@ -24,9 +24,9 @@ type Owned = {
  * An application with four mistakes should learn all four in one run rather
  * than in four runs, each ending at a different one.
  */
-export function validate(plugins: readonly Plugin[], config: Readonly<Record<string, unknown>>): Wrong[]
+export function validate(plugins: readonly Plugin[], config: Readonly<Record<string, unknown>>): ImportViolation[]
 {
-    const wrong: Wrong[] = [];
+    const wrong: ImportViolation[] = [];
     const say = (code: KernelFault["code"], plugin: string, message: string): void =>
     {
         wrong.push({ code, plugin, message });

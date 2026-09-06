@@ -1,12 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-export type Oversized = {
+export type OversizedDoc = {
     path: string;
     size: number;
 };
 
-export type Undocumented = {
+export type UndocumentedKey = {
     key: string;
 };
 
@@ -14,7 +14,7 @@ const LIMIT = 1800;
 
 // A contract nobody can read in one sitting is a contract nobody reads. What
 // grows past this is two documents, or a rule that belongs in code.
-export function oversized(root: string, limit: number = LIMIT): Oversized[]
+export function findOversizedDocs(root: string, limit: number = LIMIT): OversizedDoc[]
 {
     if (!existsSync(root))
     {
@@ -40,7 +40,7 @@ export function oversized(root: string, limit: number = LIMIT): Oversized[]
 
 // A document that is present but empty reads as done and says nothing, which
 // is worse than one that is missing and obviously so.
-export function missing(root: string, required: readonly string[]): string[]
+export function findMissingDocs(root: string, required: readonly string[]): string[]
 {
     return required.filter((path) =>
     {
@@ -61,7 +61,7 @@ export function missing(root: string, required: readonly string[]): string[]
 // `export` is optional because a build emits the shape without it, and a
 // contract that parsed to nothing threw no error: it answered "nothing is
 // undocumented" while reading nothing at all.
-export function undocumented(contract: string, procedure: string): string[]
+export function findUndocumentedKeys(contract: string, procedure: string): string[]
 {
     const shape = /(?:export )?type Definition[\s\S]*?\n\};/.exec(contract)?.[0] ?? "";
 

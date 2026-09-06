@@ -120,25 +120,25 @@ export function useHearing(plugin: string, event: string, told: (payload: unknow
  * without resubscribing. Pass a stable `read` or memoise what it answers: a
  * new object each call makes React re-render forever.
  */
-export function useKept<Value>(
+export function useStore<Value>(
     watch: (told: () => void) => () => void,
     read: () => Value,
 ): Value
 {
-    const watching = useRef(watch);
-    const reading = useRef(read);
+    const latestWatch = useRef(watch);
+    const latestRead = useRef(read);
 
-    watching.current = watch;
-    reading.current = read;
+    latestWatch.current = watch;
+    latestRead.current = read;
 
     const subscribe = useCallback((told: () => void) =>
     {
-        return watching.current(told);
+        return latestWatch.current(told);
     }, []);
 
     const snapshot = useCallback(() =>
     {
-        return reading.current();
+        return latestRead.current();
     }, []);
 
     return useSyncExternalStore(subscribe, snapshot, snapshot);

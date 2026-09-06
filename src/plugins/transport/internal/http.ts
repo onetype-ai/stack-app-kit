@@ -22,11 +22,11 @@ export function http(settings: Settings): Channel
 
         send: async (request: Request): Promise<Answered> =>
         {
-            const holder = new AbortController();
-            const timer = setTimeout(() => holder.abort(), settings.timeout);
+            const aborter = new AbortController();
+            const timer = setTimeout(() => aborter.abort(), settings.timeout);
             const cancel = (): void =>
             {
-                holder.abort();
+                aborter.abort();
             };
 
             request.signal?.addEventListener("abort", cancel);
@@ -36,7 +36,7 @@ export function http(settings: Settings): Channel
                 const response = await fetch(address(settings.baseUrl, request.path, request.query), {
                     method: request.method,
                     credentials: "same-origin",
-                    signal: holder.signal,
+                    signal: aborter.signal,
                     headers: {
                         Accept: "application/json",
                         ...(request.body !== undefined && { "Content-Type": "application/json" }),
@@ -90,7 +90,7 @@ export function http(settings: Settings): Channel
             }
             catch (cause)
             {
-                throw shape(cause, request, holder, settings.timeout);
+                throw shape(cause, request, aborter, settings.timeout);
             }
             finally
             {
@@ -108,7 +108,7 @@ export function http(settings: Settings): Channel
  * they are not the same event: one is the caller changing its mind, the other
  * is a server that never answered and may answer next time.
  */
-function shape(cause: unknown, request: Request, holder: AbortController, timeout: number): unknown
+function shape(cause: unknown, request: Request, aborter: AbortController, timeout: number): unknown
 {
     if (cause instanceof TransportFault)
     {
@@ -124,7 +124,7 @@ function shape(cause: unknown, request: Request, holder: AbortController, timeou
         });
     }
 
-    if (holder.signal.aborted)
+    if (aborter.signal.aborted)
     {
         return new TransportFault("TIMEOUT", `The request did not complete within ${timeout}ms.`, {
             method: request.method,

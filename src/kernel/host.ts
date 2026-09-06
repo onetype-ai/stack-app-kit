@@ -164,7 +164,7 @@ export class Host
     }
 
     /** How many listeners an event has. For diagnosis. */
-    listening(name: string): number
+    listenerCount(name: string): number
     {
         return (this.#shared.listeners.get(name) ?? []).length;
     }

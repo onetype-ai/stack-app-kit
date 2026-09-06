@@ -1,13 +1,13 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-export type Crossing = {
+export type ImportEdge = {
     from: string;
     to: string;
     specifier: string;
 };
 
-export type Wrong = {
+export type ImportViolation = {
     rule: "undeclared" | "deep" | "cycle";
     message: string;
 };
@@ -15,10 +15,10 @@ export type Wrong = {
 type Read = {
     name: string;
     declared: Set<string>;
-    crossings: Crossing[];
+    crossings: ImportEdge[];
 };
 
-export function boundaries(root: string): Wrong[]
+export function findImportViolations(root: string): ImportViolation[]
 {
     const names = readdirSync(root, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
@@ -33,11 +33,11 @@ function read(root: string, name: string, names: readonly string[]): Read
 {
     const others = new Set(names.filter((other) => other !== name));
     const contract = readFileSync(join(root, name, "plugin.ts"), "utf8");
-    const found = /dependsOn:\s*\[([^\]]*)\]/.exec(contract);
+    const match = /dependsOn:\s*\[([^\]]*)\]/.exec(contract);
 
     return {
         name,
-        declared: new Set(found === null ? [] : [...found[1]!.matchAll(/"([^"]+)"/g)].map((match) => match[1]!)),
+        declared: new Set(match === null ? [] : [...match[1]!.matchAll(/"([^"]+)"/g)].map((match) => match[1]!)),
         crossings: files(root, name).flatMap(({ path, source }) => crossings(name, path, source, others)),
     };
 }
@@ -59,7 +59,7 @@ function files(root: string, name: string): { path: string; source: string }[]
 // A specifier is resolved against the file that wrote it rather than matched as
 // text: "../../other/thing" reaches the same private file an alias would, and a
 // rule reading the alias alone calls that clean.
-function crossings(name: string, path: string, source: string, others: ReadonlySet<string>): Crossing[]
+function crossings(name: string, path: string, source: string, others: ReadonlySet<string>): ImportEdge[]
 {
     return [...source.matchAll(/from\s+"([^"]+)"/g)].flatMap((match) =>
     {
@@ -97,7 +97,7 @@ function crossings(name: string, path: string, source: string, others: ReadonlyS
     });
 }
 
-function undeclared(plugins: readonly Read[]): Wrong[]
+function undeclared(plugins: readonly Read[]): ImportViolation[]
 {
     return plugins.flatMap((one) =>
         one.crossings
@@ -109,7 +109,7 @@ function undeclared(plugins: readonly Read[]): Wrong[]
     );
 }
 
-function deep(plugins: readonly Read[]): Wrong[]
+function deep(plugins: readonly Read[]): ImportViolation[]
 {
     return plugins.flatMap((one) =>
         one.crossings
@@ -121,10 +121,10 @@ function deep(plugins: readonly Read[]): Wrong[]
     );
 }
 
-function cycles(plugins: readonly Read[]): Wrong[]
+function cycles(plugins: readonly Read[]): ImportViolation[]
 {
     const edges = new Map(plugins.map((plugin) => [plugin.name, new Set(plugin.crossings.map((crossing) => crossing.to))]));
-    const found: Wrong[] = [];
+    const wrong: ImportViolation[] = [];
     const walking = new Set<string>();
     const done = new Set<string>();
 
@@ -137,7 +137,7 @@ function cycles(plugins: readonly Read[]): Wrong[]
 
         if (walking.has(name))
         {
-            found.push({
+            wrong.push({
                 rule: "cycle",
                 message: `Plugins import each other in a loop: ${[...trail.slice(trail.indexOf(name)), name].join(" -> ")}.`,
             });
@@ -161,5 +161,5 @@ function cycles(plugins: readonly Read[]): Wrong[]
         walk(one.name, []);
     }
 
-    return found;
+    return wrong;
 }

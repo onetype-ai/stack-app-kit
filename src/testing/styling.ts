@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-export type Unknown = {
+export type UnknownToken = {
     file: string;
     token: string;
 };
@@ -16,11 +16,11 @@ export type Unknown = {
  * A file may declare its own, and a component may hand one in through
  * `style`, so anything set anywhere under the root is answered.
  */
-export function styling(root: string): Unknown[]
+export function findUnknownTokens(root: string): UnknownToken[]
 {
     const files = walk(root);
     const set = new Set<string>();
-    const asked: Unknown[] = [];
+    const asked: UnknownToken[] = [];
 
     for (const file of files)
     {
@@ -53,7 +53,7 @@ export function styling(root: string): Unknown[]
 
 function walk(at: string): string[]
 {
-    const found: string[] = [];
+    const files: string[] = [];
 
     for (const entry of readdirSync(at))
     {
@@ -63,7 +63,7 @@ function walk(at: string): string[]
         {
             if (entry !== "node_modules" && entry !== "dist")
             {
-                found.push(...walk(path));
+                files.push(...walk(path));
             }
 
             continue;
@@ -71,9 +71,9 @@ function walk(at: string): string[]
 
         if (path.endsWith(".css") || path.endsWith(".tsx") || path.endsWith(".ts"))
         {
-            found.push(path);
+            files.push(path);
         }
     }
 
-    return found;
+    return files;
 }

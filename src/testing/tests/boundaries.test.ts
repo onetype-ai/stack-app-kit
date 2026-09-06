@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { boundaries } from "../boundaries";
+import { findImportViolations } from "../boundaries";
 
 let root = "";
 
@@ -42,7 +42,7 @@ describe("a plugin reaching another", () =>
 {
     test("passes when it is declared and goes through the public index", () =>
     {
-        const found = boundaries(
+        const violations = findImportViolations(
             tree({
                 auth: { "plugin.ts": declares("auth") },
                 demo: {
@@ -52,12 +52,12 @@ describe("a plugin reaching another", () =>
             }),
         );
 
-        expect(found).toEqual([]);
+        expect(violations).toEqual([]);
     });
 
     test("refuses an import nothing declared", () =>
     {
-        const found = boundaries(
+        const violations = findImportViolations(
             tree({
                 auth: { "plugin.ts": declares("auth") },
                 demo: {
@@ -67,13 +67,13 @@ describe("a plugin reaching another", () =>
             }),
         );
 
-        expect(found.map((one) => one.rule)).toContain("undeclared");
-        expect(found[0]?.message).toMatch(/without declaring "auth"/);
+        expect(violations.map((violation) => violation.rule)).toContain("undeclared");
+        expect(violations[0]?.message).toMatch(/without declaring "auth"/);
     });
 
     test("refuses a reach past the public index", () =>
     {
-        const found = boundaries(
+        const violations = findImportViolations(
             tree({
                 auth: { "plugin.ts": declares("auth") },
                 demo: {
@@ -83,12 +83,12 @@ describe("a plugin reaching another", () =>
             }),
         );
 
-        expect(found.map((one) => one.rule)).toContain("deep");
+        expect(violations.map((violation) => violation.rule)).toContain("deep");
     });
 
     test("refuses a relative path that climbs into another plugin", () =>
     {
-        const found = boundaries(
+        const violations = findImportViolations(
             tree({
                 auth: { "plugin.ts": declares("auth"), "types/Session.ts": "export type Session = { id: string };" },
                 demo: {
@@ -98,13 +98,13 @@ describe("a plugin reaching another", () =>
             }),
         );
 
-        expect(found.map((one) => one.rule)).toContain("deep");
-        expect(found.some((one) => one.message.includes("../../auth/types/Session"))).toBe(true);
+        expect(violations.map((violation) => violation.rule)).toContain("deep");
+        expect(violations.some((violation) => violation.message.includes("../../auth/types/Session"))).toBe(true);
     });
 
     test("ignores a relative import inside one plugin", () =>
     {
-        const found = boundaries(
+        const violations = findImportViolations(
             tree({
                 demo: {
                     "plugin.ts": declares("demo"),
@@ -114,7 +114,7 @@ describe("a plugin reaching another", () =>
             }),
         );
 
-        expect(found).toEqual([]);
+        expect(violations).toEqual([]);
     });
 });
 
@@ -122,27 +122,27 @@ describe("cycles", () =>
 {
     test("names a loop between two plugins", () =>
     {
-        const found = boundaries(
+        const violations = findImportViolations(
             tree({
                 a: { "plugin.ts": declares("a", ["b"]), "use.ts": 'import { b } from "@plugins/b";' },
                 b: { "plugin.ts": declares("b", ["a"]), "use.ts": 'import { a } from "@plugins/a";' },
             }),
         );
 
-        const cycle = found.find((one) => one.rule === "cycle");
+        const cycle = violations.find((violation) => violation.rule === "cycle");
 
         expect(cycle?.message).toMatch(/a -> b -> a|b -> a -> b/);
     });
 
     test("a one-way dependency is not a cycle", () =>
     {
-        const found = boundaries(
+        const violations = findImportViolations(
             tree({
                 auth: { "plugin.ts": declares("auth") },
                 demo: { "plugin.ts": declares("demo", ["auth"]), "use.ts": 'import { auth } from "@plugins/auth";' },
             }),
         );
 
-        expect(found.filter((one) => one.rule === "cycle")).toEqual([]);
+        expect(violations.filter((violation) => violation.rule === "cycle")).toEqual([]);
     });
 });
