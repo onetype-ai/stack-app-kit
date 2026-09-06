@@ -14,7 +14,7 @@ function createPlugin(name: string, definition: Partial<Definition> = {}): Plugi
     });
 }
 
-const announcing = (name: string) => createPlugin(name, {
+const createEmitter = (name: string) => createPlugin(name, {
     emits: {
         [`${name}.happened`]: {
             describe: "Something did.",
@@ -27,7 +27,7 @@ describe("hearing an event while a view is on screen", () =>
 {
     test("delivers what was emitted", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [createEmitter("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 
@@ -47,7 +47,7 @@ describe("hearing an event while a view is on screen", () =>
      */
     test("and stops when what it answered is called", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [createEmitter("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 
@@ -65,7 +65,7 @@ describe("hearing an event while a view is on screen", () =>
 
     test("hears every ear, and stopping one leaves the others", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [createEmitter("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 
@@ -87,7 +87,7 @@ describe("hearing an event while a view is on screen", () =>
 
     test("still refuses a payload the owner's schema does not take", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [createEmitter("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 
@@ -103,7 +103,7 @@ describe("hearing an event while a view is on screen", () =>
 
     test("and stopping twice is not an error, so a view may clean up either way", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [createEmitter("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 

@@ -208,11 +208,11 @@ describe("with a socket", () =>
                 wsUrl: "wss://example.test/ws",
                 openSocket: () =>
                 {
-                    const made = fakeSocket();
+                    const socket = fakeSocket();
 
-                    sockets.push(made);
+                    sockets.push(socket);
 
-                    return made;
+                    return socket;
                 },
                 sleep: async () => {},
             }),
@@ -227,11 +227,11 @@ describe("with a socket", () =>
     {
         const { transport, sockets } = startSocket();
 
-        const opening = transport.connect();
+        const connecting = transport.connect();
 
         sockets[0]?.opened();
 
-        await expect(opening).resolves.toBe("ws");
+        await expect(connecting).resolves.toBe("ws");
         expect(transport.channel()).toBe("ws");
     });
 
@@ -255,10 +255,10 @@ describe("with a socket", () =>
         const { transport, sockets } = startSocket();
         const heard: unknown[] = [];
 
-        const opening = transport.connect();
+        const connecting = transport.connect();
 
         sockets[0]?.opened();
-        await opening;
+        await connecting;
 
         transport.subscribe("items", (message) => heard.push(message));
         sockets[0]?.delivered(JSON.stringify({ channel: "items", body: { id: 7 } }));
@@ -271,10 +271,10 @@ describe("with a socket", () =>
         const { transport, sockets } = startSocket();
         const heard: unknown[] = [];
 
-        const opening = transport.connect();
+        const connecting = transport.connect();
 
         sockets[0]?.opened();
-        await opening;
+        await connecting;
 
         transport.subscribe("items", (message) => heard.push(message)).close();
         sockets[0]?.delivered(JSON.stringify({ channel: "items", body: { id: 7 } }));
@@ -287,10 +287,10 @@ describe("with a socket", () =>
         const { transport, sockets } = startSocket();
         const heard: unknown[] = [];
 
-        const opening = transport.connect();
+        const connecting = transport.connect();
 
         sockets[0]?.opened();
-        await opening;
+        await connecting;
 
         transport.subscribe("items", (message) => heard.push(message));
         sockets[0]?.delivered("not json at all");
@@ -303,16 +303,16 @@ describe("with a socket", () =>
     {
         const { transport, sockets } = startSocket();
 
-        const opening = transport.connect();
+        const connecting = transport.connect();
 
         sockets[0]?.opened();
-        await opening;
+        await connecting;
 
-        const asked = transport.request({ method: "POST", path: "/items", body: { a: 1 } });
+        const request = transport.request({ method: "POST", path: "/items", body: { a: 1 } });
 
         sockets[0]?.dropped();
 
-        const failed = (await asked.catch((cause: unknown) => cause)) as TransportFault;
+        const failed = (await request.catch((cause: unknown) => cause)) as TransportFault;
 
         expect(failed.code).toBe("NETWORK");
     });
@@ -321,15 +321,15 @@ describe("with a socket", () =>
     {
         const { transport, sockets, fetches } = startSocket();
 
-        const opening = transport.connect();
+        const connecting = transport.connect();
 
         sockets[0]?.opened();
-        await opening;
+        await connecting;
 
-        const asked = transport.request({ method: "POST", path: "/items", body: { a: 1 } });
+        const request = transport.request({ method: "POST", path: "/items", body: { a: 1 } });
 
         sockets[0]?.dropped();
-        await asked.catch(() => undefined);
+        await request.catch(() => undefined);
 
         expect(fetches.calls()).toHaveLength(0);
     });
@@ -338,10 +338,10 @@ describe("with a socket", () =>
     {
         const { transport, sockets, fetches } = startSocket([{ body: { ok: true } }]);
 
-        const opening = transport.connect();
+        const connecting = transport.connect();
 
         sockets[0]?.opened();
-        await opening;
+        await connecting;
 
         sockets[0]?.dropped();
 
@@ -355,10 +355,10 @@ describe("with a socket", () =>
     {
         const { transport, sockets } = startSocket();
 
-        const opening = transport.connect();
+        const connecting = transport.connect();
 
         sockets[0]?.opened();
-        await opening;
+        await connecting;
 
         transport.close();
 

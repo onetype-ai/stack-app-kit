@@ -48,10 +48,10 @@ describe("boot order", () =>
 
     test("refuses a cycle, naming both plugins", () =>
     {
-        const failed = (): unknown => boot(quiet, [createPlugin("a", ["b"]), createPlugin("b", ["a"])]);
+        const booting = (): unknown => boot(quiet, [createPlugin("a", ["b"]), createPlugin("b", ["a"])]);
 
-        expect(failed).toThrow(Fault);
-        expect(failed).toThrow(/a -> b -> a|b -> a -> b/);
+        expect(booting).toThrow(Fault);
+        expect(booting).toThrow(/a -> b -> a|b -> a -> b/);
     });
 
     test("refuses a plugin needing itself", () =>
@@ -75,7 +75,7 @@ describe("start and stop", () =>
     test("starts in boot order and stops in reverse", async () =>
     {
         const seen: string[] = [];
-        const watched = (name: string, needs: readonly string[] = []): Plugin => ({
+        const recordingPlugin = (name: string, needs: readonly string[] = []): Plugin => ({
             name,
             needs,
             boot: () => {},
@@ -89,10 +89,10 @@ describe("start and stop", () =>
             },
         });
 
-        const booted = boot(quiet, [watched("second", ["first"]), watched("first")]);
+        const app = boot(quiet, [recordingPlugin("second", ["first"]), recordingPlugin("first")]);
 
-        await booted.start();
-        await booted.stop();
+        await app.start();
+        await app.stop();
 
         expect(seen).toEqual(["start first", "start second", "stop second", "stop first"]);
     });
@@ -100,7 +100,7 @@ describe("start and stop", () =>
     test("a start that throws stops what already started", async () =>
     {
         const seen: string[] = [];
-        const booted = boot(quiet, [
+        const app = boot(quiet, [
             {
                 name: "first",
                 boot: () => {},
@@ -120,7 +120,7 @@ describe("start and stop", () =>
             },
         ]);
 
-        await expect(booted.start()).rejects.toThrow("no socket");
+        await expect(app.start()).rejects.toThrow("no socket");
 
         expect(seen).toEqual(["stop first"]);
     });
@@ -128,7 +128,7 @@ describe("start and stop", () =>
     test("a stop that throws does not strand the plugins behind it", async () =>
     {
         const seen: string[] = [];
-        const booted = boot(quiet, [
+        const app = boot(quiet, [
             {
                 name: "first",
                 boot: () => {},
@@ -150,8 +150,8 @@ describe("start and stop", () =>
             },
         ]);
 
-        await booted.start();
-        await booted.stop();
+        await app.start();
+        await app.stop();
 
         expect(seen).toEqual(["stop first"]);
     });
@@ -180,27 +180,27 @@ describe("what a plugin may do", () =>
 
     test("refuses a second offer under one name, naming the first owner", () =>
     {
-        const failed = (): unknown =>
+        const booting = (): unknown =>
             boot(quiet, [
                 { name: "a", boot: (host: Host) => host.offer("same", {}) },
                 { name: "b", needs: ["a"], boot: (host: Host) => host.offer("same", {}) },
             ]);
 
-        expect(failed).toThrow(/already offered by "a"/);
+        expect(booting).toThrow(/already offered by "a"/);
     });
 
     test("refuses an offer after boot", () =>
     {
-        const booted = boot(quiet, [{ name: "a", boot: () => {} }]);
+        const app = boot(quiet, [{ name: "a", boot: () => {} }]);
 
-        expect(() => booted.host.as("a").offer("late", {})).toThrow(/after boot/);
+        expect(() => app.host.as("a").offer("late", {})).toThrow(/after boot/);
     });
 
     test("refuses a subscription after boot", () =>
     {
-        const booted = boot(quiet, [{ name: "a", boot: () => {} }]);
+        const app = boot(quiet, [{ name: "a", boot: () => {} }]);
 
-        expect(() => booted.host.as("a").on("late", () => {})).toThrow(/after boot/);
+        expect(() => app.host.as("a").on("late", () => {})).toThrow(/after boot/);
     });
 });
 
@@ -209,7 +209,7 @@ describe("events", () =>
     test("delivers to every listener but the one that emitted", () =>
     {
         const heard: string[] = [];
-        const booted = boot(quiet, [
+        const app = boot(quiet, [
             {
                 name: "a",
                 boot: (host: Host) =>
@@ -228,7 +228,7 @@ describe("events", () =>
             },
         ]);
 
-        booted.host.as("a").emit("thing.happened", {});
+        app.host.as("a").emit("thing.happened", {});
 
         expect(heard).toEqual(["b"]);
     });
@@ -237,7 +237,7 @@ describe("events", () =>
     {
         const heard: string[] = [];
         const said: string[] = [];
-        const booted = boot((line) => said.push(line), [
+        const app = boot((line) => said.push(line), [
             {
                 name: "a",
                 boot: (host: Host) =>
@@ -256,7 +256,7 @@ describe("events", () =>
             },
         ]);
 
-        expect(() => booted.host.emit("thing.happened", {})).not.toThrow();
+        expect(() => app.host.emit("thing.happened", {})).not.toThrow();
 
         expect(heard).toEqual(["b"]);
         expect(said.some((line) => line.includes("threw"))).toBe(true);

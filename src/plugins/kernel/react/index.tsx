@@ -165,13 +165,13 @@ export function Slot({ name, payload }: { name: string; payload?: unknown }): Re
         <>
             {contributions
                 .filter((contribution) => kernel.permissions.all(contribution.requires ?? []))
-                .map((one) => (
+                .map((contribution) => (
                     <Boundary
-                        key={`${one.plugin}:${one.slot}:${one.order ?? 0}`}
-                        plugin={one.plugin}
-                        fallback={kernel.fallbackFor(one.plugin)}
+                        key={`${contribution.plugin}:${contribution.slot}:${contribution.order ?? 0}`}
+                        plugin={contribution.plugin}
+                        fallback={kernel.fallbackFor(contribution.plugin)}
                     >
-                        <one.render payload={payload} />
+                        <contribution.render payload={payload} />
                     </Boundary>
                 ))}
         </>

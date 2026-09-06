@@ -58,25 +58,25 @@ export function validate(plugins: readonly Plugin[], config: Readonly<Record<str
     // First pass: what each plugin declares, and what it collides with.
     for (const [name, plugin] of by)
     {
-        declares(name, plugin, owned, say);
+        checkOwn(name, plugin, owned, say);
     }
 
     // Second pass: what each plugin refers to. Everything declared is known
     // by now, so an order-dependent answer is impossible.
     for (const [name, plugin] of by)
     {
-        refers(name, plugin, by, owned, say);
-        settings(name, plugin, config, say);
+        checkReferences(name, plugin, by, owned, say);
+        checkConfig(name, plugin, config, say);
     }
 
-    cycles(by, say);
-    granting(by, say);
+    checkCycles(by, say);
+    checkGrants(by, say);
 
     return wrong;
 }
 
 /** What a plugin declares, and whether anyone claimed it first. */
-function declares(name: string, plugin: Plugin, owned: Owned, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
+function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
 {
     const claim = (
         kind: keyof Owned,
@@ -99,7 +99,7 @@ function declares(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     for (const [key, one] of Object.entries(plugin.definition.permissions ?? {}))
     {
-        if (named(name, key, "permission", say))
+        if (checkNamespaced(name, key, "permission", say))
         {
             claim("permissions", key, "DUPLICATE_PERMISSION", "Permission");
         }
@@ -109,7 +109,7 @@ function declares(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     for (const [key] of Object.entries(plugin.definition.emits ?? {}))
     {
-        if (named(name, key, "event", say))
+        if (checkNamespaced(name, key, "event", say))
         {
             claim("events", key, "DUPLICATE_EVENT", "Event");
         }
@@ -117,7 +117,7 @@ function declares(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     for (const [key] of Object.entries(plugin.definition.hooks ?? {}))
     {
-        if (named(name, key, "hook", say))
+        if (checkNamespaced(name, key, "hook", say))
         {
             claim("hooks", key, "DUPLICATE_HOOK", "Hook");
         }
@@ -125,7 +125,7 @@ function declares(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     for (const [key] of Object.entries(plugin.definition.slots ?? {}))
     {
-        if (named(name, key, "slot", say))
+        if (checkNamespaced(name, key, "slot", say))
         {
             claim("slots", key, "DUPLICATE_SLOT", "Slot");
         }
@@ -133,7 +133,7 @@ function declares(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     for (const [key] of Object.entries(plugin.definition.commands ?? {}))
     {
-        if (named(name, key, "command", say))
+        if (checkNamespaced(name, key, "command", say))
         {
             claim("commands", key, "DUPLICATE_COMMAND", "Command");
         }
@@ -179,7 +179,7 @@ function declares(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 }
 
 /** Checks one namespaced name, reporting rather than throwing. */
-function named(owner: string, key: string, kind: string, say: (code: KernelFault["code"], plugin: string, message: string) => void): boolean
+function checkNamespaced(owner: string, key: string, kind: string, say: (code: KernelFault["code"], plugin: string, message: string) => void): boolean
 {
     try
     {
@@ -196,7 +196,7 @@ function named(owner: string, key: string, kind: string, say: (code: KernelFault
 }
 
 /** What a plugin refers to: it must exist, and be reachable. */
-function refers(
+function checkReferences(
     name: string,
     plugin: Plugin,
     by: ReadonlyMap<string, Plugin>,
@@ -275,7 +275,7 @@ function refers(
 }
 
 /** Config is parsed by the plugin's own schema, where it enters. */
-function settings(
+function checkConfig(
     name: string,
     plugin: Plugin,
     config: Readonly<Record<string, unknown>>,
@@ -304,7 +304,7 @@ function settings(
 }
 
 /** What only one plugin may own, because two answers is no answer. */
-function granting(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
+function checkGrants(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
 {
     const alone = (
         code: KernelFault["code"],
@@ -327,7 +327,7 @@ function granting(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code
 }
 
 /** A cycle in dependsOn, named from where it was entered back to itself. */
-function cycles(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
+function checkCycles(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
 {
     const state = new Map<string, "open" | "done">();
     const walking: string[] = [];

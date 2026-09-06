@@ -54,7 +54,7 @@ describe("a declared field", () =>
             }),
         );
 
-        expect(unread.map((one) => one.field)).toEqual(["unused"]);
+        expect(unread.map((field) => field.field)).toEqual(["unused"]);
         expect(unread[0]?.shape).toBe("Item");
     });
 

@@ -39,16 +39,16 @@ describe("a 401 from the server", () =>
         await app.stop();
     });
 
-    test("and the event it announces is declared, so emitting it is not a fault", async () =>
+    test("and the event it announces is declared, so emitter it is not a fault", async () =>
     {
         const app = await start({ plugins: [], transport: { baseUrl: "/api" } });
 
-        const emitting = (): void =>
+        const emitter = (): void =>
         {
             app.kernel.context("transport").events.emit("transport.unauthorized", { path: "/session" });
         };
 
-        expect(emitting).not.toThrow();
+        expect(emitter).not.toThrow();
 
         await app.stop();
     });

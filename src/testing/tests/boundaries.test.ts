@@ -36,7 +36,7 @@ function tree(plugins: Readonly<Record<string, Readonly<Record<string, string>>>
 }
 
 const declares = (name: string, needs: readonly string[] = []): string =>
-    `export default definePlugin("${name}", { dependsOn: [${needs.map((one) => `"${one}"`).join(", ")}] });`;
+    `export default definePlugin("${name}", { dependsOn: [${needs.map((need) => `"${need}"`).join(", ")}] });`;
 
 describe("a plugin reaching another", () =>
 {

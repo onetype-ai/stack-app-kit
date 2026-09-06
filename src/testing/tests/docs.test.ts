@@ -93,9 +93,9 @@ describe("undocumented", () =>
     // how this answered "all documented" while checking no key at all.
     test("reads a shape a build emitted without export", () =>
     {
-        const built = contract.replace("export type", "type");
+        const emitted = contract.replace("export type", "type");
 
-        expect(findUndocumentedKeys(built, "- `version`: the version.")).toEqual(["grants"]);
+        expect(findUndocumentedKeys(emitted, "- `version`: the version.")).toEqual(["grants"]);
     });
 
     test("refuses a contract holding no Definition", () =>

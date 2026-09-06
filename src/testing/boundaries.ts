@@ -12,7 +12,7 @@ export type ImportViolation = {
     message: string;
 };
 
-type Read = {
+type PluginImports = {
     name: string;
     declared: Set<string>;
     crossings: ImportEdge[];
@@ -26,10 +26,10 @@ export function findImportViolations(root: string): ImportViolation[]
 
     const plugins = names.map((name) => read(root, name, names));
 
-    return [...undeclared(plugins), ...deep(plugins), ...cycles(plugins)];
+    return [...undeclared(plugins), ...deep(plugins), ...findCycles(plugins)];
 }
 
-function read(root: string, name: string, names: readonly string[]): Read
+function read(root: string, name: string, names: readonly string[]): PluginImports
 {
     const others = new Set(names.filter((other) => other !== name));
     const contract = readFileSync(join(root, name, "plugin.ts"), "utf8");
@@ -97,31 +97,31 @@ function crossings(name: string, path: string, source: string, others: ReadonlyS
     });
 }
 
-function undeclared(plugins: readonly Read[]): ImportViolation[]
+function undeclared(plugins: readonly PluginImports[]): ImportViolation[]
 {
-    return plugins.flatMap((one) =>
-        one.crossings
-            .filter((crossing) => !one.declared.has(crossing.to))
+    return plugins.flatMap((plugin) =>
+        plugin.crossings
+            .filter((crossing) => !plugin.declared.has(crossing.to))
             .map((crossing) => ({
                 rule: "undeclared" as const,
-                message: `${one.name}/${crossing.from} imports "${crossing.specifier}" without declaring "${crossing.to}" in dependsOn.`,
+                message: `${plugin.name}/${crossing.from} imports "${crossing.specifier}" without declaring "${crossing.to}" in dependsOn.`,
             })),
     );
 }
 
-function deep(plugins: readonly Read[]): ImportViolation[]
+function deep(plugins: readonly PluginImports[]): ImportViolation[]
 {
-    return plugins.flatMap((one) =>
-        one.crossings
+    return plugins.flatMap((plugin) =>
+        plugin.crossings
             .filter((crossing) => crossing.specifier !== `@plugins/${crossing.to}`)
             .map((crossing) => ({
                 rule: "deep" as const,
-                message: `${one.name}/${crossing.from} reaches "${crossing.specifier}" instead of "@plugins/${crossing.to}".`,
+                message: `${plugin.name}/${crossing.from} reaches "${crossing.specifier}" instead of "@plugins/${crossing.to}".`,
             })),
     );
 }
 
-function cycles(plugins: readonly Read[]): ImportViolation[]
+function findCycles(plugins: readonly PluginImports[]): ImportViolation[]
 {
     const edges = new Map(plugins.map((plugin) => [plugin.name, new Set(plugin.crossings.map((crossing) => crossing.to))]));
     const wrong: ImportViolation[] = [];
@@ -156,9 +156,9 @@ function cycles(plugins: readonly Read[]): ImportViolation[]
         done.add(name);
     }
 
-    for (const one of plugins)
+    for (const plugin of plugins)
     {
-        walk(one.name, []);
+        walk(plugin.name, []);
     }
 
     return wrong;

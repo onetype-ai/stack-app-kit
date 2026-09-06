@@ -46,13 +46,13 @@ describe("names", () =>
 
     test("refuses an event outside the plugin's namespace, and says what to rename it to", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("auth", { emits: { "session.ended": { describe: "gone", schema: z.object({}) } } }),
         ]);
 
-        expect(failed?.code).toBe("INVALID_NAME");
-        expect(failed?.message).toMatch(/belongs to "session", not to "auth"/);
-        expect(failed?.message).toMatch(/auth\.ended/);
+        expect(fault?.code).toBe("INVALID_NAME");
+        expect(fault?.message).toMatch(/belongs to "session", not to "auth"/);
+        expect(fault?.message).toMatch(/auth\.ended/);
     });
 });
 
@@ -60,28 +60,28 @@ describe("dependencies", () =>
 {
     test("refuses a dependency no plugin provides", async () =>
     {
-        const failed = await refused([createPlugin("billing", { dependsOn: ["missing"] })]);
+        const fault = await refused([createPlugin("billing", { dependsOn: ["missing"] })]);
 
-        expect(failed?.code).toBe("UNKNOWN_DEPENDENCY");
-        expect(failed?.message).toMatch(/"missing", which no plugin provides/);
+        expect(fault?.code).toBe("UNKNOWN_DEPENDENCY");
+        expect(fault?.message).toMatch(/"missing", which no plugin provides/);
     });
 
     test("refuses a cycle, naming the loop", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("a", { dependsOn: ["b"] }),
             createPlugin("b", { dependsOn: ["a"] }),
         ]);
 
-        expect(failed?.code).toBe("DEPENDENCY_CYCLE");
-        expect(failed?.message).toMatch(/a -> b -> a|b -> a -> b/);
+        expect(fault?.code).toBe("DEPENDENCY_CYCLE");
+        expect(fault?.message).toMatch(/a -> b -> a|b -> a -> b/);
     });
 
     test("refuses two plugins with one name", async () =>
     {
-        const failed = await refused([createPlugin("auth"), createPlugin("auth")]);
+        const fault = await refused([createPlugin("auth"), createPlugin("auth")]);
 
-        expect(failed?.code).toBe("DUPLICATE_PLUGIN");
+        expect(fault?.code).toBe("DUPLICATE_PLUGIN");
     });
 
     test("starts a plugin after the ones it depends on", async () =>
@@ -105,38 +105,38 @@ describe("declarations", () =>
     test("refuses two plugins declaring one route", async () =>
     {
         const page = (): null => null;
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("auth", { routes: [{ path: "/x", component: page }] }),
             createPlugin("billing", { routes: [{ path: "/x", component: page }] }),
         ]);
 
-        expect(failed?.code).toBe("DUPLICATE_ROUTE");
-        expect(failed?.message).toMatch(/already declared by "auth"/);
+        expect(fault?.code).toBe("DUPLICATE_ROUTE");
+        expect(fault?.message).toMatch(/already declared by "auth"/);
     });
 
     test("refuses a route path in the wrong syntax", async () =>
     {
-        const failed = await refused([createPlugin("auth", { routes: [{ path: "auth/login", component: () => null }] })]);
+        const fault = await refused([createPlugin("auth", { routes: [{ path: "auth/login", component: () => null }] })]);
 
-        expect(failed?.code).toBe("INVALID_ROUTE");
-        expect(failed?.message).toMatch(/must start with "\/"/);
+        expect(fault?.code).toBe("INVALID_ROUTE");
+        expect(fault?.message).toMatch(/must start with "\/"/);
     });
 
     test("refuses a version that is not a version", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             definePlugin("auth", { version: "banana", describe: "The auth plugin." }),
         ]);
 
-        expect(failed?.code).toBe("INVALID_NAME");
-        expect(failed?.message).toMatch(/is not a version/);
+        expect(fault?.code).toBe("INVALID_NAME");
+        expect(fault?.message).toMatch(/is not a version/);
     });
 
     test("refuses an empty description", async () =>
     {
-        const failed = await refused([definePlugin("auth", { version: "1.0.0", describe: "  " })]);
+        const fault = await refused([definePlugin("auth", { version: "1.0.0", describe: "  " })]);
 
-        expect(failed?.message).toMatch(/describes itself in one sentence/);
+        expect(fault?.message).toMatch(/describes itself in one sentence/);
     });
 });
 
@@ -144,48 +144,48 @@ describe("references", () =>
 {
     test("refuses listening to an event nothing declares", async () =>
     {
-        const failed = await refused([createPlugin("billing", { listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } })]);
+        const fault = await refused([createPlugin("billing", { listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } })]);
 
-        expect(failed?.code).toBe("UNDECLARED_EVENT");
+        expect(fault?.code).toBe("UNDECLARED_EVENT");
     });
 
     test("refuses reaching something owned by an undeclared dependency", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
             createPlugin("billing", { listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } }),
         ]);
 
-        expect(failed?.code).toBe("UNDECLARED_DEPENDENCY");
-        expect(failed?.message).toMatch(/Add "auth" to dependsOn/);
+        expect(fault?.code).toBe("UNDECLARED_DEPENDENCY");
+        expect(fault?.message).toMatch(/Add "auth" to dependsOn/);
     });
 
     test("allows it once the dependency is declared", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
             createPlugin("billing", { dependsOn: ["auth"], listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } }),
         ]);
 
-        expect(failed).toBeUndefined();
+        expect(fault).toBeUndefined();
     });
 
     test("refuses a contribution to a slot nothing declares", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("billing", { contributes: [{ slot: "shell.sidebar", render: () => null }] }),
         ]);
 
-        expect(failed?.code).toBe("UNDECLARED_SLOT");
+        expect(fault?.code).toBe("UNDECLARED_SLOT");
     });
 
     test("refuses a route needing a permission nothing declares", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("billing", { routes: [{ path: "/b", component: () => null, requires: ["billing.read"] }] }),
         ]);
 
-        expect(failed?.code).toBe("UNDECLARED_PERMISSION");
+        expect(fault?.code).toBe("UNDECLARED_PERMISSION");
     });
 });
 
@@ -193,13 +193,13 @@ describe("config", () =>
 {
     test("refuses config that fails its schema, naming the key", async () =>
     {
-        const failed = await refused(
+        const fault = await refused(
             [createPlugin("billing", { config: z.object({ pageSize: z.number() }) })],
             { billing: { pageSize: "many" } },
         );
 
-        expect(failed?.code).toBe("INVALID_CONFIG");
-        expect(failed?.message).toMatch(/at "pageSize"/);
+        expect(fault?.code).toBe("INVALID_CONFIG");
+        expect(fault?.message).toMatch(/at "pageSize"/);
     });
 
     test("hands a plugin its own parsed config", async () =>
@@ -225,14 +225,14 @@ describe("reporting everything at once", () =>
 {
     test("names every problem in one run, not just the first", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("a", { dependsOn: ["nope"] }),
             createPlugin("b", { listens: { "c.thing": { describe: "hears it", handle: () => {} } } }),
         ]);
 
-        expect(failed?.message).toMatch(/2 problems/);
-        expect(failed?.message).toMatch(/nope/);
-        expect(failed?.message).toMatch(/c\.thing/);
+        expect(fault?.message).toMatch(/2 problems/);
+        expect(fault?.message).toMatch(/nope/);
+        expect(fault?.message).toMatch(/c\.thing/);
     });
 
     test("nothing starts when a contract is wrong", async () =>
@@ -379,9 +379,9 @@ describe("commands", () =>
 
         await kernel.start();
 
-        const failed = await kernel.run("billing.refund", {}).catch((cause: unknown) => cause as KernelFault);
+        const fault = await kernel.run("billing.refund", {}).catch((cause: unknown) => cause as KernelFault);
 
-        expect(failed?.code).toBe("PERMISSION_DENIED");
+        expect(fault?.code).toBe("PERMISSION_DENIED");
     });
 
     test("runs it when the permission is granted", async () =>
@@ -422,18 +422,18 @@ describe("commands", () =>
 
         await kernel.start();
 
-        const failed = await kernel.run("billing.refund", { id: 1 }).catch((cause: unknown) => cause as KernelFault);
+        const fault = await kernel.run("billing.refund", { id: 1 }).catch((cause: unknown) => cause as KernelFault);
 
-        expect(failed?.code).toBe("INVALID_PAYLOAD");
+        expect(fault?.code).toBe("INVALID_PAYLOAD");
     });
 
     test("refuses a command before the kernel started", async () =>
     {
         const kernel = createKernel({ plugins: [createPlugin("billing")] });
 
-        const failed = await kernel.run("billing.refund", {}).catch((cause: unknown) => cause as KernelFault);
+        const fault = await kernel.run("billing.refund", {}).catch((cause: unknown) => cause as KernelFault);
 
-        expect(failed?.code).toBe("NOT_STARTED");
+        expect(fault?.code).toBe("NOT_STARTED");
     });
 });
 
@@ -493,43 +493,43 @@ describe("what only one plugin may own", () =>
 {
     test("refuses two plugins declaring grants", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("auth", { grants: () => ["a"] }),
             createPlugin("other", { grants: () => ["b"] }),
         ]);
 
-        expect(failed?.code).toBe("DUPLICATE_GRANTS");
-        expect(failed?.message).toMatch(/both declare grants/);
+        expect(fault?.code).toBe("DUPLICATE_GRANTS");
+        expect(fault?.message).toMatch(/both declare grants/);
     });
 
     test("refuses two frames", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("shell", { frame: () => null }),
             createPlugin("other", { frame: () => null }),
         ]);
 
-        expect(failed?.code).toBe("DUPLICATE_FRAME");
+        expect(fault?.code).toBe("DUPLICATE_FRAME");
     });
 
     test("refuses two 404 pages", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("shell", { pages: { missing: () => null } }),
             createPlugin("other", { pages: { missing: () => null } }),
         ]);
 
-        expect(failed?.code).toBe("DUPLICATE_PAGE");
+        expect(fault?.code).toBe("DUPLICATE_PAGE");
     });
 
     test("one plugin may own the 403 and another the 404", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("shell", { pages: { missing: () => null } }),
             createPlugin("guard", { pages: { forbidden: () => null } }),
         ]);
 
-        expect(failed).toBeUndefined();
+        expect(fault).toBeUndefined();
     });
 });
 
@@ -590,11 +590,11 @@ describe("config defaults", () =>
 {
     test("a schema whose keys all default starts with no config at all", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("billing", { config: z.object({ pageSize: z.number().default(25) }) }),
         ]);
 
-        expect(failed).toBeUndefined();
+        expect(fault).toBeUndefined();
     });
 
     test("a plugin reads the defaults its schema filled in", async () =>
@@ -617,10 +617,10 @@ describe("config defaults", () =>
 
     test("a required key with nothing to default to is still refused", async () =>
     {
-        const failed = await refused([
+        const fault = await refused([
             createPlugin("billing", { config: z.object({ apiKey: z.string() }) }),
         ]);
 
-        expect(failed?.code).toBe("INVALID_CONFIG");
+        expect(fault?.code).toBe("INVALID_CONFIG");
     });
 });

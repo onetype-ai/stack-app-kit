@@ -33,7 +33,7 @@ export async function start(starting: Starting): Promise<Started>
         early.push(path);
     };
 
-    const booted = boot(say, [
+    const app = boot(say, [
         transportPlugin({
             ...starting.transport,
             onUnauthorized: (path: string) =>
@@ -44,7 +44,7 @@ export async function start(starting: Starting): Promise<Started>
         }),
     ]);
 
-    const live = transportFrom(booted.host);
+    const live = transportFrom(app.host);
 
     if (live === undefined)
     {
@@ -120,7 +120,7 @@ export async function start(starting: Starting): Promise<Started>
         stop: async (): Promise<void> =>
         {
             await kernel.stop();
-            await booted.stop();
+            await app.stop();
         },
     };
 }

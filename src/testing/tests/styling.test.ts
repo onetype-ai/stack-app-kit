@@ -73,6 +73,6 @@ describe("a token a stylesheet asks for", () =>
             "components/Deep/Deep.module.css": ".root { color: var(--gone); }",
         });
 
-        expect(findUnknownTokens(at).map((one) => one.token)).toEqual(["--gone"]);
+        expect(findUnknownTokens(at).map((unknown) => unknown.token)).toEqual(["--gone"]);
     });
 });
