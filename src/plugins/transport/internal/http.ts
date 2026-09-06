@@ -1,6 +1,6 @@
 import type { Request } from "../api";
 import { address } from "./address";
-import type { Answered, Channel } from "./channel";
+import type { Answer, Channel } from "./channel";
 import { TransportFault } from "./faults";
 
 type Settings = {
@@ -20,7 +20,7 @@ export function http(settings: Settings): Channel
             return true;
         },
 
-        send: async (request: Request): Promise<Answered> =>
+        send: async (request: Request): Promise<Answer> =>
         {
             const aborter = new AbortController();
             const timer = setTimeout(() => aborter.abort(), settings.timeout);
@@ -71,12 +71,12 @@ export function http(settings: Settings): Channel
 
                 if (response.status === 204)
                 {
-                    return { status: 204, body: undefined, carried: "http" };
+                    return { status: 204, body: undefined, channel: "http" };
                 }
 
                 try
                 {
-                    return { status: response.status, body: await response.json(), carried: "http" };
+                    return { status: response.status, body: await response.json(), channel: "http" };
                 }
                 catch (cause)
                 {

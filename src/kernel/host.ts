@@ -64,9 +64,9 @@ export class Host
     }
 
     /** Moves the phase on. The kernel calls this; a plugin cannot. */
-    reach(at: Phase): void
+    enter(phase: Phase): void
     {
-        this.#shared.at = at;
+        this.#shared.at = phase;
     }
 
     /** Writes a line, wherever the application decided lines go. */

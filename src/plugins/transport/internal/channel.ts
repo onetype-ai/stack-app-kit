@@ -1,15 +1,15 @@
 import type { Request } from "../api";
 
 /** What came back. */
-export type Answered = {
+export type Answer = {
     status: number;
     body: unknown;
-    carried: "ws" | "http";
+    channel: "ws" | "http";
 };
 
 /** One way of carrying a request. HTTP always can; a socket only when open. */
 export type Channel = {
     name: "ws" | "http";
     open: () => boolean;
-    send: (request: Request) => Promise<Answered>;
+    send: (request: Request) => Promise<Answer>;
 };

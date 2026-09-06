@@ -1,5 +1,5 @@
 import type { Request, Socket, Subscription } from "../api";
-import type { Answered, Channel } from "./channel";
+import type { Answer, Channel } from "./channel";
 import { TransportFault } from "./faults";
 import { frame } from "./frame";
 
@@ -14,7 +14,7 @@ type Settings = {
 };
 
 type Waiting = {
-    keep: (answered: Answered) => void;
+    keep: (answered: Answer) => void;
     fail: (cause: Error) => void;
     timer: ReturnType<typeof setTimeout>;
 };
@@ -79,7 +79,7 @@ export function socket(settings: Settings)
                 return;
             }
 
-            pending.keep({ status: read.status, body: read.body, carried: "ws" });
+            pending.keep({ status: read.status, body: read.body, channel: "ws" });
 
             return;
         }
@@ -185,7 +185,7 @@ export function socket(settings: Settings)
             return open;
         },
 
-        send: async (request: Request): Promise<Answered> =>
+        send: async (request: Request): Promise<Answer> =>
         {
             const live = wire;
 
@@ -202,7 +202,7 @@ export function socket(settings: Settings)
 
             const id = `${settings.now?.() ?? Date.now()}-${counter}`;
 
-            return new Promise<Answered>((keep, fail) =>
+            return new Promise<Answer>((keep, fail) =>
             {
                 const timer = setTimeout(() =>
                 {

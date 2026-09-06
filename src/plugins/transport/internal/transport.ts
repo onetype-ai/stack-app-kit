@@ -1,5 +1,5 @@
 import type { Request, Channel, Settings, Subscription, Transport } from "../api";
-import type { Answered } from "./channel";
+import type { Answer } from "./channel";
 import { TransportFault } from "./faults";
 import { http } from "./http";
 import { methods } from "./method";
@@ -34,7 +34,7 @@ export function transport(settings: Settings, say: Said): Transport
         : undefined;
 
     /** One attempt, on whichever channel is live. */
-    async function once(request: Request): Promise<Answered>
+    async function sendOnce(request: Request): Promise<Answer>
     {
         const channel = live !== undefined && live.channel.open() ? live.channel : over;
 
@@ -102,7 +102,7 @@ export function transport(settings: Settings, say: Said): Transport
             {
                 try
                 {
-                    return (await once(request)).body;
+                    return (await sendOnce(request)).body;
                 }
                 catch (cause)
                 {

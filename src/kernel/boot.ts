@@ -74,7 +74,7 @@ export class RunningApp
         }
 
         this.#started = [];
-        this.#host.reach("stopped");
+        this.#host.enter("stopped");
     }
 }
 
@@ -116,7 +116,7 @@ export function boot(say: WriteLine, plugins: readonly Plugin[]): RunningApp
         plugin.boot(host.as(plugin.name));
     }
 
-    host.reach("running");
+    host.enter("running");
 
     return new RunningApp(host, sorted);
 }
