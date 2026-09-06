@@ -62,24 +62,24 @@ export function socket(settings: Settings)
 
         if ("id" in read)
         {
-            const one = waiting.get(read.id);
+            const pending = waiting.get(read.id);
 
-            if (one === undefined)
+            if (pending === undefined)
             {
                 return;
             }
 
             waiting.delete(read.id);
-            clearTimeout(one.timer);
+            clearTimeout(pending.timer);
 
             if (read.status >= 400)
             {
-                one.fail(TransportFault.fromStatus(read.status, { method: "WS", path: read.id }));
+                pending.fail(TransportFault.fromStatus(read.status, { method: "WS", path: read.id }));
 
                 return;
             }
 
-            one.keep({ status: read.status, body: read.body, carried: "ws" });
+            pending.keep({ status: read.status, body: read.body, carried: "ws" });
 
             return;
         }

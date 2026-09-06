@@ -58,7 +58,7 @@ describe("the route tree", () =>
 
         tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        expect(spy.created.map((one) => one["path"])).toEqual(["/items", "/items/$id", "/about"]);
+        expect(spy.created.map((route) => route["path"])).toEqual(["/items", "/items/$id", "/about"]);
     });
 
     test("and hangs every one off the root, never off each other", () =>
@@ -67,7 +67,7 @@ describe("the route tree", () =>
 
         tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        const parents = spy.created.map((one) => (one["getParentRoute"] as () => unknown)());
+        const parents = spy.created.map((route) => (route["getParentRoute"] as () => unknown)());
 
         expect(new Set(parents).size).toBe(1);
     });

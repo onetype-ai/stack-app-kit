@@ -76,7 +76,7 @@ describe("ctx.http", () =>
 
         await Promise.all([http.get("/a"), http.post("/b"), http.put("/c"), http.patch("/d"), http.delete("/e")]);
 
-        expect(spy.asked.map((one) => one.method).sort())
+        expect(spy.asked.map((call) => call.method).sort())
             .toEqual(["delete", "get", "patch", "post", "put"]);
 
         await kernel.stop();

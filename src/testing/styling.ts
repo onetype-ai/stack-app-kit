@@ -48,7 +48,7 @@ export function styling(root: string): Unknown[]
         }
     }
 
-    return asked.filter((one) => !set.has(one.token));
+    return asked.filter((used) => !set.has(used.token));
 }
 
 function walk(at: string): string[]
@@ -57,21 +57,21 @@ function walk(at: string): string[]
 
     for (const entry of readdirSync(at))
     {
-        const one = join(at, entry);
+        const path = join(at, entry);
 
-        if (statSync(one).isDirectory())
+        if (statSync(path).isDirectory())
         {
             if (entry !== "node_modules" && entry !== "dist")
             {
-                found.push(...walk(one));
+                found.push(...walk(path));
             }
 
             continue;
         }
 
-        if (one.endsWith(".css") || one.endsWith(".tsx") || one.endsWith(".ts"))
+        if (path.endsWith(".css") || path.endsWith(".tsx") || path.endsWith(".ts"))
         {
-            found.push(one);
+            found.push(path);
         }
     }
 

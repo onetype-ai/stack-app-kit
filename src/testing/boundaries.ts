@@ -31,13 +31,13 @@ export function boundaries(root: string): Wrong[]
 
 function read(root: string, name: string, names: readonly string[]): Read
 {
-    const others = new Set(names.filter((one) => one !== name));
+    const others = new Set(names.filter((other) => other !== name));
     const contract = readFileSync(join(root, name, "plugin.ts"), "utf8");
     const found = /dependsOn:\s*\[([^\]]*)\]/.exec(contract);
 
     return {
         name,
-        declared: new Set(found === null ? [] : [...found[1]!.matchAll(/"([^"]+)"/g)].map((one) => one[1]!)),
+        declared: new Set(found === null ? [] : [...found[1]!.matchAll(/"([^"]+)"/g)].map((match) => match[1]!)),
         crossings: files(root, name).flatMap(({ path, source }) => crossings(name, path, source, others)),
     };
 }
@@ -123,7 +123,7 @@ function deep(plugins: readonly Read[]): Wrong[]
 
 function cycles(plugins: readonly Read[]): Wrong[]
 {
-    const edges = new Map(plugins.map((one) => [one.name, new Set(one.crossings.map((crossing) => crossing.to))]));
+    const edges = new Map(plugins.map((plugin) => [plugin.name, new Set(plugin.crossings.map((crossing) => crossing.to))]));
     const found: Wrong[] = [];
     const walking = new Set<string>();
     const done = new Set<string>();

@@ -120,7 +120,7 @@ export function createKernel(options: Options): Kernel
     const cache = options.cache ?? noCache;
     const realtime = options.realtime ?? noRealtime;
 
-    const known = new Map(options.plugins.map((one) => [one.name, one]));
+    const known = new Map(options.plugins.map((plugin) => [plugin.name, plugin]));
     const bus = events<Context>();
     const points = hooks<Context>();
     const places = slots();
@@ -241,36 +241,36 @@ export function createKernel(options: Options): Kernel
             );
         }
 
-        const one = commands.get(command);
+        const declared = commands.get(command);
 
-        if (one === undefined)
+        if (declared === undefined)
         {
             throw new KernelFault("UNDECLARED_COMMAND", `Command "${command}" is not declared by any plugin.`);
         }
 
-        const lacking = one.requires.filter((permission) => !may.has(permission));
+        const lacking = declared.requires.filter((permission) => !may.has(permission));
 
         if (lacking.length > 0)
         {
             throw new KernelFault(
                 "PERMISSION_DENIED",
-                `Command "${command}" needs ${lacking.map((one) => `"${one}"`).join(", ")}, which the viewer does not have.`,
-                { plugin: one.plugin, detail: { lacking } },
+                `Command "${command}" needs ${lacking.map((permission) => `"${permission}"`).join(", ")}, which the viewer does not have.`,
+                { plugin: declared.plugin, detail: { lacking } },
             );
         }
 
-        const answer = one.schema.safeParse(input);
+        const answer = declared.schema.safeParse(input);
 
         if (!answer.success)
         {
             throw new KernelFault(
                 "INVALID_PAYLOAD",
                 `The input for "${command}" does not match its schema: ${answer.error?.issues[0]?.message ?? "it was rejected"}.`,
-                { plugin: one.plugin },
+                { plugin: declared.plugin },
             );
         }
 
-        await one.run(answer.data, context(one.plugin));
+        await declared.run(answer.data, context(declared.plugin));
     }
 
     return {
@@ -290,7 +290,7 @@ export function createKernel(options: Options): Kernel
 
             if (wrong.length > 0)
             {
-                const lines = wrong.map((one) => `  - [${one.code}] ${one.plugin}: ${one.message}`);
+                const lines = wrong.map((problem) => `  - [${problem.code}] ${problem.plugin}: ${problem.message}`);
 
                 throw new KernelFault(
                     wrong[0]?.code ?? "INVALID_CONFIG",
@@ -301,59 +301,59 @@ export function createKernel(options: Options): Kernel
 
             order = sorted(known);
 
-            for (const one of order)
+            for (const plugin of order)
             {
-                const schema = one.definition.config;
+                const schema = plugin.definition.config;
 
                 if (schema !== undefined)
                 {
-                    parsed.set(one.name, schema.parse(config[one.name] ?? {}));
+                    parsed.set(plugin.name, schema.parse(config[plugin.name] ?? {}));
                 }
             }
 
             // Declare everything before anything is wired: a listener may name
             // an event owned by a plugin that starts later.
-            for (const one of order)
+            for (const plugin of order)
             {
-                for (const [key, event] of Object.entries(one.definition.emits ?? {}))
+                for (const [key, event] of Object.entries(plugin.definition.emits ?? {}))
                 {
-                    bus.declare(one.name, key, event);
+                    bus.declare(plugin.name, key, event);
                 }
 
-                for (const [key, hook] of Object.entries(one.definition.hooks ?? {}))
+                for (const [key, hook] of Object.entries(plugin.definition.hooks ?? {}))
                 {
-                    points.declare(one.name, key, hook);
+                    points.declare(plugin.name, key, hook);
                 }
 
-                for (const [key, slot] of Object.entries(one.definition.slots ?? {}))
+                for (const [key, slot] of Object.entries(plugin.definition.slots ?? {}))
                 {
-                    places.declare(one.name, key, slot);
+                    places.declare(plugin.name, key, slot);
                 }
             }
 
-            for (const one of order)
+            for (const plugin of order)
             {
-                services.set(one.name, one.definition.services?.(context(one.name) as never));
+                services.set(plugin.name, plugin.definition.services?.(context(plugin.name) as never));
 
-                for (const [key, listener] of Object.entries(one.definition.listens ?? {}))
+                for (const [key, listener] of Object.entries(plugin.definition.listens ?? {}))
                 {
-                    bus.listen(one.name, key, listener);
+                    bus.listen(plugin.name, key, listener);
                 }
 
-                for (const [key, participant] of Object.entries(one.definition.participates ?? {}))
+                for (const [key, participant] of Object.entries(plugin.definition.participates ?? {}))
                 {
-                    points.participate(one.name, key, participant);
+                    points.participate(plugin.name, key, participant);
                 }
 
-                for (const filled of one.definition.contributes ?? [])
+                for (const filled of plugin.definition.contributes ?? [])
                 {
-                    places.fill(one.name, filled);
+                    places.fill(plugin.name, filled);
                 }
 
-                for (const [key, command] of Object.entries(one.definition.commands ?? {}))
+                for (const [key, command] of Object.entries(plugin.definition.commands ?? {}))
                 {
                     commands.set(key, {
-                        plugin: one.name,
+                        plugin: plugin.name,
                         requires: command.requires ?? [],
                         run: command.run,
                         schema: command.schema,
@@ -361,7 +361,7 @@ export function createKernel(options: Options): Kernel
                 }
             }
 
-            const source = order.find((one) => one.definition.grants !== undefined);
+            const source = order.find((plugin) => plugin.definition.grants !== undefined);
 
             if (source !== undefined)
             {
@@ -371,9 +371,9 @@ export function createKernel(options: Options): Kernel
                 };
             }
 
-            for (const one of order)
+            for (const plugin of order)
             {
-                await one.definition.setup?.(context(one.name));
+                await plugin.definition.setup?.(context(plugin.name));
             }
 
             running = true;
@@ -381,15 +381,15 @@ export function createKernel(options: Options): Kernel
 
         async stop(): Promise<void>
         {
-            for (const one of [...order].reverse())
+            for (const plugin of [...order].reverse())
             {
                 try
                 {
-                    await one.definition.teardown?.(context(one.name));
+                    await plugin.definition.teardown?.(context(plugin.name));
                 }
                 catch (cause)
                 {
-                    log("error", one.name, "teardown threw", { cause });
+                    log("error", plugin.name, "teardown threw", { cause });
                 }
             }
 
@@ -397,23 +397,23 @@ export function createKernel(options: Options): Kernel
         },
 
         routes: (): readonly Registered[] =>
-            order.flatMap((one) =>
-                (one.definition.routes ?? []).map((route) => ({
+            order.flatMap((plugin) =>
+                (plugin.definition.routes ?? []).map((route) => ({
                     ...route,
-                    plugin: one.name,
-                    fallback: one.definition.fallback,
+                    plugin: plugin.name,
+                    fallback: plugin.definition.fallback,
                 })),
             ),
 
         frame: () =>
         {
-            return order.find((one) => one.definition.frame !== undefined)?.definition.frame;
+            return order.find((plugin) => plugin.definition.frame !== undefined)?.definition.frame;
         },
 
         pages: () =>
         {
-            const forbidden = order.find((one) => one.definition.pages?.forbidden !== undefined);
-            const missing = order.find((one) => one.definition.pages?.missing !== undefined);
+            const forbidden = order.find((plugin) => plugin.definition.pages?.forbidden !== undefined);
+            const missing = order.find((plugin) => plugin.definition.pages?.missing !== undefined);
 
             return {
                 ...(forbidden?.definition.pages?.forbidden !== undefined && {

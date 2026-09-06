@@ -15,7 +15,7 @@ describe("discover", () =>
             "./plugins/demo/plugin.ts": { default: made("demo") },
         });
 
-        expect(found.map((one) => one.name)).toEqual(["auth", "demo", "shell"]);
+        expect(found.map((plugin) => plugin.name)).toEqual(["auth", "demo", "shell"]);
     });
 
     test("refuses a module with no default export, naming the path", () =>

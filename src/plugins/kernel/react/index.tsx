@@ -164,7 +164,7 @@ export function Slot({ name, payload }: { name: string; payload?: unknown }): Re
     return (
         <>
             {contributions
-                .filter((one) => kernel.permissions.all(one.requires ?? []))
+                .filter((contribution) => kernel.permissions.all(contribution.requires ?? []))
                 .map((one) => (
                     <Boundary
                         key={`${one.plugin}:${one.slot}:${one.order ?? 0}`}

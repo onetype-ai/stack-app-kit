@@ -26,7 +26,7 @@ export function permissions(source: Source | undefined)
         {
             const carries = granted();
 
-            return permissions.every((one) => carries.has(one));
+            return permissions.every((permission) => carries.has(permission));
         },
     };
 }

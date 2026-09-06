@@ -247,11 +247,11 @@ function refers(
         reach("hooks", key, "UNDECLARED_HOOK", "Hook");
     }
 
-    for (const one of plugin.definition.contributes ?? [])
+    for (const contribution of plugin.definition.contributes ?? [])
     {
-        reach("slots", one.slot, "UNDECLARED_SLOT", "Slot");
+        reach("slots", contribution.slot, "UNDECLARED_SLOT", "Slot");
 
-        for (const permission of one.requires ?? [])
+        for (const permission of contribution.requires ?? [])
         {
             reach("permissions", permission, "UNDECLARED_PERMISSION", "Permission");
         }
@@ -265,9 +265,9 @@ function refers(
         }
     }
 
-    for (const one of Object.values(plugin.definition.commands ?? {}))
+    for (const command of Object.values(plugin.definition.commands ?? {}))
     {
-        for (const permission of one.requires ?? [])
+        for (const permission of command.requires ?? [])
         {
             reach("permissions", permission, "UNDECLARED_PERMISSION", "Permission");
         }
@@ -312,7 +312,7 @@ function granting(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code
         plugin: (one: Plugin) => boolean,
     ): void =>
     {
-        const sources = [...by.values()].filter(plugin).map((one) => one.name);
+        const sources = [...by.values()].filter(plugin).map((each) => each.name);
 
         for (const name of sources.slice(1))
         {
@@ -320,10 +320,10 @@ function granting(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code
         }
     };
 
-    alone("DUPLICATE_GRANTS", "grants", (one) => one.definition.grants !== undefined);
-    alone("DUPLICATE_FRAME", "a frame", (one) => one.definition.frame !== undefined);
-    alone("DUPLICATE_PAGE", "a 403 page", (one) => one.definition.pages?.forbidden !== undefined);
-    alone("DUPLICATE_PAGE", "a 404 page", (one) => one.definition.pages?.missing !== undefined);
+    alone("DUPLICATE_GRANTS", "grants", (plugin) => plugin.definition.grants !== undefined);
+    alone("DUPLICATE_FRAME", "a frame", (plugin) => plugin.definition.frame !== undefined);
+    alone("DUPLICATE_PAGE", "a 403 page", (plugin) => plugin.definition.pages?.forbidden !== undefined);
+    alone("DUPLICATE_PAGE", "a 404 page", (plugin) => plugin.definition.pages?.missing !== undefined);
 }
 
 /** A cycle in dependsOn, named from where it was entered back to itself. */
