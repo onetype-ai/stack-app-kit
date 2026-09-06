@@ -9,3 +9,6 @@ export type { UnusedField } from "./testing/wiring";
 
 export { findUnknownClasses, findUnknownTokens } from "./testing/styling";
 export type { UnknownClass, UnknownToken } from "./testing/styling";
+
+export { Project } from "./testing/project";
+export type { ProjectCheckOptions, ProjectProblem } from "./testing/project";

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 export type ImportEdge = {
@@ -8,7 +8,7 @@ export type ImportEdge = {
 };
 
 export type ImportViolation = {
-    rule: "undeclared" | "deep" | "cycle";
+    rule: "undeclared" | "deep" | "cycle" | "contract";
     message: string;
 };
 
@@ -24,9 +24,20 @@ export function findImportViolations(root: string): ImportViolation[]
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name);
 
-    const plugins = names.map((name) => read(root, name, names));
+    // A folder with no contract is a finding, never a crash: reading it would
+    // throw and take every other check down with it.
+    const contracts = names.filter((name) => existsSync(join(root, name, "plugin.ts")));
 
-    return [...undeclared(plugins), ...deep(plugins), ...findCycles(plugins)];
+    const missing = names
+        .filter((name) => !contracts.includes(name))
+        .map((name) => ({
+            rule: "contract" as const,
+            message: `"${name}" is a plugin folder with no plugin.ts. Add its contract, or remove the folder.`,
+        }));
+
+    const plugins = contracts.map((name) => read(root, name, contracts));
+
+    return [...missing, ...undeclared(plugins), ...deep(plugins), ...findCycles(plugins)];
 }
 
 function read(root: string, name: string, names: readonly string[]): PluginImports
