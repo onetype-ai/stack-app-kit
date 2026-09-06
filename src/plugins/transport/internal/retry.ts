@@ -19,7 +19,7 @@ export const retry = {
      * Only an idempotent method may be retried. A POST that timed out may
      * still have been applied, and sending it again would apply it twice.
      */
-    worth: (cause: unknown, method: string): boolean =>
+    should: (cause: unknown, method: string): boolean =>
     {
         if (!(cause instanceof TransportFault))
         {

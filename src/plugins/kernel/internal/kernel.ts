@@ -3,7 +3,7 @@ import { events, type Failure } from "./events";
 import { KernelFault } from "./faults";
 import { hooks } from "./hooks";
 import { permissions, type Source } from "./permissions";
-import { slots, type Filled } from "./slots";
+import { slots, type PlacedContribution } from "./slots";
 import { validate } from "./validate";
 
 import type { ComponentType, FunctionComponent } from "react";
@@ -42,7 +42,7 @@ export type Kernel = {
     routes: () => readonly Registered[];
     frame: () => FunctionComponent | undefined;
     pages: () => Pages;
-    slot: (name: string, payload: unknown) => { contributions: readonly Filled[]; wrong?: string };
+    slot: (name: string, payload: unknown) => { contributions: readonly PlacedContribution[]; problem?: string };
     knownSlot: (name: string) => boolean;
     fallbackFor: (plugin: string) => ComponentType<FallbackProps> | undefined;
 
@@ -286,16 +286,16 @@ export function createKernel(options: Options): Kernel
                 return;
             }
 
-            const wrong = validate(options.plugins, config);
+            const problems = validate(options.plugins, config);
 
-            if (wrong.length > 0)
+            if (problems.length > 0)
             {
-                const lines = wrong.map((problem) => `  - [${problem.code}] ${problem.plugin}: ${problem.message}`);
+                const lines = problems.map((problem) => `  - [${problem.code}] ${problem.plugin}: ${problem.message}`);
 
                 throw new KernelFault(
-                    wrong[0]?.code ?? "INVALID_CONFIG",
-                    `${wrong.length} ${wrong.length === 1 ? "problem" : "problems"} stopped the kernel from starting:\n${lines.join("\n")}`,
-                    { plugin: wrong[0]?.plugin ?? "", detail: { wrong } },
+                    problems[0]?.code ?? "INVALID_CONFIG",
+                    `${problems.length} ${problems.length === 1 ? "problem" : "problems"} stopped the kernel from starting:\n${lines.join("\n")}`,
+                    { plugin: problems[0]?.plugin ?? "", detail: { problems } },
                 );
             }
 

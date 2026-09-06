@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
-import { findUnknownTokens } from "../styling";
+import { findUnknownClasses, findUnknownTokens } from "../styling";
 
 /** A folder holding exactly the files a case needs. */
 function folderWith(files: Record<string, string>): string
@@ -74,5 +74,28 @@ describe("a token a stylesheet asks for", () =>
         });
 
         expect(findUnknownTokens(at).map((unknown) => unknown.token)).toEqual(["--gone"]);
+    });
+});
+
+describe("a class a component reads", () =>
+{
+    test("is named when its own module never declared it", () =>
+    {
+        const at = folderWith({
+            "Card.module.css": ".root { color: red; }\n",
+            "Card.tsx": 'export const Card = () => <p className={styles.head} />;\n',
+        });
+
+        expect(findUnknownClasses(at)).toEqual([{ file: "Card.tsx", name: "head" }]);
+    });
+
+    test("and says nothing when every one is declared", () =>
+    {
+        const at = folderWith({
+            "Card.module.css": ".root { color: red; }\n.head { font-weight: 700; }\n",
+            "Card.tsx": 'export const Card = () => <p className={styles.head} />;\n',
+        });
+
+        expect(findUnknownClasses(at)).toEqual([]);
     });
 });

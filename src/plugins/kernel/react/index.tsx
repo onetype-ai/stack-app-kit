@@ -154,11 +154,11 @@ export function useStore<Value>(
 export function Slot({ name, payload }: { name: string; payload?: unknown }): ReactNode
 {
     const kernel = useKernel();
-    const { contributions, wrong } = kernel.slot(name, payload);
+    const { contributions, problem } = kernel.slot(name, payload);
 
-    if (wrong !== undefined)
+    if (problem !== undefined)
     {
-        return <FailedSlot name={name} wrong={wrong} />;
+        return <FailedSlot name={name} problem={problem} />;
     }
 
     return (
@@ -241,11 +241,11 @@ function Bare(): ReactNode
     return null;
 }
 
-function FailedSlot({ name, wrong }: { name: string; wrong: string }): ReactNode
+function FailedSlot({ name, problem }: { name: string; problem: string }): ReactNode
 {
     return (
         <p role="alert" data-slot={name}>
-            {wrong}
+            {problem}
         </p>
     );
 }

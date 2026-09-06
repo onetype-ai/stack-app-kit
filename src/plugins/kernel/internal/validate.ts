@@ -3,7 +3,7 @@ import type { KernelFault } from "./faults";
 import * as names from "./names";
 
 /** One thing wrong, and everything needed to fix it. */
-export type ImportViolation = {
+export type ContractProblem = {
     code: KernelFault["code"];
     plugin: string;
     message: string;
@@ -24,12 +24,12 @@ type Owned = {
  * An application with four mistakes should learn all four in one run rather
  * than in four runs, each ending at a different one.
  */
-export function validate(plugins: readonly Plugin[], config: Readonly<Record<string, unknown>>): ImportViolation[]
+export function validate(plugins: readonly Plugin[], config: Readonly<Record<string, unknown>>): ContractProblem[]
 {
-    const wrong: ImportViolation[] = [];
+    const problems: ContractProblem[] = [];
     const say = (code: KernelFault["code"], plugin: string, message: string): void =>
     {
-        wrong.push({ code, plugin, message });
+        problems.push({ code, plugin, message });
     };
 
     const by = new Map<string, Plugin>();
@@ -72,7 +72,7 @@ export function validate(plugins: readonly Plugin[], config: Readonly<Record<str
     checkCycles(by, say);
     checkGrants(by, say);
 
-    return wrong;
+    return problems;
 }
 
 /** What a plugin declares, and whether anyone claimed it first. */

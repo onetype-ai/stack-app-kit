@@ -115,7 +115,7 @@ export function transport(settings: Settings, say: Said): Transport
                         throw cause;
                     }
 
-                    if (attempt === retries || !retry.worth(cause, request.method))
+                    if (attempt === retries || !retry.should(cause, request.method))
                     {
                         throw cause;
                     }

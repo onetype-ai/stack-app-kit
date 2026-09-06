@@ -1,9 +1,14 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 export type UnknownToken = {
     file: string;
     token: string;
+};
+
+export type UnknownClass = {
+    file: string;
+    name: string;
 };
 
 /**
@@ -49,6 +54,48 @@ export function findUnknownTokens(root: string): UnknownToken[]
     }
 
     return asked.filter((used) => !set.has(used.token));
+}
+
+/**
+ * Every `styles.name` a component reads that its own module never declares.
+ *
+ * A CSS module answers an unknown name with undefined, and React drops an
+ * undefined className without a word: the element renders unstyled and every
+ * test still passes. Types cannot see it either, because the module is typed
+ * as a record of strings.
+ */
+export function findUnknownClasses(root: string): UnknownClass[]
+{
+    const wrong: UnknownClass[] = [];
+
+    for (const file of walk(root))
+    {
+        if (!file.endsWith(".tsx"))
+        {
+            continue;
+        }
+
+        const module = file.replace(/\.tsx$/, ".module.css");
+
+        if (!existsSync(module))
+        {
+            continue;
+        }
+
+        const declared = new Set([...readFileSync(module, "utf8").matchAll(/\.([a-zA-Z][\w-]*)/g)].map((match) => match[1]!));
+
+        for (const match of readFileSync(file, "utf8").matchAll(/\bstyles\.([a-zA-Z][\w]*)/g))
+        {
+            const name = match[1]!;
+
+            if (!declared.has(name))
+            {
+                wrong.push({ file: relative(root, file), name });
+            }
+        }
+    }
+
+    return wrong;
 }
 
 function walk(at: string): string[]

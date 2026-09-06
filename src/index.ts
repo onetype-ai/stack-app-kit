@@ -27,7 +27,7 @@ export type {
     Failure,
     FallbackProps,
     FaultCode,
-    Filled,
+    PlacedContribution,
     Hook,
     Kernel,
     Listener,
@@ -44,7 +44,7 @@ export type {
     Schematic,
     Slot,
     Source,
-    ImportViolation,
+    ContractProblem,
 } from "./plugins/kernel/api";
 
 export * as transport from "./plugins/transport/api";

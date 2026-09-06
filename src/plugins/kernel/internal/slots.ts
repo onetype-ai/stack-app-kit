@@ -2,7 +2,7 @@ import type { Contribution, Slot } from "./contract";
 import { KernelFault } from "./faults";
 
 /** One thing to render in a slot, and what it needs to be seen. */
-export type Filled = Contribution & { plugin: string };
+export type PlacedContribution = Contribution & { plugin: string };
 
 /**
  * Slots: where one plugin renders inside another.
@@ -15,7 +15,7 @@ export type Filled = Contribution & { plugin: string };
 export function slots()
 {
     const declared = new Map<string, { owner: string; slot: Slot }>();
-    const filled = new Map<string, Filled[]>();
+    const placed = new Map<string, PlacedContribution[]>();
 
     return {
         declare: (owner: string, name: string, slot: Slot): void =>
@@ -23,9 +23,9 @@ export function slots()
             declared.set(name, { owner, slot });
         },
 
-        fill: (plugin: string, one: Contribution): void =>
+        fill: (plugin: string, contribution: Contribution): void =>
         {
-            filled.set(one.slot, [...(filled.get(one.slot) ?? []), { ...one, plugin }]);
+            placed.set(contribution.slot, [...(placed.get(contribution.slot) ?? []), { ...contribution, plugin }]);
         },
 
         /** Whether anyone declared this slot. A view asks before it renders. */
@@ -39,13 +39,13 @@ export function slots()
          * schema: a contribution rendered with a payload the slot never
          * promised is a crash inside someone else's component.
          */
-        filled: (name: string, payload: unknown): { contributions: readonly Filled[]; wrong?: string } =>
+        filled: (name: string, payload: unknown): { contributions: readonly PlacedContribution[]; problem?: string } =>
         {
             const slot = declared.get(name);
 
             if (slot === undefined)
             {
-                return { contributions: [], wrong: `Slot "${name}" is not declared by any plugin.` };
+                return { contributions: [], problem: `Slot "${name}" is not declared by any plugin.` };
             }
 
             // A slot taking no payload is rendered as <Slot name="x" />, which
@@ -57,11 +57,11 @@ export function slots()
             {
                 return {
                     contributions: [],
-                    wrong: `The payload for slot "${name}" does not match its schema: ${answer.error.issues[0]?.message ?? "it was rejected"}.`,
+                    problem: `The payload for slot "${name}" does not match its schema: ${answer.error.issues[0]?.message ?? "it was rejected"}.`,
                 };
             }
 
-            const contributions = [...(filled.get(name) ?? [])].sort((first, second) => (first.order ?? 0) - (second.order ?? 0));
+            const contributions = [...(placed.get(name) ?? [])].sort((first, second) => (first.order ?? 0) - (second.order ?? 0));
 
             return { contributions };
         },
