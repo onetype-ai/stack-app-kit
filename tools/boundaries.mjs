@@ -34,9 +34,9 @@ function walk(path)
 
     const found = [];
 
-    for (const held of readdirSync(path))
+    for (const name of readdirSync(path))
     {
-        const full = join(path, held);
+        const full = join(path, name);
 
         if (statSync(full).isDirectory())
         {
@@ -44,7 +44,7 @@ function walk(path)
             continue;
         }
 
-        if (/\.tsx?$/.test(held))
+        if (/\.tsx?$/.test(name))
         {
             found.push(full);
         }
@@ -71,13 +71,13 @@ function imports(source)
 
     for (const pattern of patterns)
     {
-        for (const held of source.matchAll(pattern))
+        for (const match of source.matchAll(pattern))
         {
-            const whole = held[0];
-            const path = held[3];
+            const whole = match[0];
+            const path = match[3];
 
             // `import type {...}` and `import { type X }` are both erased.
-            const erased = held[2] !== undefined && held[2].trim() === "type"
+            const erased = match[2] !== undefined && match[2].trim() === "type"
                 ? true
                 : /\{[^}]*\}/.test(whole) && /\{\s*type\s/.test(whole) && !/\{[^}]*,\s*[A-Za-z_$]/.test(whole.replace(/type\s+\w+/g, ""));
 
@@ -91,7 +91,7 @@ function imports(source)
 /** Just the specifiers, for a rule that does not care how they are imported. */
 function paths(source)
 {
-    return imports(source).map((held) => held.path);
+    return imports(source).map((each) => each.path);
 }
 
 const plugins = existsSync(root)
@@ -103,11 +103,11 @@ for (const file of walk("src/kernel"))
 {
     const source = readFileSync(file, "utf8");
 
-    for (const held of paths(source))
+    for (const specifier of paths(source))
     {
-        if (held.includes("plugins/"))
+        if (specifier.includes("plugins/"))
         {
-            fault(`the kernel imports a plugin: ${relative(".", file)} -> ${held}`);
+            fault(`the kernel imports a plugin: ${relative(".", file)} -> ${specifier}`);
         }
     }
 }
@@ -126,7 +126,7 @@ for (const name of plugins)
             continue;
         }
 
-        if (paths(readFileSync(file, "utf8")).some((held) => held.includes(`plugins/${name}`)))
+        if (paths(readFileSync(file, "utf8")).some((specifier) => specifier.includes(`plugins/${name}`)))
         {
             fault(`${relative(".", file)} names ${name}: only ${entry} may`);
         }
@@ -148,22 +148,22 @@ for (const name of plugins)
 
     const tests = join(path, "tests");
 
-    if (!existsSync(tests) || readdirSync(tests).filter((one) => one.includes(".test.")).length === 0)
+    if (!existsSync(tests) || readdirSync(tests).filter((name) => name.includes(".test.")).length === 0)
     {
         fault(`${name} has no tests/, or none that hold a test`);
     }
 
     // Only the named files may sit at a plugin's top level.
-    for (const held of readdirSync(path))
+    for (const file of readdirSync(path))
     {
-        if (statSync(join(path, held)).isDirectory() || !/\.tsx?$/.test(held))
+        if (statSync(join(path, file)).isDirectory() || !/\.tsx?$/.test(file))
         {
             continue;
         }
 
-        if (!["plugin.ts", "api.ts", "events.ts", "hooks.ts", "react.tsx"].includes(held))
+        if (!["plugin.ts", "api.ts", "events.ts", "hooks.ts", "react.tsx"].includes(file))
         {
-            fault(`${name}: ${held} is not one of the named top-level files`);
+            fault(`${name}: ${file} is not one of the named top-level files`);
         }
     }
 
@@ -174,7 +174,7 @@ for (const name of plugins)
 
     const declared = (registration.match(/needs\s*:\s*\[([^\]]*)\]/)?.[1] ?? "")
         .split(",")
-        .map((held) => held.trim().replace(/^["']|["']$/g, ""))
+        .map((quoted) => quoted.trim().replace(/^["']|["']$/g, ""))
         .filter(Boolean);
 
     for (const file of walk(path))
@@ -186,7 +186,7 @@ for (const name of plugins)
         // Judging by path alone called a React test pure and refused it.
         const pure = !/react/.test(relative(path, file)) && !file.endsWith(".tsx");
 
-        for (const { path: held, erased } of imports(source))
+        for (const { path: specifier, erased } of imports(source))
         {
             // 2. Another plugin, and only through api.ts.
             //
@@ -198,7 +198,7 @@ for (const name of plugins)
             //
             // Matching the text alone let a relative path climb out of a
             // folder and reach a private file while the rule read as enforced.
-            const landed = held.startsWith(".") ? relative(".", join(dirname(file), held)) : held;
+            const landed = specifier.startsWith(".") ? relative(".", join(dirname(file), specifier)) : specifier;
 
             for (const other of plugins)
             {
@@ -210,7 +210,7 @@ for (const name of plugins)
                     continue;
                 }
 
-                if (held.includes("/internal"))
+                if (specifier.includes("/internal"))
                 {
                     fault(`${where} imports ${other}'s internal`);
                 }
@@ -224,9 +224,9 @@ for (const name of plugins)
             //
             // A type import of React is erased and costs nothing: what must
             // not happen is a pure file reaching a React value.
-            if (pure && !erased && (held === "react" || held.startsWith("react/") || held === "react-dom"))
+            if (pure && !erased && (specifier === "react" || specifier.startsWith("react/") || specifier === "react-dom"))
             {
-                fault(`${where} is pure and imports ${held}`);
+                fault(`${where} is pure and imports ${specifier}`);
             }
 
             // 6. internal/ must not climb to its own plugin's entry for a
@@ -237,7 +237,7 @@ for (const name of plugins)
             // judge, and reporting it here would name the wrong rule.
             const own = landed.startsWith(`${path}/`) || landed === path;
 
-            if (inside && own && !erased && /(^|\/)(api|plugin|react)$/.test(held.replace(/\.tsx?$/, "")))
+            if (inside && own && !erased && /(^|\/)(api|plugin|react)$/.test(specifier.replace(/\.tsx?$/, "")))
             {
                 fault(`${where} imports an entry from internal/`);
             }
@@ -253,8 +253,8 @@ for (const name of plugins)
 // 6. exports lists entries only.
 if (existsSync("package.json"))
 {
-    const held = JSON.parse(readFileSync("package.json", "utf8"));
-    const exported = held.exports ?? {};
+    const manifest = JSON.parse(readFileSync("package.json", "utf8"));
+    const exported = manifest.exports ?? {};
 
     if (Object.keys(exported).some((key) => key.includes("*")))
     {
@@ -271,7 +271,7 @@ if (existsSync("package.json"))
         }
     }
 
-    if (held.dependencies?.react)
+    if (manifest.dependencies?.react)
     {
         fault("react is a dependency, not a peer");
     }
@@ -285,7 +285,7 @@ if (existsSync(entry))
 
     for (const name of plugins)
     {
-        if (!paths(source).some((held) => held.includes(`plugins/${name}`)))
+        if (!paths(source).some((specifier) => specifier.includes(`plugins/${name}`)))
         {
             fault(`${name} is not exported from ${entry}: nothing can reach it`);
         }

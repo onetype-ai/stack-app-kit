@@ -33,10 +33,10 @@ or failing setup belongs in `start`.
 ```ts
 function boot(host: Host)
 {
-    const held = createSocket(config(host));
+    const socket = createSocket(config(host));
 
-    host.offer("transport", held);
-    host.on("session.ended", held.close);
+    host.offer("transport", socket);
+    host.on("session.ended", socket.close);
 }
 ```
 

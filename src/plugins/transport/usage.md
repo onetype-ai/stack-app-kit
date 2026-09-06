@@ -20,11 +20,11 @@ const booted = boot(say, [transportPlugin({ baseUrl: "/api", wsUrl })]);
 
 await booted.start();
 
-const held = transport.from(booted.host);
+const client = transport.from(booted.host);
 
-const body = await held.request({ method: "GET", path: "/items" });
+const body = await client.request({ method: "GET", path: "/items" });
 
-const subscription = held.subscribe("items", (message) => { … });
+const subscription = client.subscribe("items", (message) => { … });
 ```
 
 - `start` calls `connect`, which tries the socket once and answers which

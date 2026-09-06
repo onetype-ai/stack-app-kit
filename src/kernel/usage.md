@@ -18,7 +18,7 @@ const booted = boot(say, [kernelPlugin(), transportPlugin(settings)]);
 
 await booted.start();
 
-const held = transport.from(booted.host);
+const client = transport.from(booted.host);
 ```
 
 - `boot` orders plugins by `needs` and wires each. Wiring only: a plugin that

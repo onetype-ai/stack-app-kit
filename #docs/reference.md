@@ -90,7 +90,7 @@ import { transport, cache } from "@onetype/stack-app-kit";
 
 // The namespace carries its own types: `transport.Socket` is what
 // `openSocket` must answer, and what a fake source implements.
-const held: transport.Socket = openFake();
+const socket: transport.Socket = openFake();
 ```
 
 ```ts
