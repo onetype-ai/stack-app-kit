@@ -60,7 +60,7 @@ describe("a token a stylesheet asks for", () =>
     {
         const at = folderWith({
             "Avatar.module.css": ".root { color: oklch(0.4 0.1 calc(var(--seed) * 1deg)); }",
-            "Avatar.tsx": 'const held = { "--seed": "120" };',
+            "Avatar.tsx": 'const style = { "--seed": "120" };',
         });
 
         expect(findUnknownTokens(at)).toEqual([]);
