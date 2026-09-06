@@ -85,3 +85,34 @@ export function findUndocumentedKeys(contract: string, procedure: string): strin
         return !procedure.includes(`\`${key}\``);
     });
 }
+
+/**
+ * The plugins with no `usage.md`, or one that says nothing.
+ *
+ * A plugin is a capability someone else has to understand before they can
+ * depend on it, and its contract says what crosses the boundary rather than
+ * why anyone would want it. A folder with no `usage.md` is one nobody can
+ * decide about without reading its source.
+ */
+export function findUnexplainedPlugins(plugins: string): string[]
+{
+    if (!existsSync(plugins))
+    {
+        return [];
+    }
+
+    return readdirSync(plugins, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+        .filter((name) =>
+        {
+            try
+            {
+                return readFileSync(join(plugins, name, "usage.md"), "utf8").trim().length === 0;
+            }
+            catch
+            {
+                return true;
+            }
+        });
+}

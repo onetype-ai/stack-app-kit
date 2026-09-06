@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { findMissingDocs, findOversizedDocs, findUndocumentedKeys } from "../docs";
+import { findMissingDocs, findOversizedDocs, findUndocumentedKeys, findUnexplainedPlugins } from "../docs";
 
 let root = "";
 
@@ -106,5 +106,38 @@ describe("undocumented", () =>
     test("refuses a Definition that parsed to no keys", () =>
     {
         expect(() => findUndocumentedKeys("type Definition = {\n};", "")).toThrow(/no key would be checked/);
+    });
+});
+
+describe("a plugin nobody can read", () =>
+{
+    test("is named when it ships no usage.md", () =>
+    {
+        const at = tree({});
+
+        mkdirSync(join(at, "plugins", "cart"), { recursive: true });
+        writeFileSync(join(at, "plugins", "cart", "plugin.ts"), "export default {};\n");
+
+        expect(findUnexplainedPlugins(join(at, "plugins"))).toEqual(["cart"]);
+    });
+
+    test("and when the one it ships says nothing", () =>
+    {
+        const at = tree({});
+
+        mkdirSync(join(at, "plugins", "cart"), { recursive: true });
+        writeFileSync(join(at, "plugins", "cart", "usage.md"), "   \n");
+
+        expect(findUnexplainedPlugins(join(at, "plugins"))).toEqual(["cart"]);
+    });
+
+    test("but says nothing when every plugin explains itself", () =>
+    {
+        const at = tree({});
+
+        mkdirSync(join(at, "plugins", "cart"), { recursive: true });
+        writeFileSync(join(at, "plugins", "cart", "usage.md"), "# cart\n\nWhat it is for.\n");
+
+        expect(findUnexplainedPlugins(join(at, "plugins"))).toEqual([]);
     });
 });

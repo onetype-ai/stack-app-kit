@@ -1,7 +1,7 @@
 export { findImportViolations } from "./testing/boundaries";
 export type { ImportEdge, ImportViolation } from "./testing/boundaries";
 
-export { findMissingDocs, findOversizedDocs, findUndocumentedKeys } from "./testing/docs";
+export { findMissingDocs, findOversizedDocs, findUndocumentedKeys, findUnexplainedPlugins } from "./testing/docs";
 export type { OversizedDoc, UndocumentedKey } from "./testing/docs";
 
 export { findUnusedFields } from "./testing/wiring";
