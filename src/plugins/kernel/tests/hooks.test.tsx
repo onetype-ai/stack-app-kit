@@ -15,15 +15,15 @@ describe("useEventCallback", () =>
 
         function Probe({ label }: { label: string })
         {
-            const held = useEventCallback(() =>
+            const callback = useEventCallback(() =>
             {
                 seen.push(label);
             });
 
-            identities.add(held);
+            identities.add(callback);
 
             return (
-                <button type="button" onClick={() => held()}>
+                <button type="button" onClick={() => callback()}>
                     fire
                 </button>
             );

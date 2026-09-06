@@ -5,16 +5,16 @@ import { createKernel, definePlugin } from "../api";
 
 import type { Definition, Plugin } from "../api";
 
-function made(name: string, held: Partial<Definition> = {}): Plugin
+function createPlugin(name: string, definition: Partial<Definition> = {}): Plugin
 {
     return definePlugin(name, {
         version: "1.0.0",
         describe: `The ${name} plugin.`,
-        ...held,
+        ...definition,
     });
 }
 
-const announcing = (name: string) => made(name, {
+const announcing = (name: string) => createPlugin(name, {
     emits: {
         [`${name}.happened`]: {
             describe: "Something did.",
@@ -27,7 +27,7 @@ describe("hearing an event while a view is on screen", () =>
 {
     test("delivers what was emitted", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), made("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 
@@ -47,7 +47,7 @@ describe("hearing an event while a view is on screen", () =>
      */
     test("and stops when what it answered is called", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), made("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 
@@ -65,16 +65,16 @@ describe("hearing an event while a view is on screen", () =>
 
     test("hears every ear, and stopping one leaves the others", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), made("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 
         const first: unknown[] = [];
         const second: unknown[] = [];
-        const held = kernel.context("badge");
+        const ctx = kernel.context("badge");
 
-        const stop = held.events.on("mail.happened", (payload) => first.push(payload));
-        held.events.on("mail.happened", (payload) => second.push(payload));
+        const stop = ctx.events.on("mail.happened", (payload) => first.push(payload));
+        ctx.events.on("mail.happened", (payload) => second.push(payload));
 
         stop();
         kernel.context("mail").events.emit("mail.happened", { id: "one" });
@@ -87,7 +87,7 @@ describe("hearing an event while a view is on screen", () =>
 
     test("still refuses a payload the owner's schema does not take", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), made("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 
@@ -103,7 +103,7 @@ describe("hearing an event while a view is on screen", () =>
 
     test("and stopping twice is not an error, so a view may clean up either way", async () =>
     {
-        const kernel = createKernel({ plugins: [announcing("mail"), made("badge", { dependsOn: ["mail"] })] });
+        const kernel = createKernel({ plugins: [announcing("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });
 
         await kernel.start();
 

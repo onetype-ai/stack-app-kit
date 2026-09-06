@@ -8,7 +8,7 @@ import type { Plugin } from "../plugin";
 const quiet = (): void => {};
 
 /** A plugin that records the order it booted in, and nothing else. */
-function held(name: string, needs: readonly string[] = [], into: string[] = []): Plugin
+function createPlugin(name: string, needs: readonly string[] = [], into: string[] = []): Plugin
 {
     return {
         name,
@@ -27,9 +27,9 @@ describe("boot order", () =>
         const booted: string[] = [];
 
         boot(quiet, [
-            held("vmm", ["jail", "storage"], booted),
-            held("storage", [], booted),
-            held("jail", ["storage"], booted),
+            createPlugin("vmm", ["jail", "storage"], booted),
+            createPlugin("storage", [], booted),
+            createPlugin("jail", ["storage"], booted),
         ]);
 
         expect(booted).toEqual(["storage", "jail", "vmm"]);
@@ -40,15 +40,15 @@ describe("boot order", () =>
         const first: string[] = [];
         const second: string[] = [];
 
-        boot(quiet, [held("b", [], first), held("a", [], first), held("c", [], first)]);
-        boot(quiet, [held("c", [], second), held("b", [], second), held("a", [], second)]);
+        boot(quiet, [createPlugin("b", [], first), createPlugin("a", [], first), createPlugin("c", [], first)]);
+        boot(quiet, [createPlugin("c", [], second), createPlugin("b", [], second), createPlugin("a", [], second)]);
 
         expect(first).toEqual(second);
     });
 
     test("refuses a cycle, naming both plugins", () =>
     {
-        const failed = (): unknown => boot(quiet, [held("a", ["b"]), held("b", ["a"])]);
+        const failed = (): unknown => boot(quiet, [createPlugin("a", ["b"]), createPlugin("b", ["a"])]);
 
         expect(failed).toThrow(Fault);
         expect(failed).toThrow(/a -> b -> a|b -> a -> b/);
@@ -56,17 +56,17 @@ describe("boot order", () =>
 
     test("refuses a plugin needing itself", () =>
     {
-        expect(() => boot(quiet, [held("a", ["a"])])).toThrow(/needs itself/);
+        expect(() => boot(quiet, [createPlugin("a", ["a"])])).toThrow(/needs itself/);
     });
 
     test("refuses a need no plugin provides, naming it", () =>
     {
-        expect(() => boot(quiet, [held("a", ["missing"])])).toThrow(/no plugin provides "missing"/);
+        expect(() => boot(quiet, [createPlugin("a", ["missing"])])).toThrow(/no plugin provides "missing"/);
     });
 
     test("refuses the same name twice", () =>
     {
-        expect(() => boot(quiet, [held("a"), held("a")])).toThrow(/given twice/);
+        expect(() => boot(quiet, [createPlugin("a"), createPlugin("a")])).toThrow(/given twice/);
     });
 });
 

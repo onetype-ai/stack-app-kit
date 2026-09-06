@@ -104,7 +104,7 @@ export function fakeFetch(answers: Answering[]): {
     restore: () => void;
 } {
     const calls: { url: string; method: string; body: unknown }[] = [];
-    const held = globalThis.fetch;
+    const real = globalThis.fetch;
 
     let at = 0;
 
@@ -146,7 +146,7 @@ export function fakeFetch(answers: Answering[]): {
         calls: () => [...calls],
         restore: () =>
         {
-            globalThis.fetch = held;
+            globalThis.fetch = real;
         },
     };
 }

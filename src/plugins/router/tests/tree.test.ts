@@ -16,12 +16,12 @@ function registered(path: string, plugin = "demo"): Registered
     return { path, component: Page, plugin, fallback: undefined };
 }
 
-function serving(routes: readonly Registered[])
+function recordRouter(routes: readonly Registered[])
 {
-    const made: Record<string, unknown>[] = [];
+    const created: Record<string, unknown>[] = [];
     const roots: Record<string, unknown>[] = [];
 
-    let handed: unknown;
+    let router: unknown;
 
     const building: Building = {
         createRootRoute: (options) =>
@@ -32,13 +32,13 @@ function serving(routes: readonly Registered[])
         },
         createRoute: (options) =>
         {
-            made.push(options);
+            created.push(options);
 
             return options;
         },
         createRouter: (options) =>
         {
-            handed = options;
+            router = options;
 
             return options;
         },
@@ -47,27 +47,27 @@ function serving(routes: readonly Registered[])
     const kernel = { routes: () => routes } as Kernel;
     const frame: Frame = { shell: Shell, missing: Missing };
 
-    return { building, kernel, frame, made, roots, handed: () => handed };
+    return { building, kernel, frame, created, roots, router: () => router };
 }
 
 describe("the route tree", () =>
 {
     test("holds one route for each the kernel registered, in that order", () =>
     {
-        const held = serving([registered("/items"), registered("/items/$id"), registered("/about")]);
+        const spy = recordRouter([registered("/items"), registered("/items/$id"), registered("/about")]);
 
-        tree(held.kernel, held.building, held.frame, () => Page);
+        tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        expect(held.made.map((one) => one["path"])).toEqual(["/items", "/items/$id", "/about"]);
+        expect(spy.created.map((one) => one["path"])).toEqual(["/items", "/items/$id", "/about"]);
     });
 
     test("and hangs every one off the root, never off each other", () =>
     {
-        const held = serving([registered("/one"), registered("/two")]);
+        const spy = recordRouter([registered("/one"), registered("/two")]);
 
-        tree(held.kernel, held.building, held.frame, () => Page);
+        tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        const parents = held.made.map((one) => (one["getParentRoute"] as () => unknown)());
+        const parents = spy.created.map((one) => (one["getParentRoute"] as () => unknown)());
 
         expect(new Set(parents).size).toBe(1);
     });
@@ -78,21 +78,21 @@ describe("the route tree", () =>
      */
     test("renders what the guard answers, never the route's own component", () =>
     {
-        const held = serving([registered("/private")]);
+        const spy = recordRouter([registered("/private")]);
         const Guarded = (() => null) as ComponentType;
 
-        tree(held.kernel, held.building, held.frame, () => Guarded);
+        tree(spy.kernel, spy.building, spy.frame, () => Guarded);
 
-        expect(held.made[0]?.["component"]).toBe(Guarded);
-        expect(held.made[0]?.["component"]).not.toBe(Page);
+        expect(spy.created[0]?.["component"]).toBe(Guarded);
+        expect(spy.created[0]?.["component"]).not.toBe(Page);
     });
 
     test("gives the guard the route it is guarding, so it can read `requires`", () =>
     {
-        const held = serving([registered("/a"), registered("/b")]);
+        const spy = recordRouter([registered("/a"), registered("/b")]);
         const seen: string[] = [];
 
-        tree(held.kernel, held.building, held.frame, (route) =>
+        tree(spy.kernel, spy.building, spy.frame, (route) =>
         {
             seen.push(route.path);
 
@@ -104,20 +104,20 @@ describe("the route tree", () =>
 
     test("takes the shell and the not-found page from the frame", () =>
     {
-        const held = serving([registered("/x")]);
+        const spy = recordRouter([registered("/x")]);
 
-        tree(held.kernel, held.building, held.frame, () => Page);
+        tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        expect(held.roots[0]?.["component"]).toBe(Shell);
-        expect(held.roots[0]?.["notFoundComponent"]).toBe(Missing);
+        expect(spy.roots[0]?.["component"]).toBe(Shell);
+        expect(spy.roots[0]?.["notFoundComponent"]).toBe(Missing);
     });
 
     test("and builds a router even when no plugin declared a route", () =>
     {
-        const held = serving([]);
+        const spy = recordRouter([]);
 
-        expect(tree(held.kernel, held.building, held.frame, () => Page)).toBeDefined();
-        expect(held.made).toEqual([]);
+        expect(tree(spy.kernel, spy.building, spy.frame, () => Page)).toBeDefined();
+        expect(spy.created).toEqual([]);
     });
 });
 
@@ -125,11 +125,11 @@ describe("what a route takes from the query", () =>
 {
     test("is parsed by the schema it declared", () =>
     {
-        const held = serving([{ ...registered("/items"), search: z.object({ page: z.coerce.number().default(1) }) }]);
+        const spy = recordRouter([{ ...registered("/items"), search: z.object({ page: z.coerce.number().default(1) }) }]);
 
-        tree(held.kernel, held.building, held.frame, () => Page);
+        tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        const validate = held.made[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
+        const validate = spy.created[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
 
         expect(validate({ page: "3" })).toEqual({ page: 3 });
         expect(validate({})).toEqual({ page: 1 });
@@ -141,22 +141,22 @@ describe("what a route takes from the query", () =>
      */
     test("and is nothing at all when it declared none", () =>
     {
-        const held = serving([registered("/items")]);
+        const spy = recordRouter([registered("/items")]);
 
-        tree(held.kernel, held.building, held.frame, () => Page);
+        tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        const validate = held.made[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
+        const validate = spy.created[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
 
         expect(validate({ page: "3", anything: "else" })).toEqual({});
     });
 
     test("refuses a value the schema does not take, rather than passing it on", () =>
     {
-        const held = serving([{ ...registered("/items"), search: z.object({ page: z.number() }) }]);
+        const spy = recordRouter([{ ...registered("/items"), search: z.object({ page: z.number() }) }]);
 
-        tree(held.kernel, held.building, held.frame, () => Page);
+        tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        const validate = held.made[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
+        const validate = spy.created[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
 
         expect(() => validate({ page: "not a number" })).toThrow();
     });

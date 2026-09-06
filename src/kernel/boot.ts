@@ -1,16 +1,16 @@
 import { Fault } from "./errors";
-import { Host, type Say } from "./host";
+import { Host, type WriteLine } from "./host";
 import { order } from "./order";
 import type { Plugin } from "./plugin";
 
 /** One run of the kernel: the plugins it booted, and the host they share. */
-export class Booted
+export class RunningApp
 {
     readonly #host: Host;
 
     readonly #order: readonly Plugin[];
 
-    #began: Plugin[] = [];
+    #started: Plugin[] = [];
 
     constructor(host: Host, plugins: readonly Plugin[])
     {
@@ -51,7 +51,7 @@ export class Booted
                 throw cause;
             }
 
-            this.#began.push(plugin);
+            this.#started.push(plugin);
         }
     }
 
@@ -61,7 +61,7 @@ export class Booted
      */
     async stop(): Promise<void>
     {
-        for (const plugin of [...this.#began].reverse())
+        for (const plugin of [...this.#started].reverse())
         {
             try
             {
@@ -73,7 +73,7 @@ export class Booted
             }
         }
 
-        this.#began = [];
+        this.#started = [];
         this.#host.reach("stopped");
     }
 }
@@ -84,7 +84,7 @@ export class Booted
  * Wiring only. A plugin that fails here stops everything, named, before
  * anything has run.
  */
-export function boot(say: Say, plugins: readonly Plugin[]): Booted
+export function boot(say: WriteLine, plugins: readonly Plugin[]): RunningApp
 {
     const known = new Map<string, Plugin>();
 
@@ -118,5 +118,5 @@ export function boot(say: Say, plugins: readonly Plugin[]): Booted
 
     host.reach("running");
 
-    return new Booted(host, sorted);
+    return new RunningApp(host, sorted);
 }

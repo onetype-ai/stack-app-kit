@@ -1,6 +1,10 @@
 import type { Cache, Client, Kernel, Logger, Plugin as AppPlugin, Realtime, Source } from "../kernel/api";
 import type { Settings as TransportSettings } from "../transport/api";
 
+export { discover } from "./internal/discover";
+export type { Modules } from "./internal/discover";
+export { start } from "./internal/start";
+
 /** What this plugin offers itself as. */
 export const NAME = "mount";
 
@@ -27,7 +31,7 @@ export type Started = {
     realtime: Realtime;
 
     /** Which channel carried the first request: "ws" or "http". */
-    carrying: "ws" | "http";
+    channel: "ws" | "http";
 
     /** Stops the plugins, then the socket. */
     stop: () => Promise<void>;

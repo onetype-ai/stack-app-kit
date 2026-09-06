@@ -10,7 +10,7 @@ import { Fault } from "./errors";
 type Phase = "booting" | "running" | "stopped";
 
 /** Where a line goes. The application decides; a plugin never writes directly. */
-export type Say = (line: string, about?: Readonly<Record<string, unknown>>) => void;
+export type WriteLine = (line: string, about?: Readonly<Record<string, unknown>>) => void;
 
 type Listener = { who: string; run: (payload: unknown) => void };
 
@@ -22,7 +22,7 @@ type Listener = { who: string; run: (payload: unknown) => void };
  */
 type Wiring = {
     at: Phase;
-    say: Say;
+    say: WriteLine;
     offers: Map<string, unknown>;
     owners: Map<string, string>;
     listeners: Map<string, Listener[]>;
@@ -38,7 +38,7 @@ export class Host
 
     readonly #who: string;
 
-    constructor(say: Say, shared?: Wiring, who = "")
+    constructor(say: WriteLine, shared?: Wiring, who = "")
     {
         this.#shared = shared ?? {
             at: "booting",

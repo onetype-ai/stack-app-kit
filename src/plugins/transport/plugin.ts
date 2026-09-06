@@ -34,9 +34,9 @@ export function plugin(settings: Settings): Plugin
                 return;
             }
 
-            const carrying = await live.connect();
+            const channel = await live.connect();
 
-            host.say("transport ready", { carrying });
+            host.say("transport ready", { channel });
         },
 
         stop: (host: Host) =>

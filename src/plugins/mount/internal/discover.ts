@@ -1,7 +1,7 @@
 import type { Plugin } from "../../kernel/api";
 
 /** What a bundler's eager glob returns. */
-export type Found = Readonly<Record<string, { default?: Plugin }>>;
+export type Modules = Readonly<Record<string, { default?: Plugin }>>;
 
 /**
  * The plugins a bundler found, sorted by name.
@@ -10,9 +10,9 @@ export type Found = Readonly<Record<string, { default?: Plugin }>>;
  * a folder, and forgetting to register it is not a failure mode. Sorted so
  * one set is always one order, whatever the bundler walked first.
  */
-export function discover(found: Found): Plugin[]
+export function discover(modules: Modules): Plugin[]
 {
-    return Object.entries(found)
+    return Object.entries(modules)
         .map(([path, module]) =>
         {
             if (module.default === undefined)

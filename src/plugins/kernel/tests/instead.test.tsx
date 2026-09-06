@@ -11,7 +11,7 @@ afterEach(cleanup);
 
 const Page = (): ReactNode => <p>the page</p>;
 
-async function serving(instead?: () => string | undefined): Promise<{ kernel: Kernel; route: Registered }>
+async function startKernel(instead?: () => string | undefined): Promise<{ kernel: Kernel; route: Registered }>
 {
     const kernel = createKernel({
         plugins: [definePlugin("checkout", { version: "1.0.0", describe: "Pays." })],
@@ -35,13 +35,13 @@ describe("a page the viewer may see but should not be on yet", () =>
 {
     test("renders when the route sends them nowhere", async () =>
     {
-        const held = await serving();
+        const started = await startKernel();
 
-        render(<KernelProvider kernel={held.kernel}><RouteGuard route={held.route} /></KernelProvider>);
+        render(<KernelProvider kernel={started.kernel}><RouteGuard route={started.route} /></KernelProvider>);
 
         expect(screen.getByText("the page")).toBeDefined();
 
-        await held.kernel.stop();
+        await started.kernel.stop();
     });
 
     /**
@@ -50,28 +50,28 @@ describe("a page the viewer may see but should not be on yet", () =>
      */
     test("sends them where the route said, before the page renders", async () =>
     {
-        const held = await serving(() => "/cart");
+        const started = await startKernel(() => "/cart");
         const sent: string[] = [];
 
         render(
-            <KernelProvider kernel={held.kernel}>
-                <RouteGuard route={held.route} send={(to) => { sent.push(to); return <p>{`going to ${to}`}</p>; }} />
+            <KernelProvider kernel={started.kernel}>
+                <RouteGuard route={started.route} send={(to) => { sent.push(to); return <p>{`going to ${to}`}</p>; }} />
             </KernelProvider>,
         );
 
         expect(sent).toEqual(["/cart"]);
         expect(screen.queryByText("the page")).toBeNull();
 
-        await held.kernel.stop();
+        await started.kernel.stop();
     });
 
     test("and is handed the plugin's own context to decide with", async () =>
     {
         const seen: string[] = [];
-        const held = await serving();
+        const started = await startKernel();
 
-        held.route = {
-            ...held.route,
+        started.route = {
+            ...started.route,
             instead: (ctx) =>
             {
                 seen.push(ctx.name);
@@ -80,21 +80,21 @@ describe("a page the viewer may see but should not be on yet", () =>
             },
         };
 
-        render(<KernelProvider kernel={held.kernel}><RouteGuard route={held.route} /></KernelProvider>);
+        render(<KernelProvider kernel={started.kernel}><RouteGuard route={started.route} /></KernelProvider>);
 
         expect(seen).toEqual(["checkout"]);
 
-        await held.kernel.stop();
+        await started.kernel.stop();
     });
 
     test("renders nothing rather than the page when nobody said how to send", async () =>
     {
-        const held = await serving(() => "/cart");
+        const started = await startKernel(() => "/cart");
 
-        render(<KernelProvider kernel={held.kernel}><RouteGuard route={held.route} /></KernelProvider>);
+        render(<KernelProvider kernel={started.kernel}><RouteGuard route={started.route} /></KernelProvider>);
 
         expect(screen.queryByText("the page")).toBeNull();
 
-        await held.kernel.stop();
+        await started.kernel.stop();
     });
 });

@@ -5,12 +5,12 @@ import { createKernel, definePlugin, KernelFault } from "../api";
 import type { Definition, Plugin } from "../api";
 
 /** A plugin with only what a case needs, and nothing that distracts from it. */
-function made(name: string, held: Partial<Definition> = {}): Plugin
+function createPlugin(name: string, definition: Partial<Definition> = {}): Plugin
 {
     return definePlugin(name, {
         version: "1.0.0",
         describe: `The ${name} plugin.`,
-        ...held,
+        ...definition,
     });
 }
 
@@ -35,19 +35,19 @@ describe("names", () =>
 {
     test("refuses a plugin name that is not lowercase and hyphens", () =>
     {
-        expect(() => made("Auth")).toThrow(KernelFault);
-        expect(() => made("auth_plugin")).toThrow(/lowercase letters, digits and hyphens/);
+        expect(() => createPlugin("Auth")).toThrow(KernelFault);
+        expect(() => createPlugin("auth_plugin")).toThrow(/lowercase letters, digits and hyphens/);
     });
 
     test("names the character that broke the name", () =>
     {
-        expect(() => made("auth plugin")).toThrow(/position 5/);
+        expect(() => createPlugin("auth plugin")).toThrow(/position 5/);
     });
 
     test("refuses an event outside the plugin's namespace, and says what to rename it to", async () =>
     {
         const failed = await refused([
-            made("auth", { emits: { "session.ended": { describe: "gone", schema: z.object({}) } } }),
+            createPlugin("auth", { emits: { "session.ended": { describe: "gone", schema: z.object({}) } } }),
         ]);
 
         expect(failed?.code).toBe("INVALID_NAME");
@@ -60,7 +60,7 @@ describe("dependencies", () =>
 {
     test("refuses a dependency no plugin provides", async () =>
     {
-        const failed = await refused([made("billing", { dependsOn: ["missing"] })]);
+        const failed = await refused([createPlugin("billing", { dependsOn: ["missing"] })]);
 
         expect(failed?.code).toBe("UNKNOWN_DEPENDENCY");
         expect(failed?.message).toMatch(/"missing", which no plugin provides/);
@@ -69,8 +69,8 @@ describe("dependencies", () =>
     test("refuses a cycle, naming the loop", async () =>
     {
         const failed = await refused([
-            made("a", { dependsOn: ["b"] }),
-            made("b", { dependsOn: ["a"] }),
+            createPlugin("a", { dependsOn: ["b"] }),
+            createPlugin("b", { dependsOn: ["a"] }),
         ]);
 
         expect(failed?.code).toBe("DEPENDENCY_CYCLE");
@@ -79,7 +79,7 @@ describe("dependencies", () =>
 
     test("refuses two plugins with one name", async () =>
     {
-        const failed = await refused([made("auth"), made("auth")]);
+        const failed = await refused([createPlugin("auth"), createPlugin("auth")]);
 
         expect(failed?.code).toBe("DUPLICATE_PLUGIN");
     });
@@ -89,8 +89,8 @@ describe("dependencies", () =>
         const started: string[] = [];
         const kernel = createKernel({
             plugins: [
-                made("billing", { dependsOn: ["auth"], setup: () => void started.push("billing") }),
-                made("auth", { setup: () => void started.push("auth") }),
+                createPlugin("billing", { dependsOn: ["auth"], setup: () => void started.push("billing") }),
+                createPlugin("auth", { setup: () => void started.push("auth") }),
             ],
         });
 
@@ -106,8 +106,8 @@ describe("declarations", () =>
     {
         const page = (): null => null;
         const failed = await refused([
-            made("auth", { routes: [{ path: "/x", component: page }] }),
-            made("billing", { routes: [{ path: "/x", component: page }] }),
+            createPlugin("auth", { routes: [{ path: "/x", component: page }] }),
+            createPlugin("billing", { routes: [{ path: "/x", component: page }] }),
         ]);
 
         expect(failed?.code).toBe("DUPLICATE_ROUTE");
@@ -116,7 +116,7 @@ describe("declarations", () =>
 
     test("refuses a route path in the wrong syntax", async () =>
     {
-        const failed = await refused([made("auth", { routes: [{ path: "auth/login", component: () => null }] })]);
+        const failed = await refused([createPlugin("auth", { routes: [{ path: "auth/login", component: () => null }] })]);
 
         expect(failed?.code).toBe("INVALID_ROUTE");
         expect(failed?.message).toMatch(/must start with "\/"/);
@@ -144,7 +144,7 @@ describe("references", () =>
 {
     test("refuses listening to an event nothing declares", async () =>
     {
-        const failed = await refused([made("billing", { listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } })]);
+        const failed = await refused([createPlugin("billing", { listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } })]);
 
         expect(failed?.code).toBe("UNDECLARED_EVENT");
     });
@@ -152,8 +152,8 @@ describe("references", () =>
     test("refuses reaching something owned by an undeclared dependency", async () =>
     {
         const failed = await refused([
-            made("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
-            made("billing", { listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } }),
+            createPlugin("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
+            createPlugin("billing", { listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } }),
         ]);
 
         expect(failed?.code).toBe("UNDECLARED_DEPENDENCY");
@@ -163,8 +163,8 @@ describe("references", () =>
     test("allows it once the dependency is declared", async () =>
     {
         const failed = await refused([
-            made("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
-            made("billing", { dependsOn: ["auth"], listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } }),
+            createPlugin("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
+            createPlugin("billing", { dependsOn: ["auth"], listens: { "auth.signed-out": { describe: "hears it", handle: () => {} } } }),
         ]);
 
         expect(failed).toBeUndefined();
@@ -173,7 +173,7 @@ describe("references", () =>
     test("refuses a contribution to a slot nothing declares", async () =>
     {
         const failed = await refused([
-            made("billing", { contributes: [{ slot: "shell.sidebar", render: () => null }] }),
+            createPlugin("billing", { contributes: [{ slot: "shell.sidebar", render: () => null }] }),
         ]);
 
         expect(failed?.code).toBe("UNDECLARED_SLOT");
@@ -182,7 +182,7 @@ describe("references", () =>
     test("refuses a route needing a permission nothing declares", async () =>
     {
         const failed = await refused([
-            made("billing", { routes: [{ path: "/b", component: () => null, requires: ["billing.read"] }] }),
+            createPlugin("billing", { routes: [{ path: "/b", component: () => null, requires: ["billing.read"] }] }),
         ]);
 
         expect(failed?.code).toBe("UNDECLARED_PERMISSION");
@@ -194,7 +194,7 @@ describe("config", () =>
     test("refuses config that fails its schema, naming the key", async () =>
     {
         const failed = await refused(
-            [made("billing", { config: z.object({ pageSize: z.number() }) })],
+            [createPlugin("billing", { config: z.object({ pageSize: z.number() }) })],
             { billing: { pageSize: "many" } },
         );
 
@@ -207,7 +207,7 @@ describe("config", () =>
         let seen: unknown;
         const kernel = createKernel({
             plugins: [
-                made("billing", {
+                createPlugin("billing", {
                     config: z.object({ pageSize: z.number() }),
                     setup: (ctx) => void (seen = ctx.config),
                 }),
@@ -226,8 +226,8 @@ describe("reporting everything at once", () =>
     test("names every problem in one run, not just the first", async () =>
     {
         const failed = await refused([
-            made("a", { dependsOn: ["nope"] }),
-            made("b", { listens: { "c.thing": { describe: "hears it", handle: () => {} } } }),
+            createPlugin("a", { dependsOn: ["nope"] }),
+            createPlugin("b", { listens: { "c.thing": { describe: "hears it", handle: () => {} } } }),
         ]);
 
         expect(failed?.message).toMatch(/2 problems/);
@@ -240,8 +240,8 @@ describe("reporting everything at once", () =>
         const started: string[] = [];
         const kernel = createKernel({
             plugins: [
-                made("fine", { setup: () => void started.push("fine") }),
-                made("broken", { dependsOn: ["nope"] }),
+                createPlugin("fine", { setup: () => void started.push("fine") }),
+                createPlugin("broken", { dependsOn: ["nope"] }),
             ],
         });
 
@@ -259,10 +259,10 @@ describe("events at runtime", () =>
         const heard: unknown[] = [];
         const kernel = createKernel({
             plugins: [
-                made("auth", {
+                createPlugin("auth", {
                     emits: { "auth.signed-out": { describe: "gone", schema: z.object({ id: z.string() }) } },
                 }),
-                made("billing", {
+                createPlugin("billing", {
                     dependsOn: ["auth"],
                     listens: { "auth.signed-out": { describe: "hears it", handle: (payload) => void heard.push(payload) } },
                 }),
@@ -279,8 +279,8 @@ describe("events at runtime", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
-                made("billing", { dependsOn: ["auth"] }),
+                createPlugin("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
+                createPlugin("billing", { dependsOn: ["auth"] }),
             ],
         });
 
@@ -292,7 +292,7 @@ describe("events at runtime", () =>
     test("refuses a payload that fails its schema", async () =>
     {
         const kernel = createKernel({
-            plugins: [made("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({ id: z.string() }) } } })],
+            plugins: [createPlugin("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({ id: z.string() }) } } })],
         });
 
         await kernel.start();
@@ -305,9 +305,9 @@ describe("events at runtime", () =>
         const heard: string[] = [];
         const kernel = createKernel({
             plugins: [
-                made("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
-                made("bad", { dependsOn: ["auth"], listens: { "auth.signed-out": { describe: "throws", handle: () => { throw new Error("boom"); } } } }),
-                made("good", { dependsOn: ["auth"], listens: { "auth.signed-out": { describe: "hears it", handle: () => void heard.push("good") } } }),
+                createPlugin("auth", { emits: { "auth.signed-out": { describe: "gone", schema: z.object({}) } } }),
+                createPlugin("bad", { dependsOn: ["auth"], listens: { "auth.signed-out": { describe: "throws", handle: () => { throw new Error("boom"); } } } }),
+                createPlugin("good", { dependsOn: ["auth"], listens: { "auth.signed-out": { describe: "hears it", handle: () => void heard.push("good") } } }),
             ],
         });
 
@@ -327,8 +327,8 @@ describe("hooks", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("notes", { hooks: { "notes.before-save": { describe: "about to save", schema: z.object({ size: z.number() }) } } }),
-                made("quota", {
+                createPlugin("notes", { hooks: { "notes.before-save": { describe: "about to save", schema: z.object({ size: z.number() }) } } }),
+                createPlugin("quota", {
                     dependsOn: ["notes"],
                     participates: { "notes.before-save": { describe: "checks size", handle: (payload) => ((payload as { size: number }).size > 10 ? "too big" : undefined) } },
                 }),
@@ -345,8 +345,8 @@ describe("hooks", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("notes", { hooks: { "notes.before-save": { describe: "about to save", schema: z.object({}) } } }),
-                made("bad", { dependsOn: ["notes"], participates: { "notes.before-save": { describe: "crashes", handle: () => { throw new Error("crashed"); } } } }),
+                createPlugin("notes", { hooks: { "notes.before-save": { describe: "about to save", schema: z.object({}) } } }),
+                createPlugin("bad", { dependsOn: ["notes"], participates: { "notes.before-save": { describe: "crashes", handle: () => { throw new Error("crashed"); } } } }),
             ],
         });
 
@@ -362,7 +362,7 @@ describe("commands", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("billing", {
+                createPlugin("billing", {
                     permissions: { "billing.write": { describe: "may refund" } },
                     commands: {
                         "billing.refund": {
@@ -389,7 +389,7 @@ describe("commands", () =>
         let ran = false;
         const kernel = createKernel({
             plugins: [
-                made("billing", {
+                createPlugin("billing", {
                     permissions: { "billing.write": { describe: "may refund" } },
                     commands: {
                         "billing.refund": {
@@ -414,7 +414,7 @@ describe("commands", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("billing", {
+                createPlugin("billing", {
                     commands: { "billing.refund": { describe: "refunds", schema: z.object({ id: z.string() }), run: () => {} } },
                 }),
             ],
@@ -429,7 +429,7 @@ describe("commands", () =>
 
     test("refuses a command before the kernel started", async () =>
     {
-        const kernel = createKernel({ plugins: [made("billing")] });
+        const kernel = createKernel({ plugins: [createPlugin("billing")] });
 
         const failed = await kernel.run("billing.refund", {}).catch((cause: unknown) => cause as KernelFault);
 
@@ -444,8 +444,8 @@ describe("services", () =>
         let seen: unknown;
         const kernel = createKernel({
             plugins: [
-                made("auth", { services: () => ({ who: () => "u1" }) }),
-                made("billing", {
+                createPlugin("auth", { services: () => ({ who: () => "u1" }) }),
+                createPlugin("billing", {
                     dependsOn: ["auth"],
                     setup: (ctx) => void (seen = ctx.use<{ who: () => string }>("auth").who()),
                 }),
@@ -460,7 +460,7 @@ describe("services", () =>
     test("refuses reaching a plugin it did not declare", async () =>
     {
         const kernel = createKernel({
-            plugins: [made("auth", { services: () => ({}) }), made("billing")],
+            plugins: [createPlugin("auth", { services: () => ({}) }), createPlugin("billing")],
         });
 
         await kernel.start();
@@ -476,8 +476,8 @@ describe("teardown", () =>
         const seen: string[] = [];
         const kernel = createKernel({
             plugins: [
-                made("auth", { teardown: () => void seen.push("auth") }),
-                made("billing", { dependsOn: ["auth"], teardown: () => { throw new Error("stuck"); } }),
+                createPlugin("auth", { teardown: () => void seen.push("auth") }),
+                createPlugin("billing", { dependsOn: ["auth"], teardown: () => { throw new Error("stuck"); } }),
             ],
         });
 
@@ -494,8 +494,8 @@ describe("what only one plugin may own", () =>
     test("refuses two plugins declaring grants", async () =>
     {
         const failed = await refused([
-            made("auth", { grants: () => ["a"] }),
-            made("other", { grants: () => ["b"] }),
+            createPlugin("auth", { grants: () => ["a"] }),
+            createPlugin("other", { grants: () => ["b"] }),
         ]);
 
         expect(failed?.code).toBe("DUPLICATE_GRANTS");
@@ -505,8 +505,8 @@ describe("what only one plugin may own", () =>
     test("refuses two frames", async () =>
     {
         const failed = await refused([
-            made("shell", { frame: () => null }),
-            made("other", { frame: () => null }),
+            createPlugin("shell", { frame: () => null }),
+            createPlugin("other", { frame: () => null }),
         ]);
 
         expect(failed?.code).toBe("DUPLICATE_FRAME");
@@ -515,8 +515,8 @@ describe("what only one plugin may own", () =>
     test("refuses two 404 pages", async () =>
     {
         const failed = await refused([
-            made("shell", { pages: { missing: () => null } }),
-            made("other", { pages: { missing: () => null } }),
+            createPlugin("shell", { pages: { missing: () => null } }),
+            createPlugin("other", { pages: { missing: () => null } }),
         ]);
 
         expect(failed?.code).toBe("DUPLICATE_PAGE");
@@ -525,8 +525,8 @@ describe("what only one plugin may own", () =>
     test("one plugin may own the 403 and another the 404", async () =>
     {
         const failed = await refused([
-            made("shell", { pages: { missing: () => null } }),
-            made("guard", { pages: { forbidden: () => null } }),
+            createPlugin("shell", { pages: { missing: () => null } }),
+            createPlugin("guard", { pages: { forbidden: () => null } }),
         ]);
 
         expect(failed).toBeUndefined();
@@ -539,8 +539,8 @@ describe("grants", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("auth", { grants: () => ["demo.read"] }),
-                made("demo", { permissions: { "demo.read": { describe: "sees demo" } } }),
+                createPlugin("auth", { grants: () => ["demo.read"] }),
+                createPlugin("demo", { permissions: { "demo.read": { describe: "sees demo" } } }),
             ],
         });
 
@@ -555,8 +555,8 @@ describe("grants", () =>
         let signedIn = true;
         const kernel = createKernel({
             plugins: [
-                made("auth", { grants: () => (signedIn ? ["demo.read"] : []) }),
-                made("demo", { permissions: { "demo.read": { describe: "sees demo" } } }),
+                createPlugin("auth", { grants: () => (signedIn ? ["demo.read"] : []) }),
+                createPlugin("demo", { permissions: { "demo.read": { describe: "sees demo" } } }),
             ],
         });
 
@@ -573,8 +573,8 @@ describe("grants", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("auth", { grants: () => ["from.plugin"] }),
-                made("x", { permissions: { "x.read": { describe: "reads" } } }),
+                createPlugin("auth", { grants: () => ["from.plugin"] }),
+                createPlugin("x", { permissions: { "x.read": { describe: "reads" } } }),
             ],
             permissions: { granted: () => ["from.application"] },
         });
@@ -591,7 +591,7 @@ describe("config defaults", () =>
     test("a schema whose keys all default starts with no config at all", async () =>
     {
         const failed = await refused([
-            made("billing", { config: z.object({ pageSize: z.number().default(25) }) }),
+            createPlugin("billing", { config: z.object({ pageSize: z.number().default(25) }) }),
         ]);
 
         expect(failed).toBeUndefined();
@@ -602,7 +602,7 @@ describe("config defaults", () =>
         let seen: unknown;
         const kernel = createKernel({
             plugins: [
-                made("billing", {
+                createPlugin("billing", {
                     config: z.object({ pageSize: z.number().default(25), flag: z.boolean().default(false) }),
                     setup: (ctx) => void (seen = ctx.config),
                 }),
@@ -618,7 +618,7 @@ describe("config defaults", () =>
     test("a required key with nothing to default to is still refused", async () =>
     {
         const failed = await refused([
-            made("billing", { config: z.object({ apiKey: z.string() }) }),
+            createPlugin("billing", { config: z.object({ apiKey: z.string() }) }),
         ]);
 
         expect(failed?.code).toBe("INVALID_CONFIG");

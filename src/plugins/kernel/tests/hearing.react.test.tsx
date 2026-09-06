@@ -11,12 +11,12 @@ import type { ReactNode } from "react";
 
 afterEach(cleanup);
 
-function made(name: string, held: Partial<Definition> = {}): Plugin
+function createPlugin(name: string, definition: Partial<Definition> = {}): Plugin
 {
-    return definePlugin(name, { version: "1.0.0", describe: `The ${name} plugin.`, ...held });
+    return definePlugin(name, { version: "1.0.0", describe: `The ${name} plugin.`, ...definition });
 }
 
-const mail = made("mail", {
+const mail = createPlugin("mail", {
     emits: {
         "mail.arrived": { describe: "One came in.", schema: z.object({ id: z.string() }) },
     },
@@ -24,7 +24,7 @@ const mail = made("mail", {
 
 async function serving(): Promise<Kernel>
 {
-    const kernel = createKernel({ plugins: [mail, made("badge", { dependsOn: ["mail"] })] });
+    const kernel = createKernel({ plugins: [mail, createPlugin("badge", { dependsOn: ["mail"] })] });
 
     await kernel.start();
 
@@ -37,7 +37,7 @@ function Counter(): ReactNode
 
     useHearing("badge", "mail.arrived", (payload) =>
     {
-        setSeen((held) => [...held, (payload as { id: string }).id]);
+        setSeen((seen) => [...seen, (payload as { id: string }).id]);
     });
 
     return <p>{seen.join(",") || "nothing"}</p>;
@@ -67,12 +67,12 @@ describe("a component hearing an event", () =>
     test("stops hearing once it leaves", async () =>
     {
         const kernel = await serving();
-        const held = render(<KernelProvider kernel={kernel}><Counter /></KernelProvider>);
+        const view = render(<KernelProvider kernel={kernel}><Counter /></KernelProvider>);
 
         kernel.context("mail").events.emit("mail.arrived", { id: "one" });
         await screen.findByText("one");
 
-        held.unmount();
+        view.unmount();
 
         expect(() => kernel.context("mail").events.emit("mail.arrived", { id: "two" })).not.toThrow();
 

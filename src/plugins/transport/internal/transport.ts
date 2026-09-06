@@ -1,4 +1,4 @@
-import type { Request, Carrying, Settings, Subscription, Transport } from "../api";
+import type { Request, Channel, Settings, Subscription, Transport } from "../api";
 import type { Answered } from "./channel";
 import { TransportFault } from "./faults";
 import { http } from "./http";
@@ -60,10 +60,10 @@ export function transport(settings: Settings, say: Said): Transport
         }
     }
 
-    let connecting: Promise<Carrying> | undefined;
+    let connecting: Promise<Channel> | undefined;
 
     return {
-        connect: async (): Promise<Carrying> =>
+        connect: async (): Promise<Channel> =>
         {
             if (live === undefined)
             {
@@ -80,7 +80,7 @@ export function transport(settings: Settings, say: Said): Transport
             // twice and close would only close one of them.
             connecting ??= live
                 .connect()
-                .then((opened): Carrying => (opened ? "ws" : "http"))
+                .then((opened): Channel => (opened ? "ws" : "http"))
                 .finally(() =>
                 {
                     connecting = undefined;
@@ -89,7 +89,7 @@ export function transport(settings: Settings, say: Said): Transport
             return connecting;
         },
 
-        carrying: (): Carrying =>
+        channel: (): Channel =>
         {
             return live !== undefined && live.channel.open() ? "ws" : "http";
         },

@@ -6,11 +6,11 @@
  * checks that this stays true.
  */
 
-export { boot, Booted } from "./kernel/boot";
+export { boot, RunningApp } from "./kernel/boot";
 export { Fault } from "./kernel/errors";
 export type { FaultCode as BootFaultCode } from "./kernel/errors";
 export { Host } from "./kernel/host";
-export type { Say } from "./kernel/host";
+export type { WriteLine } from "./kernel/host";
 export type { Plugin as HostPlugin } from "./kernel/plugin";
 
 export { createKernel, definePlugin, KernelFault } from "./plugins/kernel/api";
@@ -56,7 +56,6 @@ export { plugin as cachePlugin } from "./plugins/cache/plugin";
 export * as router from "./plugins/router/api";
 export { plugin as routerPlugin } from "./plugins/router/plugin";
 
-export { discover } from "./plugins/mount/internal/discover";
-export { start } from "./plugins/mount/internal/start";
+export { discover, start } from "./plugins/mount/api";
 export { plugin as mountPlugin } from "./plugins/mount/plugin";
-export type { Started, Starting } from "./plugins/mount/api";
+export type { Modules, Started, Starting } from "./plugins/mount/api";

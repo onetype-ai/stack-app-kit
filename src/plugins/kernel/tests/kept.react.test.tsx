@@ -13,13 +13,13 @@ function keeping(start: number)
 {
     const watching = new Set<() => void>();
 
-    let held = start;
+    let current = start;
 
     return {
         watchers: () => watching.size,
         set: (next: number): void =>
         {
-            held = next;
+            current = next;
 
             for (const told of watching)
             {
@@ -35,7 +35,7 @@ function keeping(start: number)
                 watching.delete(told);
             };
         },
-        read: (): number => held,
+        read: (): number => current,
     };
 }
 
@@ -80,11 +80,11 @@ describe("a value a service keeps", () =>
             return <p>{useKept(kept.watch, kept.read)}</p>;
         }
 
-        const held = render(<Badge />);
+        const current = render(<Badge />);
 
         expect(kept.watchers()).toBe(1);
 
-        held.unmount();
+        current.unmount();
 
         expect(kept.watchers()).toBe(0);
     });
@@ -121,9 +121,9 @@ describe("a value a service keeps", () =>
 
         function Badge(): ReactNode
         {
-            const held = useKept((told) => watch(told), () => kept.read());
+            const current = useKept((told) => watch(told), () => kept.read());
 
-            return <p>{held}</p>;
+            return <p>{current}</p>;
         }
 
         render(<Badge />);

@@ -1,5 +1,5 @@
 import { boot } from "../../../kernel/boot";
-import type { Say } from "../../../kernel/host";
+import type { WriteLine } from "../../../kernel/host";
 import { z } from "zod";
 
 import { createKernel, definePlugin } from "../../kernel/api";
@@ -19,7 +19,7 @@ import { client } from "./client";
 export async function start(starting: Starting): Promise<Started>
 {
     const log = starting.log;
-    const say: Say = (line, about) =>
+    const say: WriteLine = (line, about) =>
     {
         log?.info(line, about);
     };
@@ -51,14 +51,14 @@ export async function start(starting: Starting): Promise<Started>
         throw new Error("mount: the transport plugin offered nothing.");
     }
 
-    const carrying = await live.connect();
+    const channel = await live.connect();
 
-    log?.info("transport ready", { carrying });
+    log?.info("transport ready", { channel });
 
     const realtime: Realtime = {
         channel: () =>
         {
-            return live.carrying();
+            return live.channel();
         },
         subscribe: (channel, told) =>
         {
@@ -115,7 +115,7 @@ export async function start(starting: Starting): Promise<Started>
         kernel,
         http: client(live),
         realtime,
-        carrying,
+        channel,
 
         stop: async (): Promise<void> =>
         {

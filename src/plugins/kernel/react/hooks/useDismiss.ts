@@ -19,14 +19,14 @@ export const useDismiss = (
             return;
         }
 
-        const held = (target: Node): boolean =>
+        const isInside = (target: Node): boolean =>
         {
             return (inside.current?.contains(target) ?? false) || (anchor?.current?.contains(target) ?? false);
         };
 
         const outside = (event: PointerEvent): void =>
         {
-            if (!held(event.target as Node))
+            if (!isInside(event.target as Node))
             {
                 dismiss();
             }

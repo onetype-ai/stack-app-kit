@@ -4,17 +4,17 @@ import { createKernel, definePlugin, KernelFault } from "../api";
 
 import type { Client, Definition, Plugin } from "../api";
 
-function made(name: string, held: Partial<Definition> = {}): Plugin
+function createPlugin(name: string, definition: Partial<Definition> = {}): Plugin
 {
     return definePlugin(name, {
         version: "1.0.0",
         describe: `The ${name} plugin.`,
-        ...held,
+        ...definition,
     });
 }
 
 /** A client that answers whatever it was told to, and remembers being asked. */
-function answering(answer: unknown = { ok: true })
+function recordClient(answer: unknown = { ok: true })
 {
     const asked: { method: string; path: string; request?: unknown }[] = [];
 
@@ -41,34 +41,34 @@ describe("ctx.http", () =>
 {
     test("is the client the application passed, reaching the path a plugin asked for", async () =>
     {
-        const held = answering({ items: [] });
-        const kernel = createKernel({ plugins: [made("demo")], http: held.client });
+        const spy = recordClient({ items: [] });
+        const kernel = createKernel({ plugins: [createPlugin("demo")], http: spy.client });
 
         await kernel.start();
 
         expect(await kernel.context("demo").http.get("/items")).toEqual({ items: [] });
-        expect(held.asked).toEqual([{ method: "get", path: "/items" }]);
+        expect(spy.asked).toEqual([{ method: "get", path: "/items" }]);
 
         await kernel.stop();
     });
 
     test("carries the request through untouched, so the kernel adds nothing", async () =>
     {
-        const held = answering();
-        const kernel = createKernel({ plugins: [made("demo")], http: held.client });
+        const spy = recordClient();
+        const kernel = createKernel({ plugins: [createPlugin("demo")], http: spy.client });
 
         await kernel.start();
         await kernel.context("demo").http.post("/items", { body: { title: "one" } });
 
-        expect(held.asked[0]).toEqual({ method: "post", path: "/items", request: { body: { title: "one" } } });
+        expect(spy.asked[0]).toEqual({ method: "post", path: "/items", request: { body: { title: "one" } } });
 
         await kernel.stop();
     });
 
     test("answers every method a client declares", async () =>
     {
-        const held = answering();
-        const kernel = createKernel({ plugins: [made("demo")], http: held.client });
+        const spy = recordClient();
+        const kernel = createKernel({ plugins: [createPlugin("demo")], http: spy.client });
 
         await kernel.start();
 
@@ -76,7 +76,7 @@ describe("ctx.http", () =>
 
         await Promise.all([http.get("/a"), http.post("/b"), http.put("/c"), http.patch("/d"), http.delete("/e")]);
 
-        expect(held.asked.map((one) => one.method).sort())
+        expect(spy.asked.map((one) => one.method).sort())
             .toEqual(["delete", "get", "patch", "post", "put"]);
 
         await kernel.stop();
@@ -91,7 +91,7 @@ describe("ctx.http", () =>
      */
     test("and refuses by name when the application passed none", async () =>
     {
-        const kernel = createKernel({ plugins: [made("demo")] });
+        const kernel = createKernel({ plugins: [createPlugin("demo")] });
 
         await kernel.start();
 
@@ -103,8 +103,8 @@ describe("ctx.http", () =>
 
     test("is the same client for every plugin, so two do not open two", async () =>
     {
-        const held = answering();
-        const kernel = createKernel({ plugins: [made("one"), made("two")], http: held.client });
+        const spy = recordClient();
+        const kernel = createKernel({ plugins: [createPlugin("one"), createPlugin("two")], http: spy.client });
 
         await kernel.start();
 
@@ -120,7 +120,7 @@ describe("ctx.cache", () =>
     {
         const dropped: unknown[][] = [];
         const kernel = createKernel({
-            plugins: [made("demo")],
+            plugins: [createPlugin("demo")],
             cache: { invalidate: (key) => dropped.push([...key]) },
         });
 
@@ -135,7 +135,7 @@ describe("ctx.cache", () =>
 
     test("and refuses by name when the application gave none", async () =>
     {
-        const kernel = createKernel({ plugins: [made("demo")] });
+        const kernel = createKernel({ plugins: [createPlugin("demo")] });
 
         await kernel.start();
 
@@ -153,7 +153,7 @@ describe("ctx.realtime", () =>
         let closed = false;
 
         const kernel = createKernel({
-            plugins: [made("demo")],
+            plugins: [createPlugin("demo")],
             realtime: {
                 channel: () => "ws",
                 subscribe: (channel) =>
@@ -167,11 +167,11 @@ describe("ctx.realtime", () =>
 
         await kernel.start();
 
-        const held = kernel.context("demo").realtime.subscribe("demo.items", () => {});
+        const spy = kernel.context("demo").realtime.subscribe("demo.items", () => {});
 
         expect(opened).toEqual(["demo.items"]);
 
-        held.close();
+        spy.close();
 
         expect(closed).toBe(true);
 
@@ -183,7 +183,7 @@ describe("ctx.realtime", () =>
         let tell: ((message: unknown) => void) | undefined;
 
         const kernel = createKernel({
-            plugins: [made("demo")],
+            plugins: [createPlugin("demo")],
             realtime: {
                 channel: () => "ws",
                 subscribe: (_channel, told) =>
@@ -209,14 +209,14 @@ describe("ctx.realtime", () =>
 
     test("but says http rather than refusing when the application gave none", async () =>
     {
-        const kernel = createKernel({ plugins: [made("demo")] });
+        const kernel = createKernel({ plugins: [createPlugin("demo")] });
 
         await kernel.start();
 
-        const held = kernel.context("demo").realtime;
+        const spy = kernel.context("demo").realtime;
 
-        expect(held.channel()).toBe("http");
-        expect(() => held.subscribe("x", () => {}).close()).not.toThrow();
+        expect(spy.channel()).toBe("http");
+        expect(() => spy.subscribe("x", () => {}).close()).not.toThrow();
 
         await kernel.stop();
     });

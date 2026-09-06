@@ -8,9 +8,9 @@ import { KernelProvider, RouteGuard, Slot, StatusPageProvider } from "../react/i
 
 afterEach(cleanup);
 
-function made(name: string, held: Partial<Definition> = {}): Plugin
+function createPlugin(name: string, definition: Partial<Definition> = {}): Plugin
 {
-    return definePlugin(name, { version: "1.0.0", describe: `The ${name} plugin.`, ...held });
+    return definePlugin(name, { version: "1.0.0", describe: `The ${name} plugin.`, ...definition });
 }
 
 /** A started kernel, rendered under a provider. */
@@ -25,10 +25,10 @@ async function shown(plugins: readonly Plugin[], granted: readonly string[], chi
     return kernel;
 }
 
-const shell = (held: Partial<Definition> = {}): Plugin =>
-    made("shell", {
+const shell = (definition: Partial<Definition> = {}): Plugin =>
+    createPlugin("shell", {
         slots: { "shell.sidebar": { describe: "beside the page", schema: z.object({ noteId: z.string() }) } },
-        ...held,
+        ...definition,
     });
 
 describe("Slot", () =>
@@ -38,7 +38,7 @@ describe("Slot", () =>
         await shown(
             [
                 shell(),
-                made("billing", {
+                createPlugin("billing", {
                     dependsOn: ["shell"],
                     contributes: [
                         {
@@ -60,11 +60,11 @@ describe("Slot", () =>
         await shown(
             [
                 shell(),
-                made("a", {
+                createPlugin("a", {
                     dependsOn: ["shell"],
                     contributes: [{ slot: "shell.sidebar", order: 20, render: () => <span>second</span> }],
                 }),
-                made("b", {
+                createPlugin("b", {
                     dependsOn: ["shell"],
                     contributes: [{ slot: "shell.sidebar", order: 10, render: () => <span>first</span> }],
                 }),
@@ -81,7 +81,7 @@ describe("Slot", () =>
         await shown(
             [
                 shell({ permissions: { "shell.admin": { describe: "may see admin things" } } }),
-                made("billing", {
+                createPlugin("billing", {
                     dependsOn: ["shell"],
                     contributes: [
                         { slot: "shell.sidebar", requires: ["shell.admin"], render: () => <span>secret</span> },
@@ -102,7 +102,7 @@ describe("Slot", () =>
         await shown(
             [
                 shell(),
-                made("bad", {
+                createPlugin("bad", {
                     dependsOn: ["shell"],
                     contributes: [
                         {
@@ -114,7 +114,7 @@ describe("Slot", () =>
                         },
                     ],
                 }),
-                made("good", {
+                createPlugin("good", {
                     dependsOn: ["shell"],
                     contributes: [{ slot: "shell.sidebar", render: () => <span>still here</span> }],
                 }),
@@ -132,7 +132,7 @@ describe("Slot", () =>
         await shown(
             [
                 shell(),
-                made("billing", {
+                createPlugin("billing", {
                     dependsOn: ["shell"],
                     contributes: [{ slot: "shell.sidebar", render: () => <span>never</span> }],
                 }),
@@ -152,7 +152,7 @@ describe("RouteGuard", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("billing", {
+                createPlugin("billing", {
                     permissions: { "billing.read": { describe: "may see billing" } },
                     routes: [{ path: "/billing", component: () => <h1>Billing</h1>, requires: ["billing.read"] }],
                 }),
@@ -177,7 +177,7 @@ describe("RouteGuard", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("billing", {
+                createPlugin("billing", {
                     permissions: { "billing.read": { describe: "may see billing" } },
                     routes: [{ path: "/billing", component: () => <h1>Billing</h1>, requires: ["billing.read"] }],
                 }),
@@ -200,7 +200,7 @@ describe("RouteGuard", () =>
     test("sets the title", async () =>
     {
         const kernel = createKernel({
-            plugins: [made("billing", { routes: [{ path: "/b", component: () => <p>x</p>, title: "Billing" }] })],
+            plugins: [createPlugin("billing", { routes: [{ path: "/b", component: () => <p>x</p>, title: "Billing" }] })],
         });
 
         await kernel.start();
@@ -218,7 +218,7 @@ describe("RouteGuard", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("billing", {
+                createPlugin("billing", {
                     fallback: ({ plugin }) => <p>{`${plugin} is down`}</p>,
                     routes: [
                         {
@@ -248,7 +248,7 @@ describe("RouteGuard", () =>
     {
         const kernel = createKernel({
             plugins: [
-                made("billing", {
+                createPlugin("billing", {
                     permissions: { "billing.read": { describe: "may see billing" } },
                     routes: [{ path: "/b", component: () => <p>x</p>, requires: ["billing.read"] }],
                 }),
@@ -276,8 +276,8 @@ describe("a slot that takes no payload", () =>
     {
         await shown(
             [
-                made("shell", { slots: { "shell.nav": { describe: "nav", schema: z.object({}) } } }),
-                made("demo", {
+                createPlugin("shell", { slots: { "shell.nav": { describe: "nav", schema: z.object({}) } } }),
+                createPlugin("demo", {
                     dependsOn: ["shell"],
                     contributes: [{ slot: "shell.nav", render: () => <span>Home</span> }],
                 }),

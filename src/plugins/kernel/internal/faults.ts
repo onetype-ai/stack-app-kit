@@ -31,7 +31,7 @@ export type FaultCode =
     | "PERMISSION_DENIED"
     | "NOT_STARTED";
 
-type Made = {
+type FaultDetail = {
     plugin?: string;
     detail?: Readonly<Record<string, unknown>>;
     cause?: unknown;
@@ -52,14 +52,14 @@ export class KernelFault extends Error
 
     readonly detail: Readonly<Record<string, unknown>>;
 
-    constructor(code: FaultCode, message: string, made: Made = {})
+    constructor(code: FaultCode, message: string, about: FaultDetail = {})
     {
-        super(message, made.cause === undefined ? undefined : { cause: made.cause });
+        super(message, about.cause === undefined ? undefined : { cause: about.cause });
 
         this.name = "KernelFault";
         this.code = code;
-        this.plugin = made.plugin;
-        this.detail = made.detail ?? {};
+        this.plugin = about.plugin;
+        this.detail = about.detail ?? {};
     }
 
     override toString(): string

@@ -17,7 +17,7 @@ export type Request = {
 };
 
 /** Which channel is carrying requests now. */
-export type Carrying = "ws" | "http";
+export type Channel = "ws" | "http";
 
 /** What a caller holds to stop receiving. */
 export type Subscription = {
@@ -60,10 +60,10 @@ export type Transport = {
      * call on a live socket answers without opening another. Two sockets
      * would each deliver, so every push would arrive twice.
      */
-    connect: () => Promise<Carrying>;
+    connect: () => Promise<Channel>;
 
     /** Which channel is carrying now. */
-    carrying: () => Carrying;
+    channel: () => Channel;
 
     /**
      * One request. The body comes back as unknown: this plugin does not own
