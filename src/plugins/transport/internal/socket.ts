@@ -247,12 +247,12 @@ export function socket(settings: Settings)
 
         connect,
 
-        subscribe: (channel: string, told: (message: unknown) => void): Subscription =>
+        subscribe: (topic: string, told: (message: unknown) => void): Subscription =>
         {
-            const listeners = subscribers.get(channel) ?? new Set<(message: unknown) => void>();
+            const listeners = subscribers.get(topic) ?? new Set<(message: unknown) => void>();
 
             listeners.add(told);
-            subscribers.set(channel, listeners);
+            subscribers.set(topic, listeners);
 
             return {
                 close: () =>
@@ -261,7 +261,7 @@ export function socket(settings: Settings)
 
                     if (listeners.size === 0)
                     {
-                        subscribers.delete(channel);
+                        subscribers.delete(topic);
                     }
                 },
             };

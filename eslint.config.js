@@ -24,6 +24,8 @@ export default tseslint.config(
             "@typescript-eslint/no-unnecessary-condition": "off",
             "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
             "no-console": "error",
+            "no-shadow": "off",
+            "@typescript-eslint/no-shadow": ["error", { ignoreTypeValueShadow: true, allow: ["Context"] }],
             eqeqeq: ["error", "always"],
         },
     },

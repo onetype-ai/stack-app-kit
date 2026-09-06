@@ -22,11 +22,11 @@ export function permissions(source: Source | undefined)
             return granted().has(permission);
         },
 
-        all: (permissions: readonly string[]): boolean =>
+        all: (wanted: readonly string[]): boolean =>
         {
             const carries = granted();
 
-            return permissions.every((permission) => carries.has(permission));
+            return wanted.every((permission) => carries.has(permission));
         },
     };
 }

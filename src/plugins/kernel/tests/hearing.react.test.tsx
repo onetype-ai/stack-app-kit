@@ -37,7 +37,7 @@ function Counter(): ReactNode
 
     useEvent("badge", "mail.arrived", (payload) =>
     {
-        setSeen((seen) => [...seen, (payload as { id: string }).id]);
+        setSeen((before) => [...before, (payload as { id: string }).id]);
     });
 
     return <p>{seen.join(",") || "nothing"}</p>;

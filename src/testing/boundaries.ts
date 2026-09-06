@@ -48,7 +48,7 @@ function read(root: string, name: string, names: readonly string[]): PluginImpor
 
     return {
         name,
-        declared: new Set(match === null ? [] : [...match[1]!.matchAll(/"([^"]+)"/g)].map((match) => match[1]!)),
+        declared: new Set(match === null ? [] : [...match[1]!.matchAll(/"([^"]+)"/g)].map((quoted) => quoted[1]!)),
         crossings: files(root, name).flatMap(({ path, source }) => crossings(name, path, source, others)),
     };
 }
@@ -70,9 +70,19 @@ function files(root: string, name: string): { path: string; source: string }[]
 // A specifier is resolved against the file that wrote it rather than matched as
 // text: "../../other/thing" reaches the same private file an alias would, and a
 // rule reading the alias alone calls that clean.
+// Both quote styles, and all three shapes an import takes. Reading only
+// `from "x"` let a single-quoted import, a dynamic import() and a require()
+// cross a boundary while the check reported nothing at all.
+const IMPORTS = [
+    /(?:^|\s)(?:import|export)(?:\s+type)?\s[^;]*?from\s+["']([^"']+)["']/g,
+    /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
+    /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g,
+    /(?:^|\s)import\s+["']([^"']+)["']/g,
+];
+
 function crossings(name: string, path: string, source: string, others: ReadonlySet<string>): ImportEdge[]
 {
-    return [...source.matchAll(/from\s+"([^"]+)"/g)].flatMap((match) =>
+    return IMPORTS.flatMap((pattern) => [...source.matchAll(pattern)]).flatMap((match) =>
     {
         const specifier = match[1]!;
         const alias = /^@plugins\/([^/]+)/.exec(specifier);

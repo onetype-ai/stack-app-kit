@@ -1,5 +1,8 @@
 import type { ComponentType } from "react";
 
+import type { Host } from "../../kernel/host";
+import type { Kernel, Registered } from "../kernel/api";
+
 /** What this plugin offers itself as. */
 export const NAME = "router";
 
@@ -32,3 +35,14 @@ export type Frame = {
     shell: ComponentType;
     missing: ComponentType;
 };
+
+/** What the router plugin offers: the tree, built from what plugins declared. */
+export type Router = {
+    build: (kernel: Kernel, frame: Frame, guard: (route: Registered) => ComponentType) => unknown;
+};
+
+/** The router, for a plugin that declared "router" in needs. */
+export function from(host: Host): Router | undefined
+{
+    return host.take<Router>(NAME);
+}

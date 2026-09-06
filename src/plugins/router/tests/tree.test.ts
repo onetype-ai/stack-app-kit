@@ -1,7 +1,11 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
+import { boot } from "../../../kernel/boot";
+import { plugin as kernelPlugin } from "../../kernel/plugin";
+import { from } from "../api";
 import { tree } from "../internal/tree";
+import { plugin as routerPlugin } from "../plugin";
 
 import type { ComponentType } from "react";
 import type { Kernel, Registered } from "../../kernel/api";
@@ -159,5 +163,25 @@ describe("what a route takes from the query", () =>
         const validate = spy.created[0]?.["validateSearch"] as (raw: Record<string, unknown>) => unknown;
 
         expect(() => validate({ page: "not a number" })).toThrow();
+    });
+});
+
+describe("reaching the router from another plugin", () =>
+{
+    const quiet = (): void => {};
+
+    test("answers what it offered, the same way every other plugin does", () =>
+    {
+        const app = boot(quiet, [kernelPlugin(), routerPlugin(recordRouter([]).building)]);
+        const reached = from(app.host.as("demo"));
+
+        expect(typeof reached?.build).toBe("function");
+    });
+
+    test("and answers nothing when the router was never given", () =>
+    {
+        const app = boot(quiet, [kernelPlugin()]);
+
+        expect(from(app.host.as("demo"))).toBeUndefined();
     });
 });

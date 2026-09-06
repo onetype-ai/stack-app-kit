@@ -60,9 +60,9 @@ export async function start(starting: Starting): Promise<Started>
         {
             return live.channel();
         },
-        subscribe: (channel, told) =>
+        subscribe: (topic, told) =>
         {
-            return live.subscribe(channel, told);
+            return live.subscribe(topic, told);
         },
     };
 

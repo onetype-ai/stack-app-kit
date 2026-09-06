@@ -413,14 +413,14 @@ export function createKernel(options: Options): Kernel
         pages: () =>
         {
             const forbidden = order.find((plugin) => plugin.definition.pages?.forbidden !== undefined);
-            const missing = order.find((plugin) => plugin.definition.pages?.missing !== undefined);
+            const notFound = order.find((plugin) => plugin.definition.pages?.missing !== undefined);
 
             return {
                 ...(forbidden?.definition.pages?.forbidden !== undefined && {
                     forbidden: forbidden.definition.pages.forbidden,
                 }),
-                ...(missing?.definition.pages?.missing !== undefined && {
-                    missing: missing.definition.pages.missing,
+                ...(notFound?.definition.pages?.missing !== undefined && {
+                    missing: notFound.definition.pages.missing,
                 }),
             };
         },
