@@ -91,7 +91,15 @@ export function findUnknownClasses(root: string): UnknownClass[]
             continue;
         }
 
-        const module = file.replace(/\.tsx$/, ".module.css");
+        const source = readFileSync(file, "utf8");
+
+        // The module a component imports, not the one beside it: a component
+        // may reach for a stylesheet in another folder, and a check reading
+        // the name alone never opens the file it actually uses.
+        const imported = /from\s+["']([^"']+\.module\.css)["']/.exec(source)?.[1];
+        const module = imported === undefined
+            ? file.replace(/\.tsx$/, ".module.css")
+            : join(file, "..", imported);
 
         if (!existsSync(module))
         {
@@ -100,7 +108,7 @@ export function findUnknownClasses(root: string): UnknownClass[]
 
         const declared = new Set([...readFileSync(module, "utf8").matchAll(/\.([a-zA-Z][\w-]*)/g)].map((match) => match[1]!));
 
-        for (const match of readFileSync(file, "utf8").matchAll(/\bstyles\.([a-zA-Z][\w]*)/g))
+        for (const match of source.matchAll(/\bstyles\.([a-zA-Z][\w]*)/g))
         {
             const name = match[1]!;
 

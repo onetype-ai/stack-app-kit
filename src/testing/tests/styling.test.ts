@@ -105,6 +105,16 @@ describe("a class a component reads", () =>
         expect(findUnknownClasses(at)).toEqual([{ file: "Card.tsx", name: "head" }]);
     });
 
+    test("and when the module it read sits in another folder", () =>
+    {
+        const at = folderWith({
+            "shared/one.module.css": ".root { color: red; }",
+            "b/B.tsx": 'import styles from "../shared/one.module.css";\nexport const B = () => <div className={styles.two} />;',
+        });
+
+        expect(findUnknownClasses(at)).toEqual([{ file: "b/B.tsx", name: "two" }]);
+    });
+
     test("and says nothing when every one is declared", () =>
     {
         const at = folderWith({
