@@ -42,6 +42,16 @@ describe("a token a stylesheet asks for", () =>
         expect(findUnknownTokens(at)).toEqual([{ file: "card.module.css", token: "--space-6" }]);
     });
 
+    test("and when what declares it holds nothing, which resolves the same way", () =>
+    {
+        const at = folderWith({
+            "tokens.css": ":root { --one: ; }",
+            "card.module.css": ".root { color: var(--one); }",
+        });
+
+        expect(findUnknownTokens(at)).toEqual([{ file: "card.module.css", token: "--one" }]);
+    });
+
     test("counts one a stylesheet declares for itself", () =>
     {
         const at = folderWith({

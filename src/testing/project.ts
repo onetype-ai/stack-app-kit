@@ -61,7 +61,7 @@ export const Project = {
 
             ...findUnknownTokens(source).map((unknown) => ({
                 check: "token" as const,
-                message: `${unknown.file}: var(${unknown.token}) is asked for and nothing declares it.`,
+                message: `${unknown.file}: var(${unknown.token}) is asked for and nothing gives it a value.`,
             })),
 
             ...findComments(source).map((one) => ({

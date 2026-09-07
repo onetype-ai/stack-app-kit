@@ -33,7 +33,7 @@ export function findUnknownTokens(root: string): UnknownToken[]
 
         if (file.endsWith(".css"))
         {
-            for (const match of source.matchAll(/(?:^|[{;])\s*(--[a-z0-9-]+)\s*:/gm))
+            for (const match of source.matchAll(/(?:^|[{;])\s*(--[a-z0-9-]+)\s*:\s*[^\s;][^;]*/gm))
             {
                 defined.add(match[1] ?? "");
             }
