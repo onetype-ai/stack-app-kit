@@ -285,7 +285,7 @@ export function createKernel(options: Options): Kernel
                 return;
             }
 
-            const problems = validate(options.plugins, config);
+            const problems = validate(options.plugins, config, options.permissions !== undefined);
 
             if (problems.length > 0)
             {

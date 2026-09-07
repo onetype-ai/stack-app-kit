@@ -500,6 +500,32 @@ describe("what only one plugin may own", () =>
         expect(fault?.message).toMatch(/both declare grants/);
     });
 
+    test("refuses a guard nothing can lift", async () =>
+    {
+        const fault = await refused([
+            createPlugin("billing", {
+                permissions: { "billing.read": { describe: "Read." } },
+                routes: [{ path: "/billing", component: () => null, requires: ["billing.read"] }],
+            }),
+        ]);
+
+        expect(fault?.code).toBe("UNGRANTABLE_PERMISSION");
+        expect(fault?.message).toMatch(/no plugin grants anything/);
+    });
+
+    test("but not one a plugin grants, since only a request settles which", async () =>
+    {
+        const fault = await refused([
+            createPlugin("billing", {
+                permissions: { "billing.read": { describe: "Read." } },
+                routes: [{ path: "/billing", component: () => null, requires: ["billing.read"] }],
+            }),
+            createPlugin("auth", { grants: () => [] }),
+        ]);
+
+        expect(fault).toBeUndefined();
+    });
+
     test("refuses two frames", async () =>
     {
         const fault = await refused([

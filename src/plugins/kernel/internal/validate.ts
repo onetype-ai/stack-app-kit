@@ -18,7 +18,7 @@ type Owned = {
     permissions: Map<string, string>;
 };
 
-export function validate(plugins: readonly Plugin[], config: Readonly<Record<string, unknown>>): ContractProblem[]
+export function validate(plugins: readonly Plugin[], config: Readonly<Record<string, unknown>>, granted = false): ContractProblem[]
 {
     const problems: ContractProblem[] = [];
     const say = (code: KernelFault["code"], plugin: string, message: string): void =>
@@ -61,7 +61,7 @@ export function validate(plugins: readonly Plugin[], config: Readonly<Record<str
     }
 
     checkCycles(by, say);
-    checkGrants(by, say);
+    checkGrants(by, say, granted);
 
     return problems;
 }
@@ -299,7 +299,7 @@ function checkConfig(
     }
 }
 
-function checkGrants(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
+function checkGrants(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void, granted: boolean): void
 {
     const alone = (
         code: KernelFault["code"],
@@ -319,6 +319,24 @@ function checkGrants(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["c
     alone("DUPLICATE_FRAME", "a frame", (plugin) => plugin.definition.frame !== undefined);
     alone("DUPLICATE_PAGE", "a 403 page", (plugin) => plugin.definition.pages?.forbidden !== undefined);
     alone("DUPLICATE_PAGE", "a 404 page", (plugin) => plugin.definition.pages?.missing !== undefined);
+
+    // A guard nothing can lift renders the 403 page and says nothing: the
+    // route works, every reader is refused, and the two look alike from
+    // outside. Whether a grants that exists answers this one is a question
+    // only a request can settle; whether anything answers at all is not.
+    if (!granted && [...by.values()].every((plugin) => plugin.definition.grants === undefined))
+    {
+        for (const [name, plugin] of by)
+        {
+            for (const route of plugin.definition.routes ?? [])
+            {
+                for (const permission of route.requires ?? [])
+                {
+                    say("UNGRANTABLE_PERMISSION", name, `Route "${route.path}" requires "${permission}", and no plugin grants anything. Declare grants, or drop the guard.`);
+                }
+            }
+        }
+    }
 }
 
 function checkCycles(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
