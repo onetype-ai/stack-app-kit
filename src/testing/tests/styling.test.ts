@@ -5,7 +5,6 @@ import { describe, expect, test } from "vitest";
 
 import { findUnknownClasses, findUnknownTokens } from "../styling";
 
-/** A folder holding exactly the files a case needs. */
 function folderWith(files: Record<string, string>): string
 {
     const at = mkdtempSync(join(tmpdir(), "styling-"));
@@ -33,10 +32,6 @@ describe("a token a stylesheet asks for", () =>
         expect(findUnknownTokens(at)).toEqual([]);
     });
 
-    /**
-     * The one this exists for. CSS resolves an undeclared token to nothing
-     * and drops the rule, so the build is green and the page is unstyled.
-     */
     test("is reported when nothing does, naming the file and the token", () =>
     {
         const at = folderWith({

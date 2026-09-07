@@ -12,8 +12,6 @@ export type UndocumentedKey = {
 
 const LIMIT = 1800;
 
-// A contract nobody can read in one sitting is a contract nobody reads. What
-// grows past this is two documents, or a rule that belongs in code.
 export function findOversizedDocs(root: string, limit: number = LIMIT): OversizedDoc[]
 {
     if (!existsSync(root))
@@ -38,8 +36,6 @@ export function findOversizedDocs(root: string, limit: number = LIMIT): Oversize
         });
 }
 
-// A document that is present but empty reads as done and says nothing, which
-// is worse than one that is missing and obviously so.
 export function findMissingDocs(root: string, required: readonly string[]): string[]
 {
     return required.filter((path) =>
@@ -55,12 +51,6 @@ export function findMissingDocs(root: string, required: readonly string[]): stri
     });
 }
 
-// Every key the contract accepts is named in the procedure that explains it.
-// A key added to one and not the other is how a document starts lying.
-//
-// `export` is optional because a build emits the shape without it, and a
-// contract that parsed to nothing threw no error: it answered "nothing is
-// undocumented" while reading nothing at all.
 export function findUndocumentedKeys(contract: string, procedure: string): string[]
 {
     const shape = /(?:export )?type Definition[\s\S]*?\n\};/.exec(contract)?.[0] ?? "";
@@ -115,4 +105,85 @@ export function findUnexplainedPlugins(plugins: string): string[]
                 return true;
             }
         });
+}
+
+export type PrivateComment = {
+    file: string;
+    line: number;
+    sentence: string;
+};
+
+export function findPrivateComments(source: string, dist: string): PrivateComment[]
+{
+    if (!existsSync(source))
+    {
+        return [];
+    }
+
+    if (!existsSync(dist))
+    {
+        throw new Error(`Nothing is built at ${dist}, so no comment can be checked against what ships. Build first.`);
+    }
+
+    const published = readdirSync(dist)
+        .filter((one) => one.endsWith(".d.ts"))
+        .map((one) => readFileSync(join(dist, one), "utf8"))
+        .join("\n");
+
+    const found: PrivateComment[] = [];
+
+    const walk = (folder: string): void =>
+    {
+        for (const entry of readdirSync(folder, { withFileTypes: true }))
+        {
+            const path = join(folder, entry.name);
+
+            if (entry.isDirectory())
+            {
+                if (entry.name !== "tests" && entry.name !== "node_modules")
+                {
+                    walk(path);
+                }
+
+                continue;
+            }
+
+            if (!/\.tsx?$/.test(entry.name))
+            {
+                continue;
+            }
+
+            const lines = readFileSync(path, "utf8").split("\n");
+
+            for (let at = 0; at < lines.length; at += 1)
+            {
+                if (!(lines[at] ?? "").trim().startsWith("/**"))
+                {
+                    continue;
+                }
+
+                let end = at;
+
+                while (end < lines.length && !(lines[end] ?? "").includes("*/"))
+                {
+                    end += 1;
+                }
+
+                const sentence = lines.slice(at, end + 1)
+                    .map((one) => one.replace(/^\s*\/?\*+\/?\s?/, "").trim())
+                    .filter(Boolean)[0] ?? "";
+
+                if (sentence !== "" && !published.includes(sentence.slice(0, 45)))
+                {
+                    found.push({ file: path.replace(`${source}/`, ""), line: at + 1, sentence });
+                }
+
+                at = end;
+            }
+        }
+    };
+
+    walk(source);
+
+    return found;
 }

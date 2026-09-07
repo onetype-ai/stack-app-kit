@@ -2,12 +2,6 @@ import { describe, expect, test } from "vitest";
 import { definePlugin } from "../../kernel/api";
 import { start } from "../internal/start";
 
-
-/**
- * The kernel announces a 401 as an event, so a plugin can send the viewer
- * somewhere. An event nothing declares throws when it is emitted, which
- * turned a refused session into a dead boot.
- */
 describe("a 401 from the server", () =>
 {
     test("reaches a plugin that listens for it", async () =>

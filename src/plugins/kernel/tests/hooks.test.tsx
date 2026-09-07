@@ -10,14 +10,14 @@ describe("useEventCallback", () =>
 {
     test("keeps one identity while calling the newest handler", () =>
     {
-        const seen: string[] = [];
+        const refusals: string[] = [];
         const identities = new Set<unknown>();
 
         function Probe({ label }: { label: string })
         {
             const callback = useEventCallback(() =>
             {
-                seen.push(label);
+                refusals.push(label);
             });
 
             identities.add(callback);
@@ -35,7 +35,7 @@ describe("useEventCallback", () =>
         fireEvent.click(screen.getByText("fire"));
 
         expect(identities.size).toBe(1);
-        expect(seen).toEqual(["second"]);
+        expect(refusals).toEqual(["second"]);
     });
 });
 
@@ -73,10 +73,10 @@ describe("useFocusTrap", () =>
     {
         render(<Trapped active={true} />);
 
-        const last = screen.getByText("two");
+        const lastItem = screen.getByText("two");
 
-        last.focus();
-        fireEvent.keyDown(last, { key: "Tab" });
+        lastItem.focus();
+        fireEvent.keyDown(lastItem, { key: "Tab" });
 
         expect(document.activeElement?.textContent).toBe("one");
     });
@@ -101,31 +101,31 @@ describe("useDismiss", () =>
 
     test("dismisses on a pointer down outside", () =>
     {
-        const told = vi.fn();
+        const dismissed = vi.fn();
 
-        render(<Panel onDismiss={told} />);
+        render(<Panel onDismiss={dismissed} />);
         fireEvent.pointerDown(screen.getByText("outside"));
 
-        expect(told).toHaveBeenCalledOnce();
+        expect(dismissed).toHaveBeenCalledOnce();
     });
 
     test("stays open on a pointer down inside", () =>
     {
-        const told = vi.fn();
+        const dismissed = vi.fn();
 
-        render(<Panel onDismiss={told} />);
+        render(<Panel onDismiss={dismissed} />);
         fireEvent.pointerDown(screen.getByText("inside"));
 
-        expect(told).not.toHaveBeenCalled();
+        expect(dismissed).not.toHaveBeenCalled();
     });
 
     test("dismisses on Escape", () =>
     {
-        const told = vi.fn();
+        const dismissed = vi.fn();
 
-        render(<Panel onDismiss={told} />);
+        render(<Panel onDismiss={dismissed} />);
         fireEvent.keyDown(document, { key: "Escape" });
 
-        expect(told).toHaveBeenCalledOnce();
+        expect(dismissed).toHaveBeenCalledOnce();
     });
 });

@@ -24,8 +24,8 @@ export type UnknownClass = {
 export function findUnknownTokens(root: string): UnknownToken[]
 {
     const files = walk(root);
-    const set = new Set<string>();
-    const asked: UnknownToken[] = [];
+    const defined = new Set<string>();
+    const used: UnknownToken[] = [];
 
     for (const file of files)
     {
@@ -35,25 +35,24 @@ export function findUnknownTokens(root: string): UnknownToken[]
         {
             for (const match of source.matchAll(/(?:^|[{;])\s*(--[a-z0-9-]+)\s*:/gm))
             {
-                set.add(match[1] ?? "");
+                defined.add(match[1] ?? "");
             }
 
             for (const match of source.matchAll(/var\((--[a-z0-9-]+)/g))
             {
-                asked.push({ file: relative(root, file), token: match[1] ?? "" });
+                used.push({ file: relative(root, file), token: match[1] ?? "" });
             }
 
             continue;
         }
 
-        // A component setting one through `style={{ "--seed": … }}`.
         for (const match of source.matchAll(/["'](--[a-z0-9-]+)["']\s*:/g))
         {
-            set.add(match[1] ?? "");
+            defined.add(match[1] ?? "");
         }
     }
 
-    return asked.filter((used) => !set.has(used.token));
+    return used.filter((one) => !defined.has(one.token));
 }
 
 /**

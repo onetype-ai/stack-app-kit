@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { findMissingDocs, findOversizedDocs, findUndocumentedKeys, findUnexplainedPlugins } from "../docs";
+import { findMissingDocs, findOversizedDocs, findPrivateComments, findUndocumentedKeys, findUnexplainedPlugins } from "../docs";
 
 let root = "";
 
@@ -89,13 +89,11 @@ describe("undocumented", () =>
         expect(findUndocumentedKeys(contract, "- `version` and `grants`.")).toEqual([]);
     });
 
-    // A build emits the shape without `export`, and reading it as nothing is
-    // how this answered "all documented" while checking no key at all.
     test("reads a shape a build emitted without export", () =>
     {
-        const emitted = contract.replace("export type", "type");
+        const withoutExport = contract.replace("export type", "type");
 
-        expect(findUndocumentedKeys(emitted, "- `version`: the version.")).toEqual(["grants"]);
+        expect(findUndocumentedKeys(withoutExport, "- `version`: the version.")).toEqual(["grants"]);
     });
 
     test("refuses a contract holding no Definition", () =>
@@ -139,5 +137,16 @@ describe("a plugin nobody can read", () =>
         writeFileSync(join(at, "plugins", "cart", "usage.md"), "# cart\n\nWhat it is for.\n");
 
         expect(findUnexplainedPlugins(join(at, "plugins"))).toEqual([]);
+    });
+});
+
+describe("a comment nobody outside this package can read", () =>
+{
+    test("does not exist: every one left in src reaches the published types", () =>
+    {
+        const found = findPrivateComments(join(process.cwd(), "src"), join(process.cwd(), "dist"))
+            .map((one) => `${one.file}:${String(one.line)} ${one.sentence}`);
+
+        expect(found).toEqual([]);
     });
 });

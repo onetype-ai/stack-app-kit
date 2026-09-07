@@ -75,7 +75,7 @@ export type Transport = {
      * Server-pushed messages. With no socket this succeeds and delivers
      * nothing, so a caller needs no branch.
      */
-    subscribe: (channel: string, told: (message: unknown) => void) => Subscription;
+    subscribe: (channel: string, receive: (message: unknown) => void) => Subscription;
 
     /** Stops the socket for good. */
     close: () => void;

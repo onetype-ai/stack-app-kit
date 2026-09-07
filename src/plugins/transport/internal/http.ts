@@ -9,7 +9,6 @@ type Settings = {
     headers?: (() => Readonly<Record<string, string>>) | undefined;
 };
 
-/** The channel that is always available. */
 export function http(settings: Settings): Channel
 {
     return {
@@ -48,9 +47,6 @@ export function http(settings: Settings): Channel
 
                 if (!response.ok)
                 {
-                    // The body carries what the server rejected, which a form
-                    // needs to show against the right field. An error that
-                    // dropped it made server-side validation unreachable.
                     let body: unknown;
 
                     try
@@ -101,13 +97,6 @@ export function http(settings: Settings): Channel
     };
 }
 
-/**
- * What a thrown thing means.
- *
- * The caller's own abort and our timeout both surface as one AbortError, and
- * they are not the same event: one is the caller changing its mind, the other
- * is a server that never answered and may answer next time.
- */
 function shape(cause: unknown, request: Request, aborter: AbortController, timeout: number): unknown
 {
     if (cause instanceof TransportFault)

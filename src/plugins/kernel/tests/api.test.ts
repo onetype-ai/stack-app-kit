@@ -4,7 +4,6 @@ import { z } from "zod";
 import { createKernel, definePlugin, KernelFault } from "../api";
 import type { Definition, Plugin } from "../api";
 
-/** A plugin with only what a case needs, and nothing that distracts from it. */
 function createPlugin(name: string, definition: Partial<Definition> = {}): Plugin
 {
     return definePlugin(name, {
@@ -14,7 +13,6 @@ function createPlugin(name: string, definition: Partial<Definition> = {}): Plugi
     });
 }
 
-/** Starts a kernel and answers what it refused, or undefined. */
 async function refused(plugins: readonly Plugin[], config: Record<string, unknown> = {}): Promise<KernelFault | undefined>
 {
     const kernel = createKernel({ plugins, config });
@@ -204,12 +202,12 @@ describe("config", () =>
 
     test("hands a plugin its own parsed config", async () =>
     {
-        let seen: unknown;
+        let config: unknown;
         const kernel = createKernel({
             plugins: [
                 createPlugin("billing", {
                     config: z.object({ pageSize: z.number() }),
-                    setup: (ctx) => void (seen = ctx.config),
+                    setup: (ctx) => void (config = ctx.config),
                 }),
             ],
             config: { billing: { pageSize: 50 } },
@@ -217,7 +215,7 @@ describe("config", () =>
 
         await kernel.start();
 
-        expect(seen).toEqual({ pageSize: 50 });
+        expect(config).toEqual({ pageSize: 50 });
     });
 });
 
@@ -386,7 +384,7 @@ describe("commands", () =>
 
     test("runs it when the permission is granted", async () =>
     {
-        let ran = false;
+        let refunded = false;
         const kernel = createKernel({
             plugins: [
                 createPlugin("billing", {
@@ -396,7 +394,7 @@ describe("commands", () =>
                             describe: "refunds",
                             schema: z.object({ id: z.string() }),
                             requires: ["billing.write"],
-                            run: () => void (ran = true),
+                            run: () => void (refunded = true),
                         },
                     },
                 }),
@@ -407,7 +405,7 @@ describe("commands", () =>
         await kernel.start();
         await kernel.run("billing.refund", { id: "1" });
 
-        expect(ran).toBe(true);
+        expect(refunded).toBe(true);
     });
 
     test("refuses input that fails the command's schema", async () =>
@@ -441,20 +439,20 @@ describe("services", () =>
 {
     test("a plugin reaches a declared dependency's services outside a component", async () =>
     {
-        let seen: unknown;
+        let reached: unknown;
         const kernel = createKernel({
             plugins: [
                 createPlugin("auth", { services: () => ({ who: () => "u1" }) }),
                 createPlugin("billing", {
                     dependsOn: ["auth"],
-                    setup: (ctx) => void (seen = ctx.use<{ who: () => string }>("auth").who()),
+                    setup: (ctx) => void (reached = ctx.use<{ who: () => string }>("auth").who()),
                 }),
             ],
         });
 
         await kernel.start();
 
-        expect(seen).toBe("u1");
+        expect(reached).toBe("u1");
     });
 
     test("refuses reaching a plugin it did not declare", async () =>
@@ -473,10 +471,10 @@ describe("teardown", () =>
 {
     test("tears down in reverse, and one that throws does not strand the rest", async () =>
     {
-        const seen: string[] = [];
+        const stopped: string[] = [];
         const kernel = createKernel({
             plugins: [
-                createPlugin("auth", { teardown: () => void seen.push("auth") }),
+                createPlugin("auth", { teardown: () => void stopped.push("auth") }),
                 createPlugin("billing", { dependsOn: ["auth"], teardown: () => { throw new Error("stuck"); } }),
             ],
         });
@@ -484,7 +482,7 @@ describe("teardown", () =>
         await kernel.start();
         await kernel.stop();
 
-        expect(seen).toEqual(["auth"]);
+        expect(stopped).toEqual(["auth"]);
         expect(kernel.started()).toBe(false);
     });
 });
@@ -599,12 +597,12 @@ describe("config defaults", () =>
 
     test("a plugin reads the defaults its schema filled in", async () =>
     {
-        let seen: unknown;
+        let filled: unknown;
         const kernel = createKernel({
             plugins: [
                 createPlugin("billing", {
                     config: z.object({ pageSize: z.number().default(25), flag: z.boolean().default(false) }),
-                    setup: (ctx) => void (seen = ctx.config),
+                    setup: (ctx) => void (filled = ctx.config),
                 }),
             ],
             config: { billing: { pageSize: 50 } },
@@ -612,7 +610,7 @@ describe("config defaults", () =>
 
         await kernel.start();
 
-        expect(seen).toEqual({ pageSize: 50, flag: false });
+        expect(filled).toEqual({ pageSize: 50, flag: false });
     });
 
     test("a required key with nothing to default to is still refused", async () =>

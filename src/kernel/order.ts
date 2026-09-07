@@ -1,15 +1,9 @@
 import { Fault } from "./errors";
 import type { Plugin } from "./plugin";
 
-/**
- * Sorts plugins so every one boots after the plugins it needs.
- *
- * Ties break by name, so one set always yields one order. A run that varied
- * would make what a plugin sees at boot depend on iteration order.
- */
-export function order(known: ReadonlyMap<string, Plugin>): Plugin[]
+export function order(plugins: ReadonlyMap<string, Plugin>): Plugin[]
 {
-    const sorted: Plugin[] = [];
+    const ordered: Plugin[] = [];
     const state = new Map<string, "open" | "done">();
     const walking: string[] = [];
 
@@ -25,7 +19,7 @@ export function order(known: ReadonlyMap<string, Plugin>): Plugin[]
             throw new Fault("CYCLE", `plugins need each other in a loop: ${loop(walking, name)}.`);
         }
 
-        const plugin = known.get(name);
+        const plugin = plugins.get(name);
 
         if (plugin === undefined)
         {
@@ -47,21 +41,17 @@ export function order(known: ReadonlyMap<string, Plugin>): Plugin[]
 
         walking.pop();
         state.set(name, "done");
-        sorted.push(plugin);
+        ordered.push(plugin);
     }
 
-    for (const name of [...known.keys()].sort())
+    for (const name of [...plugins.keys()].sort())
     {
         walk(name);
     }
 
-    return sorted;
+    return ordered;
 }
 
-/**
- * Names the loop, from where it was entered back to itself, so the message
- * points at the plugins to fix rather than at one of them.
- */
 function loop(walking: readonly string[], name: string): string
 {
     const at = walking.indexOf(name);

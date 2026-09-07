@@ -1,10 +1,3 @@
-/**
- * What an application takes from this package.
- *
- * The one file that names a plugin. Everything else reaches another plugin
- * through the host, by a name it declared in needs, and tools/boundaries.mjs
- * checks that this stays true.
- */
 
 export { boot, RunningApp } from "./kernel/boot";
 export { Fault } from "./kernel/errors";

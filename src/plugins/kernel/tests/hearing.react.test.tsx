@@ -33,14 +33,14 @@ async function startKernel(): Promise<Kernel>
 
 function Counter(): ReactNode
 {
-    const [seen, setSeen] = useState<string[]>([]);
+    const [heard, setHeard] = useState<string[]>([]);
 
     useEvent("badge", "mail.arrived", (payload) =>
     {
-        setSeen((before) => [...before, (payload as { id: string }).id]);
+        setHeard((before) => [...before, (payload as { id: string }).id]);
     });
 
-    return <p>{seen.join(",") || "nothing"}</p>;
+    return <p>{heard.join(",") || "nothing"}</p>;
 }
 
 describe("a component hearing an event", () =>
@@ -60,10 +60,6 @@ describe("a component hearing an event", () =>
         await kernel.stop();
     });
 
-    /**
-     * The bug this prevents: a component that unmounts and leaves its ear
-     * behind updates state on something that is gone.
-     */
     test("stops hearing once it leaves", async () =>
     {
         const kernel = await startKernel();
@@ -79,10 +75,6 @@ describe("a component hearing an event", () =>
         await kernel.stop();
     });
 
-    /**
-     * StrictMode mounts, unmounts and mounts again. An ear that is not
-     * cleaned up would then be two, and one arrival would count as two.
-     */
     test("hears once under StrictMode, not twice", async () =>
     {
         const kernel = await startKernel();

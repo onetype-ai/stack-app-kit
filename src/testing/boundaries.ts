@@ -24,8 +24,6 @@ export function findImportViolations(root: string): ImportViolation[]
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name);
 
-    // A folder with no contract is a finding, never a crash: reading it would
-    // throw and take every other check down with it.
     const contracts = names.filter((name) => existsSync(join(root, name, "plugin.ts")));
 
     const missing = names
@@ -67,12 +65,6 @@ function files(root: string, name: string): { path: string; source: string }[]
         });
 }
 
-// A specifier is resolved against the file that wrote it rather than matched as
-// text: "../../other/thing" reaches the same private file an alias would, and a
-// rule reading the alias alone calls that clean.
-// Both quote styles, and all three shapes an import takes. Reading only
-// `from "x"` let a single-quoted import, a dynamic import() and a require()
-// cross a boundary while the check reported nothing at all.
 const IMPORTS = [
     /(?:^|\s)(?:import|export)(?:\s+type)?\s[^;]*?from\s+["']([^"']+)["']/g,
     /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,

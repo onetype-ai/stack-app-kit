@@ -1,21 +1,14 @@
 import type { Socket } from "../api";
 
-/**
- * A socket a test drives.
- *
- * It fails where a real one fails: a send before open throws, a close after
- * close is a no-op, and nothing is delivered once it has closed. A fake that
- * accepted what a real one rejects is where bugs hide.
- */
 export function fakeSocket(): Socket & {
     opened: () => void;
-    delivered: (raw: string) => void;
+    delivered: (text: string) => void;
     dropped: () => void;
     failed: () => void;
     sent: () => string[];
 } {
     const listeners = new Map<string, ((event: unknown) => void)[]>();
-    const written: string[] = [];
+    const outbox: string[] = [];
 
     let state = 0;
 
@@ -35,7 +28,7 @@ export function fakeSocket(): Socket & {
                 throw new Error("socket is not open");
             }
 
-            written.push(data);
+            outbox.push(data);
         },
 
         close: () =>
@@ -60,14 +53,14 @@ export function fakeSocket(): Socket & {
             fire("open");
         },
 
-        delivered: (raw: string) =>
+        delivered: (text: string) =>
         {
             if (state !== 1)
             {
                 return;
             }
 
-            fire("message", { data: raw });
+            fire("message", { data: text });
         },
 
         dropped: () =>
@@ -81,11 +74,10 @@ export function fakeSocket(): Socket & {
             fire("error");
         },
 
-        sent: () => [...written],
+        sent: () => [...outbox],
     };
 }
 
-/** What one fetch answers with. */
 export type Answering = {
     status?: number;
     body?: unknown;
@@ -93,12 +85,6 @@ export type Answering = {
     throws?: unknown;
 };
 
-/**
- * Replaces fetch for one test, and records what it was asked.
- *
- * Returns what was called, so a test can assert that a request that must not
- * be re-sent was sent exactly once.
- */
 export function fakeFetch(answers: Answering[]): {
     calls: () => { url: string; method: string; body: unknown }[];
     restore: () => void;

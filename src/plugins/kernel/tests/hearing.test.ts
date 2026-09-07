@@ -41,10 +41,6 @@ describe("hearing an event while a view is on screen", () =>
         await kernel.stop();
     });
 
-    /**
-     * A view leaves the screen, and its ear leaves with it. Without this a
-     * plugin writes its own subscribers, which is a second event system.
-     */
     test("and stops when what it answered is called", async () =>
     {
         const kernel = createKernel({ plugins: [createEmitter("mail"), createPlugin("badge", { dependsOn: ["mail"] })] });

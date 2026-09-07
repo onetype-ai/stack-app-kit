@@ -76,6 +76,10 @@ export type Route<Config = unknown, Services = unknown> = {
      * may see but should not be on yet: a checkout with an empty cart is not
      * forbidden, it is early. Answering a path sends them there before
      * anything renders, so the wrong screen never flashes.
+     *
+     * Asked before `requires`. A route naming both is the ordinary
+     * signed-out case, where "not yours to open" is no use to somebody
+     * nobody has asked to sign in yet.
      */
     instead?: (ctx: Context<Config, Services>) => string | undefined;
 };
@@ -114,6 +118,11 @@ export type Request = {
  *
  * A shape, not our transport: anything matching it satisfies the kernel, and
  * the two never import each other.
+ *
+ * Every method answers the body the server sent and nothing wrapped around
+ * it: a 2xx is the parsed body, a 204 is `undefined`, and anything else
+ * throws. A fake answering `{ status, body }` describes the channel
+ * underneath rather than this, and every call written against it is wrong.
  */
 export type Client = {
     get: (path: string, request?: Request) => Promise<unknown>;
@@ -131,7 +140,7 @@ export type Cache = {
 /** What the kernel needs to hear a server push. */
 export type Realtime = {
     channel: () => "ws" | "http";
-    subscribe: (channel: string, told: (message: unknown) => void) => { close: () => void };
+    subscribe: (channel: string, receive: (message: unknown) => void) => { close: () => void };
 };
 
 /** What every plugin function receives. */
@@ -183,13 +192,6 @@ export type Context<Config = unknown, Services = unknown> = {
     use: <Api>(plugin: string) => Api;
 };
 
-/**
- * Blocks inference at this position.
- *
- * Services is inferred from what `services` returns and from nowhere else. A
- * callback taking a context would otherwise be a second inference site, and
- * two candidates for one parameter resolve to unknown.
- */
 type Given<Api> = NoInfer<Api>;
 
 /** Everything a plugin declares about itself. */

@@ -7,7 +7,6 @@ import type { Plugin } from "../plugin";
 
 const quiet = (): void => {};
 
-/** A plugin that records the order it booted in, and nothing else. */
 function createPlugin(name: string, needs: readonly string[] = [], into: string[] = []): Plugin
 {
     return {
@@ -74,18 +73,18 @@ describe("start and stop", () =>
 {
     test("starts in boot order and stops in reverse", async () =>
     {
-        const seen: string[] = [];
+        const order: string[] = [];
         const recordingPlugin = (name: string, needs: readonly string[] = []): Plugin => ({
             name,
             needs,
             boot: () => {},
             start: () =>
             {
-                seen.push(`start ${name}`);
+                order.push(`start ${name}`);
             },
             stop: () =>
             {
-                seen.push(`stop ${name}`);
+                order.push(`stop ${name}`);
             },
         });
 
@@ -94,19 +93,19 @@ describe("start and stop", () =>
         await app.start();
         await app.stop();
 
-        expect(seen).toEqual(["start first", "start second", "stop second", "stop first"]);
+        expect(order).toEqual(["start first", "start second", "stop second", "stop first"]);
     });
 
     test("a start that throws stops what already started", async () =>
     {
-        const seen: string[] = [];
+        const order: string[] = [];
         const app = boot(quiet, [
             {
                 name: "first",
                 boot: () => {},
                 stop: () =>
                 {
-                    seen.push("stop first");
+                    order.push("stop first");
                 },
             },
             {
@@ -122,12 +121,12 @@ describe("start and stop", () =>
 
         await expect(app.start()).rejects.toThrow("no socket");
 
-        expect(seen).toEqual(["stop first"]);
+        expect(order).toEqual(["stop first"]);
     });
 
     test("a stop that throws does not strand the plugins behind it", async () =>
     {
-        const seen: string[] = [];
+        const order: string[] = [];
         const app = boot(quiet, [
             {
                 name: "first",
@@ -135,7 +134,7 @@ describe("start and stop", () =>
                 start: () => {},
                 stop: () =>
                 {
-                    seen.push("stop first");
+                    order.push("stop first");
                 },
             },
             {
@@ -153,7 +152,7 @@ describe("start and stop", () =>
         await app.start();
         await app.stop();
 
-        expect(seen).toEqual(["stop first"]);
+        expect(order).toEqual(["stop first"]);
     });
 });
 
@@ -161,7 +160,7 @@ describe("what a plugin may do", () =>
 {
     test("takes the api a plugin it needs offered", () =>
     {
-        let taken: unknown;
+        let offered: unknown;
 
         boot(quiet, [
             { name: "storage", boot: (host: Host) => host.offer("storage", { size: 8 }) },
@@ -170,12 +169,12 @@ describe("what a plugin may do", () =>
                 needs: ["storage"],
                 boot: (host: Host) =>
                 {
-                    taken = host.take("storage");
+                    offered = host.take("storage");
                 },
             },
         ]);
 
-        expect(taken).toEqual({ size: 8 });
+        expect(offered).toEqual({ size: 8 });
     });
 
     test("refuses a second offer under one name, naming the first owner", () =>

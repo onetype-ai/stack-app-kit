@@ -24,13 +24,10 @@ export async function start(starting: Starting): Promise<Started>
         log?.info(line, about);
     };
 
-    // A rejection can arrive before the kernel exists, and the plugin that
-    // wants to hear it has not been built yet. Hold those and replay once it
-    // can: dropping them would sign a user out with nothing on screen.
-    const early: string[] = [];
+    const beforeKernel: string[] = [];
     let announce = (path: string): void =>
     {
-        early.push(path);
+        beforeKernel.push(path);
     };
 
     const app = boot(say, [
@@ -44,35 +41,28 @@ export async function start(starting: Starting): Promise<Started>
         }),
     ]);
 
-    const live = transportFrom(app.host);
+    const carrier = transportFrom(app.host);
 
-    if (live === undefined)
+    if (carrier === undefined)
     {
         throw new Error("mount: the transport plugin offered nothing.");
     }
 
-    const channel = await live.connect();
+    const channel = await carrier.connect();
 
     log?.info("transport ready", { channel });
 
     const realtime: Realtime = {
         channel: () =>
         {
-            return live.channel();
+            return carrier.channel();
         },
-        subscribe: (topic, told) =>
+        subscribe: (topic, receive) =>
         {
-            return live.subscribe(topic, told);
+            return carrier.subscribe(topic, receive);
         },
     };
 
-    /**
-     * What the mount announces on its own behalf.
-     *
-     * A 401 is heard by whoever wants to send the viewer somewhere, so it is
-     * an event. Declared here because the kernel emits it, and an event no
-     * plugin owns throws where it is emitted.
-     */
     const announcer = definePlugin("transport", {
         version: "1.0.0",
         describe: "What the transport announces to the application.",
@@ -86,7 +76,7 @@ export async function start(starting: Starting): Promise<Started>
 
     const kernel = createKernel({
         plugins: [announcer, ...starting.plugins],
-        http: client(live),
+        http: client(carrier),
         realtime,
         ...(starting.cache !== undefined && { cache: starting.cache }),
         ...(starting.config !== undefined && { config: starting.config }),
@@ -106,14 +96,14 @@ export async function start(starting: Starting): Promise<Started>
         kernel.context("transport").events.emit("transport.unauthorized", { path });
     };
 
-    for (const path of early.splice(0))
+    for (const path of beforeKernel.splice(0))
     {
         announce(path);
     }
 
     return {
         kernel,
-        http: client(live),
+        http: client(carrier),
         realtime,
         channel,
 

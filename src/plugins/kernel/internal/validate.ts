@@ -18,12 +18,6 @@ type Owned = {
     permissions: Map<string, string>;
 };
 
-/**
- * Checks every contract, and reports everything wrong rather than the first.
- *
- * An application with four mistakes should learn all four in one run rather
- * than in four runs, each ending at a different one.
- */
 export function validate(plugins: readonly Plugin[], config: Readonly<Record<string, unknown>>): ContractProblem[]
 {
     const problems: ContractProblem[] = [];
@@ -55,14 +49,11 @@ export function validate(plugins: readonly Plugin[], config: Readonly<Record<str
         permissions: new Map(),
     };
 
-    // First pass: what each plugin declares, and what it collides with.
     for (const [name, plugin] of by)
     {
         checkOwn(name, plugin, owned, say);
     }
 
-    // Second pass: what each plugin refers to. Everything declared is known
-    // by now, so an order-dependent answer is impossible.
     for (const [name, plugin] of by)
     {
         checkReferences(name, plugin, by, owned, say);
@@ -75,7 +66,6 @@ export function validate(plugins: readonly Plugin[], config: Readonly<Record<str
     return problems;
 }
 
-/** What a plugin declares, and whether anyone claimed it first. */
 function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
 {
     const claim = (
@@ -178,7 +168,6 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
     }
 }
 
-/** Checks one namespaced name, reporting rather than throwing. */
 function checkNamespaced(owner: string, key: string, kind: string, say: (code: KernelFault["code"], plugin: string, message: string) => void): boolean
 {
     try
@@ -195,7 +184,6 @@ function checkNamespaced(owner: string, key: string, kind: string, say: (code: K
     }
 }
 
-/** What a plugin refers to: it must exist, and be reachable. */
 function checkReferences(
     name: string,
     plugin: Plugin,
@@ -214,7 +202,6 @@ function checkReferences(
         }
     }
 
-    /** Everything referred to is declared somewhere, and owned by us or by something we depend on. */
     const reach = (
         kind: keyof Owned,
         key: string,
@@ -274,7 +261,6 @@ function checkReferences(
     }
 }
 
-/** Config is parsed by the plugin's own schema, where it enters. */
 function checkConfig(
     name: string,
     plugin: Plugin,
@@ -289,9 +275,6 @@ function checkConfig(
         return;
     }
 
-    // A plugin whose every key has a default is satisfied by nothing at all,
-    // so an absent section parses as {} rather than as undefined. Refusing it
-    // would make every application write an empty object per plugin.
     const answer = schema.safeParse(config[name] ?? {});
 
     if (!answer.success)
@@ -303,7 +286,6 @@ function checkConfig(
     }
 }
 
-/** What only one plugin may own, because two answers is no answer. */
 function checkGrants(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
 {
     const alone = (
@@ -326,7 +308,6 @@ function checkGrants(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["c
     alone("DUPLICATE_PAGE", "a 404 page", (plugin) => plugin.definition.pages?.missing !== undefined);
 }
 
-/** A cycle in dependsOn, named from where it was entered back to itself. */
 function checkCycles(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
 {
     const state = new Map<string, "open" | "done">();

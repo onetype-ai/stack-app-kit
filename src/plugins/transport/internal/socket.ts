@@ -19,7 +19,6 @@ type InFlight = {
     timer: ReturnType<typeof setTimeout>;
 };
 
-/** The socket channel, and the reconnect loop behind it. */
 export function socket(settings: Settings)
 {
     const waiting = new Map<string, InFlight>();
@@ -32,12 +31,6 @@ export function socket(settings: Settings)
     let later: ReturnType<typeof setTimeout> | undefined;
     let counter = 0;
 
-    /**
-     * Fails everything in flight.
-     *
-     * A request whose socket went away must fail rather than hang: a caller
-     * waiting forever is worse than one told the connection dropped.
-     */
     function failAll(cause: TransportFault): void
     {
         for (const [, pending] of waiting)
@@ -84,9 +77,9 @@ export function socket(settings: Settings)
             return;
         }
 
-        for (const told of subscribers.get(read.channel) ?? [])
+        for (const receive of subscribers.get(read.channel) ?? [])
         {
-            told(read.message);
+            receive(read.message);
         }
     }
 
@@ -247,17 +240,17 @@ export function socket(settings: Settings)
 
         connect,
 
-        subscribe: (topic: string, told: (message: unknown) => void): Subscription =>
+        subscribe: (topic: string, receive: (message: unknown) => void): Subscription =>
         {
             const listeners = subscribers.get(topic) ?? new Set<(message: unknown) => void>();
 
-            listeners.add(told);
+            listeners.add(receive);
             subscribers.set(topic, listeners);
 
             return {
                 close: () =>
                 {
-                    listeners.delete(told);
+                    listeners.delete(receive);
 
                     if (listeners.size === 0)
                     {

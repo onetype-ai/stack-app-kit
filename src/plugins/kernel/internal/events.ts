@@ -12,17 +12,16 @@ export type Failure = {
 
 type Subscriber<Context> = { plugin: string; listener: Listener<Context> };
 
-/** The event bus: who publishes what, and who hears it. */
 export function events<Context>(now: () => number = Date.now)
 {
-    const declared = new Map<string, { owner: string; event: Event }>();
+    const declaredBy = new Map<string, { owner: string; event: Event }>();
     const listeners = new Map<string, Subscriber<Context>[]>();
     const failures: Failure[] = [];
 
     return {
         declare: (owner: string, name: string, event: Event): void =>
         {
-            declared.set(name, { owner, event });
+            declaredBy.set(name, { owner, event });
         },
 
         listen: (plugin: string, name: string, listener: Listener<Context>): (() => void) =>
@@ -37,16 +36,9 @@ export function events<Context>(now: () => number = Date.now)
             };
         },
 
-        /**
-         * Publishes an event, after checking that this plugin owns it and the
-         * payload matches what it declared.
-         *
-         * A payload that fails its schema is refused rather than delivered:
-         * every listener would break differently on it, far from here.
-         */
         emit: (plugin: string, name: string, payload: unknown, ctx: (plugin: string) => Context): void =>
         {
-            const owned = declared.get(name);
+            const owned = declaredBy.get(name);
 
             if (owned === undefined)
             {
@@ -74,12 +66,9 @@ export function events<Context>(now: () => number = Date.now)
 
                 try
                 {
-                    const answered = to.listener.handle(answer.data, ctx(to.plugin));
+                    const running = to.listener.handle(answer.data, ctx(to.plugin));
 
-                    // A listener that returns a promise still must not reach
-                    // the emitter: an unhandled rejection would surface as a
-                    // failure of whatever emitted, seconds later.
-                    void Promise.resolve(answered).catch((error: unknown) =>
+                    void Promise.resolve(running).catch((error: unknown) =>
                     {
                         failures.push({ event: name, plugin: to.plugin, error, at: now() });
                     });
@@ -91,7 +80,6 @@ export function events<Context>(now: () => number = Date.now)
             }
         },
 
-        /** Every delivery that threw. An application reads this to see them. */
         failures: (): readonly Failure[] =>
         {
             return [...failures];
@@ -99,7 +87,7 @@ export function events<Context>(now: () => number = Date.now)
 
         owner: (name: string): string | undefined =>
         {
-            return declared.get(name)?.owner ?? names.owner(name);
+            return declaredBy.get(name)?.owner ?? names.owner(name);
         },
     };
 }

@@ -35,3 +35,10 @@ earns its weight here.
 
 Everything is checked before anything starts, and every problem is reported at
 once. `start` brings up every plugin or throws. Nothing partially starts.
+
+## Comments
+
+Only where they reach the reader: a JSDoc block on something the package
+publishes, which an author sees on hover in their own editor. Everything else
+goes into a name, or into the name of a test that fails when it stops being
+true. `findPrivateComments()` refuses one that never reaches `dist`.

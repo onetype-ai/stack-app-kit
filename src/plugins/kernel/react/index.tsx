@@ -121,7 +121,7 @@ export function useEvent(plugin: string, event: string, handle: (payload: unknow
  * new object each call makes React re-render forever.
  */
 export function useStore<Value>(
-    watch: (told: () => void) => () => void,
+    watch: (notify: () => void) => () => void,
     read: () => Value,
 ): Value
 {
@@ -131,9 +131,9 @@ export function useStore<Value>(
     latestWatch.current = watch;
     latestRead.current = read;
 
-    const subscribe = useCallback((told: () => void) =>
+    const subscribe = useCallback((notify: () => void) =>
     {
-        return latestWatch.current(told);
+        return latestWatch.current(notify);
     }, []);
 
     const snapshot = useCallback(() =>
@@ -184,18 +184,18 @@ export function RouteGuard({ route, send }: { route: Registered; send?: (to: str
     const kernel = useKernel();
     const pages = usePages();
 
-    const lacking = (route.requires ?? []).filter((permission) => !kernel.permissions.has(permission));
-
-    if (lacking.length > 0)
-    {
-        return <pages.forbidden permission={lacking[0]} />;
-    }
-
     const elsewhere = route.instead?.(kernel.context(route.plugin));
 
     if (elsewhere !== undefined)
     {
         return send === undefined ? null : send(elsewhere);
+    }
+
+    const lacking = (route.requires ?? []).filter((permission) => !kernel.permissions.has(permission));
+
+    if (lacking.length > 0)
+    {
+        return <pages.forbidden permission={lacking[0]} />;
     }
 
     if (route.title !== undefined && typeof document !== "undefined")
@@ -258,13 +258,6 @@ type BoundaryProps = {
 
 type BoundaryState = { error: unknown };
 
-/**
- * Contains a failure to one region.
- *
- * The previous build logged through a logger no caller could pass, so every
- * render crash was swallowed while the docs promised it was recorded. This
- * one renders what it caught, which is visible without any wiring at all.
- */
 class Boundary extends Component<BoundaryProps, BoundaryState>
 {
     override state: BoundaryState = { error: undefined };

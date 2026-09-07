@@ -16,7 +16,6 @@ afterEach(() =>
     }
 });
 
-/** Writes a plugin tree on disk, because that is what the check reads. */
 function tree(plugins: Readonly<Record<string, Readonly<Record<string, string>>>>): string
 {
     root = mkdtempSync(join(tmpdir(), "boundaries-"));
@@ -147,9 +146,6 @@ describe("cycles", () =>
     });
 });
 
-/* A check that reports nothing is worse than one that reports wrongly: the
-   first reads as a clean project. Each of these crossed a boundary while the
-   old pattern, which read only `from "x"`, saw an empty file. */
 describe("an import the pattern used to miss", () =>
 {
     test("is caught when it is written with single quotes", () =>

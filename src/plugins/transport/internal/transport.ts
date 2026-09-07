@@ -8,7 +8,6 @@ import { socket } from "./socket";
 
 type Said = (line: string, about?: Readonly<Record<string, unknown>>) => void;
 
-/** Builds the one HTTP boundary, over whichever channels the settings allow. */
 export function transport(settings: Settings, say: Said): Transport
 {
     const timeout = settings.timeout ?? 15_000;
@@ -16,13 +15,13 @@ export function transport(settings: Settings, say: Said): Transport
     const retryBase = settings.retryBase ?? 200;
     const rest = settings.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)));
 
-    const over = http({
+    const overHttp = http({
         baseUrl: settings.baseUrl,
         timeout,
         headers: settings.headers,
     });
 
-    const live = settings.wsUrl !== undefined && settings.openSocket !== undefined
+    const socketChannel = settings.wsUrl !== undefined && settings.openSocket !== undefined
         ? socket({
             wsUrl: settings.wsUrl,
             timeout,
@@ -33,10 +32,9 @@ export function transport(settings: Settings, say: Said): Transport
         })
         : undefined;
 
-    /** One attempt, on whichever channel is live. */
     async function sendOnce(request: Request): Promise<Answer>
     {
-        const channel = live !== undefined && live.channel.open() ? live.channel : over;
+        const channel = socketChannel !== undefined && socketChannel.channel.open() ? socketChannel.channel : overHttp;
 
         try
         {
@@ -44,16 +42,13 @@ export function transport(settings: Settings, say: Said): Transport
         }
         catch (cause)
         {
-            const dropped = channel.name === "ws" && cause instanceof TransportFault && cause.retryable;
+            const socketDropped = channel.name === "ws" && cause instanceof TransportFault && cause.retryable;
 
-            // Only an idempotent request may move channels. The socket may
-            // have delivered a POST before it dropped, and sending it again
-            // over http would apply it twice.
-            if (dropped && methods.idempotent(request.method))
+            if (socketDropped && methods.idempotent(request.method))
             {
                 say("socket request failed; http is carrying it", { path: request.path });
 
-                return over.send(request);
+                return overHttp.send(request);
             }
 
             throw cause;
@@ -65,22 +60,19 @@ export function transport(settings: Settings, say: Said): Transport
     return {
         connect: async (): Promise<Channel> =>
         {
-            if (live === undefined)
+            if (socketChannel === undefined)
             {
                 return "http";
             }
 
-            if (live.channel.open())
+            if (socketChannel.channel.open())
             {
                 return "ws";
             }
 
-            // A second call joins the one in flight. Opening another socket
-            // would leave the first delivering, so every push would arrive
-            // twice and close would only close one of them.
-            connecting ??= live
+            connecting ??= socketChannel
                 .connect()
-                .then((opened): Channel => (opened ? "ws" : "http"))
+                .then((connected): Channel => (connected ? "ws" : "http"))
                 .finally(() =>
                 {
                     connecting = undefined;
@@ -91,12 +83,12 @@ export function transport(settings: Settings, say: Said): Transport
 
         channel: (): Channel =>
         {
-            return live !== undefined && live.channel.open() ? "ws" : "http";
+            return socketChannel !== undefined && socketChannel.channel.open() ? "ws" : "http";
         },
 
         request: async (request: Request): Promise<unknown> =>
         {
-            let last: unknown;
+            let refusal: unknown;
 
             for (let attempt = 0; attempt <= retries; attempt += 1)
             {
@@ -106,7 +98,7 @@ export function transport(settings: Settings, say: Said): Transport
                 }
                 catch (cause)
                 {
-                    last = cause;
+                    refusal = cause;
 
                     if (cause instanceof TransportFault && cause.code === "UNAUTHORIZED")
                     {
@@ -128,24 +120,24 @@ export function transport(settings: Settings, say: Said): Transport
                 }
             }
 
-            throw last;
+            throw refusal;
         },
 
-        subscribe: (channel: string, told: (message: unknown) => void): Subscription =>
+        subscribe: (channel: string, receive: (message: unknown) => void): Subscription =>
         {
-            if (live === undefined)
+            if (socketChannel === undefined)
             {
                 say("subscribe was called with no socket configured", { channel });
 
                 return { close: () => {} };
             }
 
-            return live.subscribe(channel, told);
+            return socketChannel.subscribe(channel, receive);
         },
 
         close: (): void =>
         {
-            live?.close();
+            socketChannel?.close();
         },
     };
 }

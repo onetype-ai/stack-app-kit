@@ -1,14 +1,3 @@
-/**
- * Where a request goes.
- *
- * A base may be absolute ("https://api.example.test") or relative to wherever
- * the page is served from ("/api"), and the second is what an application
- * behind a proxy actually passes. `new URL` cannot resolve against a relative
- * base at all, so that case is joined by hand.
- *
- * A query value is serialised by URLSearchParams and never by hand: a string
- * quoted into a parameter silently breaks the link someone shares.
- */
 export function address(
     baseUrl: string,
     path: string,

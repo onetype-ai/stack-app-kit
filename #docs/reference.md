@@ -10,7 +10,7 @@ type Context<Config = unknown, Services = unknown> = {
     log: Logger; http: Client; cache: Cache; realtime: Realtime;
     events: {
         emit: (event: string, payload: unknown) => void;
-        on: (event: string, told: (payload: unknown) => void) => () => void;
+        on: (event: string, handle: (payload: unknown) => void) => () => void;
     };
     hooks: { run: (hook: string, payload: unknown) => Promise<string | undefined> };
     permissions: { has: (one: string) => boolean; all: (many: readonly string[]) => boolean };
@@ -24,13 +24,17 @@ type Client = { get; post; put; patch; delete: (path: string, request?: Request)
 type Cache = { invalidate: (key: readonly unknown[]) => void };
 type Realtime = {
     channel: () => "ws" | "http";
-    subscribe: (channel: string, told: (message: unknown) => void) => { close: () => void };
+    subscribe: (channel: string, receive: (message: unknown) => void) => { close: () => void };
 };
 ```
 
 These three arrive without being declared. With no socket, `channel()` answers
 `"http"` and `subscribe` delivers nothing, so a caller needs no branch. With
 no client at all, `http` and `cache` throw naming what to pass.
+
+**`http` answers the body, never an envelope.** A 204 is `undefined`, anything
+but a 2xx throws. A fake answering `{ status, body }` describes the channel
+underneath, and tests itself rather than the code.
 
 `hooks.run` answers the first refusal, or nothing. `use` reaches another
 plugin's services outside a component, so a plain function can call it.
@@ -105,7 +109,8 @@ useStore(watch, read): Value                         // a value a service keeps
 
 `Route.instead(ctx)` answers a path when the viewer belongs elsewhere: a
 checkout with an empty cart is early, not forbidden. `send` does the going,
-since the kit imports no router.
+since the kit imports no router. `RouteGuard` asks it **before** `requires`:
+a signed-out reader is sent to sign in, not told the page is not theirs.
 
 Memoise what `useStore`'s `read` answers, or it never stops re-rendering.
 

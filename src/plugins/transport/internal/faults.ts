@@ -55,7 +55,6 @@ export class TransportFault extends Error
         this.body = about.body;
     }
 
-    /** What a status means, and whether trying again could help. */
     static fromStatus(status: number, about: { method: string; path: string; body?: unknown }): TransportFault
     {
         const known: Readonly<Record<number, { code: FaultCode; message: string }>> = {

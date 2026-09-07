@@ -13,7 +13,6 @@ function createPlugin(name: string, definition: Partial<Definition> = {}): Plugi
     return definePlugin(name, { version: "1.0.0", describe: `The ${name} plugin.`, ...definition });
 }
 
-/** A started kernel, rendered under a provider. */
 async function shown(plugins: readonly Plugin[], granted: readonly string[], children: React.ReactNode)
 {
     const kernel = createKernel({ plugins, permissions: { granted: () => granted } });

@@ -16,7 +16,6 @@ afterEach(() =>
     restore = undefined;
 });
 
-/** A booted transport, and the fetch behind it. */
 function startTransport(answers: Answering[], settings: Partial<Parameters<typeof plugin>[0]> = {})
 {
     const fetches = fakeFetch(answers);
@@ -117,14 +116,14 @@ describe("refusals", () =>
 
     test("a 401 tells the caller once, and does not retry", async () =>
     {
-        const seen: string[] = [];
+        const refused: string[] = [];
         const { transport, fetches } = startTransport([{ status: 401, body: {} }], {
-            onUnauthorized: (path: string) => seen.push(path),
+            onUnauthorized: (path: string) => refused.push(path),
         });
 
         await transport.request({ method: "GET", path: "/me" }).catch(() => undefined);
 
-        expect(seen).toEqual(["/me"]);
+        expect(refused).toEqual(["/me"]);
         expect(fetches.calls()).toHaveLength(1);
     });
 });
@@ -194,7 +193,6 @@ describe("without a socket", () =>
 
 describe("with a socket", () =>
 {
-    /** A transport whose socket the test drives. */
     function startSocket(answers: Answering[] = [{ body: {} }])
     {
         const fetches = fakeFetch(answers);

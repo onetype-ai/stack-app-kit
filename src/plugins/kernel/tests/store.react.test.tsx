@@ -8,7 +8,6 @@ import type { ReactNode } from "react";
 
 afterEach(cleanup);
 
-/** What a service looks like when it keeps something: a value, and a way to hear it move. */
 function createStore(start: number)
 {
     const listeners = new Set<() => void>();
@@ -21,18 +20,18 @@ function createStore(start: number)
         {
             current = next;
 
-            for (const told of listeners)
+            for (const notify of listeners)
             {
-                told();
+                notify();
             }
         },
-        watch: (told: () => void): (() => void) =>
+        watch: (notify: () => void): (() => void) =>
         {
-            listeners.add(told);
+            listeners.add(notify);
 
             return () =>
             {
-                listeners.delete(told);
+                listeners.delete(notify);
             };
         },
         read: (): number => current,
@@ -70,7 +69,6 @@ describe("a value a service keeps", () =>
         expect(await screen.findByText("3")).toBeDefined();
     });
 
-    /** A component that leaves and keeps listeners is a leak nothing reports. */
     test("stops listeners when the component leaves", () =>
     {
         const store = createStore(0);
@@ -103,25 +101,21 @@ describe("a value a service keeps", () =>
         expect(store.watchers()).toBe(1);
     });
 
-    /**
-     * A component passing a new closure every render must not resubscribe:
-     * that would tear down and rebuild the subscription on every paint.
-     */
     test("and does not resubscribe when the caller passes a new closure", async () =>
     {
         const store = createStore(0);
         let subscribed = 0;
 
-        const watch = (told: () => void): (() => void) =>
+        const watch = (notify: () => void): (() => void) =>
         {
             subscribed += 1;
 
-            return store.watch(told);
+            return store.watch(notify);
         };
 
         function Badge(): ReactNode
         {
-            const current = useStore((told) => watch(told), () => store.read());
+            const current = useStore((notify) => watch(notify), () => store.read());
 
             return <p>{current}</p>;
         }

@@ -1,13 +1,6 @@
 import type { Client, Request } from "../../kernel/api";
 import type { Transport } from "../../transport/api";
 
-/**
- * The five-verb client the kernel hands plugins, over one transport.
- *
- * A method per verb rather than one `request` taking a method: a plugin
- * writing `http.post` cannot accidentally send a GET, and the shape reads the
- * way the call site thinks.
- */
 export function client(transport: Transport): Client
 {
     const send = (method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE") =>

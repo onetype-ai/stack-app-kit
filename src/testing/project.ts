@@ -39,22 +39,16 @@ export const Project = {
         const docs = checking.docs ?? join(root, "#docs");
         const source = join(root, "src");
 
-        // The structural checks read code and run always. The document ones
-        // read #docs, which a project may have packed into one file: a packed
-        // project is not an unchecked one, so their absence skips them.
-        const written = existsSync(docs);
+        const unpacked = existsSync(docs);
 
         return [
-            ...findImportViolations(plugins).map((wrong) => ({ check: "boundaries" as const, message: wrong.message })),
+            ...findImportViolations(plugins).map((crossing) => ({ check: "boundaries" as const, message: crossing.message })),
 
             ...findUnusedFields(plugins).map((unread) => ({
                 check: "wiring" as const,
                 message: `${unread.file}: ${unread.shape}.${unread.field} is declared and nothing reads it.`,
             })),
 
-            // Code shared between plugins is checked too: a field nothing
-            // reads is the same defect wherever it is declared, and code no
-            // plugin owns is code nobody notices going stale.
             ...findUnusedFields(checking.utils ?? join(root, "src", "utils")).map((unread) => ({
                 check: "wiring" as const,
                 message: `${unread.file}: ${unread.shape}.${unread.field} is declared and nothing reads it.`,
@@ -75,7 +69,7 @@ export const Project = {
                 message: `${unknown.file}: styles.${unknown.name} is read and its module never declared it.`,
             })),
 
-            ...(written
+            ...(unpacked
                 ? [
                     ...findOversizedDocs(docs, checking.limit).map((doc) => ({
                         check: "oversized" as const,

@@ -1,12 +1,5 @@
 import { Fault } from "./errors";
 
-/**
- * What a plugin may do, and when.
- *
- * Offering an api and subscribing are boot-time acts. Allowing them later
- * would mean an application mounted at second five saw different rules than
- * one mounted at second six.
- */
 type Phase = "booting" | "running" | "stopped";
 
 /** Where a line goes. The application decides; a plugin never writes directly. */
@@ -14,12 +7,6 @@ export type WriteLine = (line: string, about?: Readonly<Record<string, unknown>>
 
 type Listener = { who: string; run: (payload: unknown) => void };
 
-/**
- * The state every Host view shares.
- *
- * Views differ only in which plugin they report as the actor, so the wiring
- * lives behind one reference and is never copied.
- */
 type Wiring = {
     at: Phase;
     say: WriteLine;
@@ -51,31 +38,26 @@ export class Host
         this.#who = who;
     }
 
-    /** The plugin this view belongs to. Empty outside one, as in a test. */
     get who(): string
     {
         return this.#who;
     }
 
-    /** A view of the same wiring reporting a different actor. */
     as(who: string): Host
     {
         return new Host(this.#shared.say, this.#shared, who);
     }
 
-    /** Moves the phase on. The kernel calls this; a plugin cannot. */
     enter(phase: Phase): void
     {
         this.#shared.at = phase;
     }
 
-    /** Writes a line, wherever the application decided lines go. */
     say(line: string, about?: Readonly<Record<string, unknown>>): void
     {
         this.#shared.say(line, about);
     }
 
-    /** Publishes this plugin's api under a name. Boot only, once per name. */
     offer(name: string, api: unknown): void
     {
         if (this.#shared.at !== "booting")
@@ -106,24 +88,16 @@ export class Host
         this.#shared.owners.set(name, this.#who);
     }
 
-    /**
-     * Returns the api a plugin offered, or undefined when none did.
-     *
-     * A plugin that declared the name in needs is guaranteed an answer,
-     * because boot order put the provider first. Take once, at boot.
-     */
     take<Api>(name: string): Api | undefined
     {
         return this.#shared.offers.get(name) as Api | undefined;
     }
 
-    /** Every offered name, sorted. For diagnosis. */
     offers(): string[]
     {
         return [...this.#shared.offers.keys()].sort();
     }
 
-    /** Subscribes to an event. Boot only. */
     on(name: string, run: (payload: unknown) => void): void
     {
         if (this.#shared.at !== "booting")
@@ -137,12 +111,6 @@ export class Host
         this.#shared.listeners.set(name, listeners);
     }
 
-    /**
-     * Delivers an event to every listener but the one that emitted.
-     *
-     * A listener that throws is caught and reported: one bad subscriber must
-     * not take down the operation that emitted, nor the listeners behind it.
-     */
     emit(name: string, payload: unknown): void
     {
         for (const listener of this.#shared.listeners.get(name) ?? [])
@@ -163,7 +131,6 @@ export class Host
         }
     }
 
-    /** How many listeners an event has. For diagnosis. */
     listenerCount(name: string): number
     {
         return (this.#shared.listeners.get(name) ?? []).length;

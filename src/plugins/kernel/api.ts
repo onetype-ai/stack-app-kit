@@ -39,13 +39,11 @@ export type { Source } from "./internal/permissions";
 export type { Kernel, Log, Options, Registered } from "./internal/kernel";
 export type { ContractProblem } from "./internal/validate";
 
-/** What this plugin offers: the way to build a kernel for an application. */
 export type Runtime = {
     create: typeof createKernel;
     define: typeof definePlugin;
 };
 
-/** The runtime, for a plugin that declared "kernel" in needs. */
 export function from(host: Host): Runtime | undefined
 {
     return host.take<Runtime>(NAME);

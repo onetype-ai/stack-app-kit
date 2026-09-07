@@ -13,7 +13,6 @@ function createPlugin(name: string, definition: Partial<Definition> = {}): Plugi
     });
 }
 
-/** A client that answers whatever it was told to, and remembers being asked. */
 function recordClient(answer: unknown = { ok: true })
 {
     const asked: { method: string; path: string; request?: unknown }[] = [];
@@ -82,13 +81,6 @@ describe("ctx.http", () =>
         await kernel.stop();
     });
 
-    /**
-     * A plugin reaching a client nobody passed is a wiring mistake, and the
-     * message says which field to pass rather than answering undefined.
-     *
-     * Thrown where it is called, not through the promise the type promises,
-     * so a caller's `.catch` never runs and the stack names the plugin.
-     */
     test("and refuses by name when the application passed none", async () =>
     {
         const kernel = createKernel({ plugins: [createPlugin("demo")] });
@@ -118,17 +110,17 @@ describe("ctx.cache", () =>
 {
     test("passes the key through to whatever the application gave", async () =>
     {
-        const dropped: unknown[][] = [];
+        const invalidated: unknown[][] = [];
         const kernel = createKernel({
             plugins: [createPlugin("demo")],
-            cache: { invalidate: (key) => dropped.push([...key]) },
+            cache: { invalidate: (key) => invalidated.push([...key]) },
         });
 
         await kernel.start();
 
         kernel.context("demo").cache.invalidate(["demo", "items"]);
 
-        expect(dropped).toEqual([["demo", "items"]]);
+        expect(invalidated).toEqual([["demo", "items"]]);
 
         await kernel.stop();
     });
@@ -149,7 +141,7 @@ describe("ctx.realtime", () =>
 {
     test("subscribes on the channel a plugin named, and hands back what closes it", async () =>
     {
-        const opened: string[] = [];
+        const channels: string[] = [];
         let closed = false;
 
         const kernel = createKernel({
@@ -158,7 +150,7 @@ describe("ctx.realtime", () =>
                 channel: () => "ws",
                 subscribe: (channel) =>
                 {
-                    opened.push(channel);
+                    channels.push(channel);
 
                     return { close: () => { closed = true; } };
                 },
@@ -169,7 +161,7 @@ describe("ctx.realtime", () =>
 
         const spy = kernel.context("demo").realtime.subscribe("demo.items", () => {});
 
-        expect(opened).toEqual(["demo.items"]);
+        expect(channels).toEqual(["demo.items"]);
 
         spy.close();
 
@@ -186,9 +178,9 @@ describe("ctx.realtime", () =>
             plugins: [createPlugin("demo")],
             realtime: {
                 channel: () => "ws",
-                subscribe: (_channel, told) =>
+                subscribe: (_channel, receive) =>
                 {
-                    tell = told;
+                    tell = receive;
 
                     return { close: () => {} };
                 },

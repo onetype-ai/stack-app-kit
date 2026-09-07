@@ -17,8 +17,6 @@ export function plugin(settings: Settings): Plugin
 
         boot: (host: Host) =>
         {
-            // Built here and offered, never dialled: boot is wiring. The
-            // socket opens in start, once every plugin has wired.
             host.offer(NAME, transport(settings, (line, about) =>
             {
                 host.say(line, about);

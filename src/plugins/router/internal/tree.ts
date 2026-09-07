@@ -3,13 +3,6 @@ import type { ComponentType } from "react";
 import type { Kernel, Registered } from "../../kernel/api";
 import type { Building, Frame } from "../api";
 
-/**
- * Builds a route tree from what the plugins declared.
- *
- * The kernel owns which routes exist and who may see them; this turns that
- * list into whatever the router library wants. Swapping the library changes
- * this file and nothing a plugin wrote.
- */
 export function tree(
     kernel: Kernel,
     building: Building,
@@ -28,11 +21,9 @@ export function tree(
             path: route.path,
             component: guard(route),
 
-            // Declared or not at all: a route that named no schema takes
-            // nothing from the query, so nothing reaches its page.
-            validateSearch: (raw) =>
+            validateSearch: (query) =>
             {
-                return route.search === undefined ? {} : route.search.parse(raw);
+                return route.search === undefined ? {} : route.search.parse(query);
             },
         }),
     );

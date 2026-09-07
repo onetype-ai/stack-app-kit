@@ -18,24 +18,16 @@ export class RunningApp
         this.#order = plugins;
     }
 
-    /** The host, for a caller reaching a plugin's api from outside them. */
     get host(): Host
     {
         return this.#host;
     }
 
-    /** The plugins in the order they booted. */
     get order(): string[]
     {
         return this.#order.map((plugin) => plugin.name);
     }
 
-    /**
-     * Runs each plugin's start, in boot order.
-     *
-     * A failure stops the ones already started, in reverse, so a half-started
-     * kernel never keeps running.
-     */
     async start(): Promise<void>
     {
         for (const plugin of this.#order)
@@ -55,10 +47,6 @@ export class RunningApp
         }
     }
 
-    /**
-     * Unwinds in reverse, and keeps going past a failure: a plugin that
-     * cannot stop must not strand the ones behind it holding a socket.
-     */
     async stop(): Promise<void>
     {
         for (const plugin of [...this.#started].reverse())
@@ -86,7 +74,7 @@ export class RunningApp
  */
 export function boot(say: WriteLine, plugins: readonly Plugin[]): RunningApp
 {
-    const known = new Map<string, Plugin>();
+    const registry = new Map<string, Plugin>();
 
     for (const plugin of plugins)
     {
@@ -100,23 +88,23 @@ export function boot(say: WriteLine, plugins: readonly Plugin[]): RunningApp
             throw new Fault("NO_BOOT", `"${plugin.name}" has no boot.`, plugin.name);
         }
 
-        if (known.has(plugin.name))
+        if (registry.has(plugin.name))
         {
             throw new Fault("REGISTERED_TWICE", `"${plugin.name}" was given twice.`, plugin.name);
         }
 
-        known.set(plugin.name, plugin);
+        registry.set(plugin.name, plugin);
     }
 
-    const sorted = order(known);
+    const ordered = order(registry);
     const host = new Host(say);
 
-    for (const plugin of sorted)
+    for (const plugin of ordered)
     {
         plugin.boot(host.as(plugin.name));
     }
 
     host.enter("running");
 
-    return new RunningApp(host, sorted);
+    return new RunningApp(host, ordered);
 }

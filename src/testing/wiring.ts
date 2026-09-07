@@ -54,8 +54,6 @@ function walk(path: string): string[]
     return files;
 }
 
-// A contract is what crosses a boundary, so only exported shapes count: an
-// internal type is read by whoever wrote it or it would not compile.
 function declared(source: string): { shape: string; field: string }[]
 {
     const fields: { shape: string; field: string }[] = [];
@@ -75,8 +73,6 @@ function declared(source: string): { shape: string; field: string }[]
     return fields;
 }
 
-// Where the brace opened at `from` closes. Walking counts nested shapes as
-// part of the same contract; stopping at the first "}" would miss their fields.
 function closingBrace(source: string, from: number): number
 {
     let depth = 1;
@@ -100,9 +96,6 @@ function closingBrace(source: string, from: number): number
     return at - 1;
 }
 
-// A parameter inside a function type is not a field: `debug: (line, about?: X)
-// => void` declares one name, and "about" is positional. Counting it reports a
-// defect where there is none.
 function withoutParameters(body: string): string
 {
     let outside = "";
@@ -129,8 +122,6 @@ function withoutParameters(body: string): string
     return outside;
 }
 
-// Property access, destructuring, an object literal built from it, a string
-// key. A name in none of those is a name nothing consumes.
 function isRead(field: string, sources: readonly [string, string][], where: string): boolean
 {
     const patterns = [
@@ -150,9 +141,6 @@ function isRead(field: string, sources: readonly [string, string][], where: stri
     });
 }
 
-// The declaration itself is not a read. Shapes are stripped by walking braces,
-// never by matching to the next "}": a regex doing that runs past the end of
-// the type and swallows the code below it.
 function withoutShapes(source: string): string
 {
     let body = "";

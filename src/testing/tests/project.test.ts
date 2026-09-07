@@ -35,9 +35,6 @@ describe("what a project refuses", () =>
         expect(Project.checks({ root: createProject() })).toEqual([]);
     });
 
-    /* The document checks read #docs and the structural ones read code. A
-       project that packed its documents away is not an unchecked project, so
-       a missing #docs must not throw and take the others down with it. */
     test("still runs the structural checks when the documents are packed away", () =>
     {
         const at = createProject();
@@ -48,15 +45,11 @@ describe("what a project refuses", () =>
         expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("unexplained");
     });
 
-    /* Code shared between plugins belongs to nobody, which is exactly why a
-       stale field there goes unnoticed longer than one inside a plugin. */
     test("and reaches code shared between plugins, not only the plugins", () =>
     {
         const at = createProject();
 
         mkdirSync(join(at, "src", "utils"), { recursive: true });
-        /* Built rather than written whole: a shape spelled out here would be
-           read by the very check this package runs on itself. */
         const shape = ["export", "type", "Price", "=", "{ cents: number; unread: string };"].join(" ");
 
         writeFileSync(join(at, "src", "utils", "Money.ts"), `${shape}\n`);

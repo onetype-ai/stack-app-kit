@@ -54,7 +54,6 @@ export type Kernel = {
 
 const quiet: Log = () => {};
 
-/** What a missing dependency answers: a refusal naming what to pass. */
 function missing(what: string, field: string): never
 {
     throw new KernelFault(
@@ -99,9 +98,6 @@ const noRealtime: Realtime = {
         return "http";
     },
 
-    // Answers a subscription that never delivers, on purpose: `channel()`
-    // already said there is no socket, so a plugin polls instead. Refusing
-    // here would make the absence of a socket an error rather than a state.
     subscribe: () => ({ close: () => {} }),
 };
 
@@ -120,7 +116,7 @@ export function createKernel(options: Options): Kernel
     const cache = options.cache ?? noCache;
     const realtime = options.realtime ?? noRealtime;
 
-    const known = new Map(options.plugins.map((plugin) => [plugin.name, plugin]));
+    const registry = new Map(options.plugins.map((plugin) => [plugin.name, plugin]));
     const bus = events<Context>();
     const points = hooks<Context>();
     const places = slots();
@@ -143,11 +139,8 @@ export function createKernel(options: Options): Kernel
     let running = false;
     let order: Plugin[] = [];
 
-    // What each plugin's schema made of its section: defaults filled in, so a
-    // plugin reads what it declared rather than what the application typed.
     const parsed = new Map<string, unknown>();
 
-    /** What one plugin sees. Built per plugin, so `name` is its own. */
     function context(plugin: string): Context
     {
         return {
@@ -184,13 +177,13 @@ export function createKernel(options: Options): Kernel
                     bus.emit(plugin, event, payload, context);
                 },
 
-                on: (event, told) =>
+                on: (event, handle) =>
                 {
                     return bus.listen(plugin, event, {
                         describe: `${plugin} listening while it runs`,
                         handle: (payload) =>
                         {
-                            told(payload);
+                            handle(payload);
                         },
                     });
                 },
@@ -214,7 +207,7 @@ export function createKernel(options: Options): Kernel
 
             use: <Api,>(name: string): Api =>
             {
-                const declared = known.get(plugin)?.definition.dependsOn ?? [];
+                const declared = registry.get(plugin)?.definition.dependsOn ?? [];
 
                 if (name !== plugin && !declared.includes(name))
                 {
@@ -230,7 +223,6 @@ export function createKernel(options: Options): Kernel
         };
     }
 
-    /** Runs a command, after its permission and its schema. */
     async function run(command: string, input: unknown): Promise<void>
     {
         if (!running)
@@ -299,7 +291,7 @@ export function createKernel(options: Options): Kernel
                 );
             }
 
-            order = sorted(known);
+            order = inDependencyOrder(registry);
 
             for (const plugin of order)
             {
@@ -311,8 +303,6 @@ export function createKernel(options: Options): Kernel
                 }
             }
 
-            // Declare everything before anything is wired: a listener may name
-            // an event owned by a plugin that starts later.
             for (const plugin of order)
             {
                 for (const [key, event] of Object.entries(plugin.definition.emits ?? {}))
@@ -345,9 +335,9 @@ export function createKernel(options: Options): Kernel
                     points.participate(plugin.name, key, participant);
                 }
 
-                for (const filled of plugin.definition.contributes ?? [])
+                for (const contribution of plugin.definition.contributes ?? [])
                 {
-                    places.fill(plugin.name, filled);
+                    places.fill(plugin.name, contribution);
                 }
 
                 for (const [key, command] of Object.entries(plugin.definition.commands ?? {}))
@@ -427,7 +417,7 @@ export function createKernel(options: Options): Kernel
 
         slot: (name, payload) =>
         {
-            return places.filled(name, payload);
+            return places.contentsOf(name, payload);
         },
 
         knownSlot: (name) =>
@@ -437,7 +427,7 @@ export function createKernel(options: Options): Kernel
 
         fallbackFor: (plugin) =>
         {
-            return known.get(plugin)?.definition.fallback;
+            return registry.get(plugin)?.definition.fallback;
         },
 
         context,
@@ -450,8 +440,7 @@ export function createKernel(options: Options): Kernel
     };
 }
 
-/** Dependency order, ties broken by name so one set is always one order. */
-function sorted(known: ReadonlyMap<string, Plugin>): Plugin[]
+function inDependencyOrder(registry: ReadonlyMap<string, Plugin>): Plugin[]
 {
     const out: Plugin[] = [];
     const state = new Map<string, "open" | "done">();
@@ -465,11 +454,11 @@ function sorted(known: ReadonlyMap<string, Plugin>): Plugin[]
 
         state.set(name, "open");
 
-        const plugin = known.get(name);
+        const plugin = registry.get(name);
 
         for (const need of [...(plugin?.definition.dependsOn ?? [])].sort())
         {
-            if (known.has(need))
+            if (registry.has(need))
             {
                 walk(need);
             }
@@ -483,7 +472,7 @@ function sorted(known: ReadonlyMap<string, Plugin>): Plugin[]
         }
     }
 
-    for (const name of [...known.keys()].sort())
+    for (const name of [...registry.keys()].sort())
     {
         walk(name);
     }
