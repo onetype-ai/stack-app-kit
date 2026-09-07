@@ -6,6 +6,8 @@ export type UnknownToken = {
     token: string;
 };
 
+type Asked = UnknownToken & { at: string };
+
 export type UnknownClass = {
     file: string;
     name: string;
@@ -18,14 +20,15 @@ export type UnknownClass = {
  * were not written, so a stylesheet against the wrong names builds green and
  * changes no pixel. Types cannot see it and neither can a render test.
  *
- * A file may declare its own, and a component may hand one in through
- * `style`, so anything set anywhere under the root is answered.
+ * A module's own token is answered in its own file, and a component may hand
+ * one in through `style`. One module's token never reaches another.
  */
 export function findUnknownTokens(root: string): UnknownToken[]
 {
     const files = walk(root);
-    const defined = new Set<string>();
-    const used: UnknownToken[] = [];
+    const anywhere = new Set<string>();
+    const inside = new Map<string, Set<string>>();
+    const used: Asked[] = [];
 
     for (const file of files)
     {
@@ -33,14 +36,26 @@ export function findUnknownTokens(root: string): UnknownToken[]
 
         if (file.endsWith(".css"))
         {
+            // A module's own token lives on its own root, so a second module
+            // asking for it gets nothing: it reaches the element only where
+            // that element is inside the first one.
+            const reach = file.endsWith(".module.css")
+                ? (inside.get(file) ?? new Set<string>())
+                : anywhere;
+
             for (const match of source.matchAll(/(?:^|[{;])\s*(--[a-z0-9-]+)\s*:\s*[^\s;][^;]*/gm))
             {
-                defined.add(match[1] ?? "");
+                reach.add(match[1] ?? "");
+            }
+
+            if (reach !== anywhere)
+            {
+                inside.set(file, reach);
             }
 
             for (const match of source.matchAll(/var\((--[a-z0-9-]+)/g))
             {
-                used.push({ file: relative(root, file), token: match[1] ?? "" });
+                used.push({ at: file, file: relative(root, file), token: match[1] ?? "" });
             }
 
             continue;
@@ -48,11 +63,13 @@ export function findUnknownTokens(root: string): UnknownToken[]
 
         for (const match of source.matchAll(/["'](--[a-z0-9-]+)["']\s*:/g))
         {
-            defined.add(match[1] ?? "");
+            anywhere.add(match[1] ?? "");
         }
     }
 
-    return used.filter((one) => !defined.has(one.token));
+    return used
+        .filter((one) => !anywhere.has(one.token) && inside.get(one.at)?.has(one.token) !== true)
+        .map((one) => ({ file: one.file, token: one.token }));
 }
 
 /**

@@ -61,6 +61,17 @@ describe("a token a stylesheet asks for", () =>
         expect(findUnknownTokens(at)).toEqual([]);
     });
 
+    test("but not one another module declared, which its root never reaches", () =>
+    {
+        const at = folderWith({
+            "tokens.css": ":root { --two: 4px; }",
+            "a/a.module.css": ".root { --one: 4px; padding: var(--one); }",
+            "b/b.module.css": ".root { padding: var(--one); }",
+        });
+
+        expect(findUnknownTokens(at)).toEqual([{ file: "b/b.module.css", token: "--one" }]);
+    });
+
     test("and one a component hands in through style", () =>
     {
         const at = folderWith({
