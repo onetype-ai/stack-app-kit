@@ -226,4 +226,13 @@ describe("what is not a comment, however much it looks like one", () =>
     {
         expect(findComments(wrote('const at = `https://example.invalid/x`;\n'))).toEqual([]);
     });
+
+    test("and an address a stylesheet reaches for, which carries no quotes", () =>
+    {
+        root = mkdtempSync(join(tmpdir(), "notcomments-"));
+
+        writeFileSync(join(root, "a.css"), "@import url(https://example.invalid/x.css);\n");
+
+        expect(findComments(root)).toEqual([]);
+    });
 });

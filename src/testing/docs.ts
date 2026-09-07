@@ -198,6 +198,7 @@ function withoutLiterals(source: string): string
     const blank = (held: string): string => " ".repeat(held.length);
 
     return source
+        .replace(/url\((?![")'])[^)\n]*\)/g, blank)
         .replace(/"(?:[^"\\\n]|\\.)*"/g, blank)
         .replace(/'(?:[^'\\\n]|\\.)*'/g, blank)
         .replace(/`(?:[^`\\]|\\.)*`/g, blank)
