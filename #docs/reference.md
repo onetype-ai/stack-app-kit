@@ -13,7 +13,7 @@ type Context<Config = unknown, Services = unknown> = {
         on: (event: string, handle: (payload: unknown) => void) => () => void;
     };
     hooks: { run: (hook: string, payload: unknown) => Promise<string | undefined> };
-    permissions: { has: (one: string) => boolean; all: (many: readonly string[]) => boolean };
+    permissions: { has; all; changed: () => void; watch: (notify) => () => void };
     commands: { run: (command: string, input: unknown) => Promise<void> };
     use: <Api>(plugin: string) => Api;
 };
@@ -29,15 +29,15 @@ type Realtime = {
 ```
 
 These three arrive without being declared. With no socket, `channel()` answers
-`"http"` and `subscribe` delivers nothing, so a caller needs no branch. With
-no client at all, `http` and `cache` throw naming what to pass.
+`"http"` and `subscribe` delivers nothing, so a caller needs no branch. With no
+client, `http` and `cache` throw naming what to pass.
 
 **`http` answers the body, never an envelope.** A 204 is `undefined`, anything
 but a 2xx throws. A fake answering `{ status, body }` describes the channel
 underneath, and tests itself rather than the code.
 
 `hooks.run` answers the first refusal, or nothing. `use` reaches another
-plugin's services outside a component, so a plain function can call it.
+plugin's services outside a component.
 
 `events.on` hears while a caller wants to and answers what stops it; a
 contract's `listens` never stops. Neither hears its own plugin's events.
@@ -93,8 +93,7 @@ import { KernelProvider, useKernel, usePlugin, useEvent, useStore, NotFound, use
 import { transport, cache } from "@onetype/stack-app-kit";
 
 // The namespace carries its own types: `transport.Socket` is what
-// `openSocket` must answer, and what a fake source implements.
-const socket: transport.Socket = openFake();
+// `openSocket` must answer.
 ```
 
 ```ts
@@ -107,6 +106,9 @@ useEvent(plugin, event, handle): void               // stops when the component 
 useStore(watch, read): Value                         // a value a service keeps
 ```
 
+`kernel.permissions.changed()` says the answer moved, so every guard asks
+again: a viewer who signs in stops seeing the page that refused them.
+
 `Route.instead(ctx)` answers a path when the viewer belongs elsewhere: a
 checkout with an empty cart is early, not forbidden. `send` does the going,
 since the kit imports no router. `RouteGuard` asks it **before** `requires`:
@@ -115,7 +117,7 @@ a signed-out reader is sent to sign in, not told the page is not theirs.
 Memoise what `useStore`'s `read` answers, or it never stops re-rendering.
 
 A contribution renders as `ComponentType<{ payload: unknown }>`. `Slot` filters
-by `requires` and wraps each in the contributing plugin's `fallback`.
+by `requires` and wraps each in its plugin's `fallback`.
 
 **A contribution needs no `dependsOn` on the plugin whose slot it fills.** It
 hands over a component and takes back a payload the kernel parses, so it

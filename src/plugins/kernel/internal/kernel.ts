@@ -47,7 +47,14 @@ export type Kernel = {
     fallbackFor: (plugin: string) => ComponentType<FallbackProps> | undefined;
 
     context: (plugin: string) => Context;
-    permissions: { has: (permission: string) => boolean; all: (permissions: readonly string[]) => boolean };
+    permissions: {
+        has: (permission: string) => boolean;
+        all: (permissions: readonly string[]) => boolean;
+
+        changed: () => void;
+
+        watch: (notify: () => void) => () => void;
+    };
     events: { failures: () => readonly Failure[] };
     run: (command: string, input: unknown) => Promise<void>;
 };

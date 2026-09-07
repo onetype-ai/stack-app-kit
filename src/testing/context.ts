@@ -8,6 +8,7 @@ export type Asked = {
     path: string;
     query?: Readonly<Record<string, unknown>> | undefined;
     body?: unknown;
+    headers?: Readonly<Record<string, string>> | undefined;
 };
 
 /** One event a plugin announced. */
@@ -128,6 +129,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
                 path,
                 ...(request.query !== undefined && { query: request.query }),
                 ...(request.body !== undefined && { body: request.body }),
+                ...(request.headers !== undefined && { headers: request.headers }),
             });
 
             const answer = answers[`${method} ${path}`];

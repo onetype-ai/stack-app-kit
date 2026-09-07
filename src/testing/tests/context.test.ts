@@ -178,3 +178,24 @@ describe("what a fake answers", () =>
         expect(() => fake.ctx.use("billing")).toThrow(/billing/);
     });
 });
+
+describe("a request that carried a header", () =>
+{
+    test("records it, so a test can prove a closed route was signed", async () =>
+    {
+        const fake = fakeContext({ "GET /notes": { notes: [] } });
+
+        await fake.ctx.http.get("/notes", { headers: { "x-key": "secret" } });
+
+        expect(fake.asked[0]).toMatchObject({ headers: { "x-key": "secret" } });
+    });
+
+    test("and a request that carried none records none, so nothing reads as signed", async () =>
+    {
+        const fake = fakeContext({ "GET /pulse": { heard: 0 } });
+
+        await fake.ctx.http.get("/pulse");
+
+        expect(fake.asked[0]).not.toHaveProperty("headers");
+    });
+});

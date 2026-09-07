@@ -10,6 +10,8 @@ export function permissions(source: Source | undefined)
         return new Set(source?.granted() ?? []);
     };
 
+    const watching = new Set<() => void>();
+
     return {
         has: (permission: string): boolean =>
         {
@@ -21,6 +23,24 @@ export function permissions(source: Source | undefined)
             const carries = granted();
 
             return wanted.every((permission) => carries.has(permission));
+        },
+
+        changed: (): void =>
+        {
+            for (const one of watching)
+            {
+                one();
+            }
+        },
+
+        watch: (notify: () => void): (() => void) =>
+        {
+            watching.add(notify);
+
+            return () =>
+            {
+                watching.delete(notify);
+            };
         },
     };
 }

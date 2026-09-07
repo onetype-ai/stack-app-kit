@@ -1,6 +1,6 @@
 {
     "name": "@onetype/stack-app-kit",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "type": "module",
     "sideEffects": false,
     "scripts": {
@@ -58,7 +58,8 @@
     },
     "files": [
         "dist",
-        "README.md"
+        "README.md",
+        "#docs"
     ],
     "keywords": [
         "plugins",

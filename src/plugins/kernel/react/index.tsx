@@ -156,6 +156,8 @@ export function Slot({ name, payload }: { name: string; payload?: unknown }): Re
     const kernel = useKernel();
     const { contributions, problem } = kernel.slot(name, payload);
 
+    useGranting();
+
     if (problem !== undefined)
     {
         return <FailedSlot name={name} problem={problem} />;
@@ -178,11 +180,52 @@ export function Slot({ name, payload }: { name: string; payload?: unknown }): Re
     );
 }
 
+function useGranting(): void
+{
+    const kernel = useKernel();
+
+    const watch = useCallback((notify: () => void) =>
+    {
+        return kernel.permissions.watch(notify);
+    }, [kernel]);
+
+    const turn = useRef(0);
+
+    const read = useCallback(() =>
+    {
+        return turn.current;
+    }, []);
+
+    useSyncExternalStore((notify) => watch(() =>
+    {
+        turn.current += 1;
+        notify();
+    }), read, read);
+}
+
+function useAllowed(route: Registered): readonly string[]
+{
+    const kernel = useKernel();
+
+    const watch = useCallback((notify: () => void) =>
+    {
+        return kernel.permissions.watch(notify);
+    }, [kernel]);
+
+    const lacking = useCallback(() =>
+    {
+        return (route.requires ?? []).filter((permission) => !kernel.permissions.has(permission)).join(" ");
+    }, [kernel, route]);
+
+    return useSyncExternalStore(watch, lacking, lacking).split(" ").filter(Boolean);
+}
+
 /** A page, and what it takes to see it. */
 export function RouteGuard({ route, send }: { route: Registered; send?: (to: string) => ReactNode }): ReactNode
 {
     const kernel = useKernel();
     const pages = usePages();
+    const lacking = useAllowed(route);
 
     const elsewhere = route.instead?.(kernel.context(route.plugin));
 
@@ -190,8 +233,6 @@ export function RouteGuard({ route, send }: { route: Registered; send?: (to: str
     {
         return send === undefined ? null : send(elsewhere);
     }
-
-    const lacking = (route.requires ?? []).filter((permission) => !kernel.permissions.has(permission));
 
     if (lacking.length > 0)
     {
