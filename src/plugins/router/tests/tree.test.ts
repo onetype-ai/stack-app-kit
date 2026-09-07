@@ -17,7 +17,7 @@ const Missing = (() => null) as ComponentType;
 
 function registered(path: string, plugin = "demo"): Registered
 {
-    return { path, component: Page, plugin, fallback: undefined };
+    return { path, title: "A page", component: Page, plugin, fallback: undefined };
 }
 
 function recordRouter(routes: readonly Registered[])

@@ -23,6 +23,7 @@ async function startKernel(instead?: () => string | undefined): Promise<{ kernel
         kernel,
         route: {
             path: "/pay",
+            title: "A page",
             component: Page,
             plugin: "checkout",
             fallback: undefined,
@@ -116,6 +117,7 @@ describe("a route that is both forbidden and early", () =>
             kernel,
             route: {
                 path: "/pay",
+                title: "A page",
                 component: Page,
                 plugin: "checkout",
                 fallback: undefined,
@@ -173,6 +175,7 @@ describe("a route that is both forbidden and early", () =>
 
         const route: Registered = {
             path: "/pay",
+            title: "A page",
             component: Page,
             plugin: "checkout",
             fallback: undefined,

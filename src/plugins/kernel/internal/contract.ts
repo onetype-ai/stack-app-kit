@@ -58,7 +58,16 @@ export type Contribution = {
 export type Route<Config = unknown, Services = unknown> = {
     path: string;
     component: ComponentType;
-    title?: string;
+
+    /**
+     * What the tab says while this page is open.
+     *
+     * Required, because a route without one leaves whatever the last page
+     * wrote: a reader who lands here from a search result reads the name of
+     * somewhere they have never been.
+     */
+    title: string;
+
     requires?: readonly string[];
 
     /**

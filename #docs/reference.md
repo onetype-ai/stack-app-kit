@@ -54,7 +54,7 @@ config?: ZodType; permissions?: Record<string, { describe: string }>;
 grants?: (ctx) => readonly string[];          // at most one plugin
 services?: (ctx) => Services;                 // ctx.services is never here
 frame?: FunctionComponent; pages?: Pages; fallback?: ComponentType;
-routes?: readonly Route[];   // path, component, title?, requires?, search?, instead?
+routes?: readonly Route[];   // path, component, title, requires?, search?, instead?
 slots?: Record<string, Slot>; contributes?: readonly Contribution[];
 emits?: Record<string, Event>; listens?: Record<string, Listener>;
 hooks?: Record<string, Hook>; participates?: Record<string, Participant>;

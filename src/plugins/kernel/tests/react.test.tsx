@@ -153,7 +153,7 @@ describe("RouteGuard", () =>
             plugins: [
                 createPlugin("billing", {
                     permissions: { "billing.read": { describe: "may see billing" } },
-                    routes: [{ path: "/billing", component: () => <h1>Billing</h1>, requires: ["billing.read"] }],
+                    routes: [{ path: "/billing", title: "A page", component: () => <h1>Billing</h1>, requires: ["billing.read"] }],
                 }),
             ],
             permissions: { granted: () => ["billing.read"] },
@@ -178,7 +178,7 @@ describe("RouteGuard", () =>
             plugins: [
                 createPlugin("billing", {
                     permissions: { "billing.read": { describe: "may see billing" } },
-                    routes: [{ path: "/billing", component: () => <h1>Billing</h1>, requires: ["billing.read"] }],
+                    routes: [{ path: "/billing", title: "A page", component: () => <h1>Billing</h1>, requires: ["billing.read"] }],
                 }),
             ],
             permissions: { granted: () => [] },
@@ -222,6 +222,7 @@ describe("RouteGuard", () =>
                     routes: [
                         {
                             path: "/b",
+                            title: "A page",
                             component: () =>
                             {
                                 throw new Error("boom");
@@ -249,7 +250,7 @@ describe("RouteGuard", () =>
             plugins: [
                 createPlugin("billing", {
                     permissions: { "billing.read": { describe: "may see billing" } },
-                    routes: [{ path: "/b", component: () => <p>x</p>, requires: ["billing.read"] }],
+                    routes: [{ path: "/b", title: "A page", component: () => <p>x</p>, requires: ["billing.read"] }],
                 }),
             ],
             permissions: { granted: () => [] },

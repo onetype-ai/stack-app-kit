@@ -31,6 +31,7 @@ describe("a viewer who signs in while the page is open", () =>
 
         const route: Registered = {
             path: "/pay",
+            title: "A page",
             component: Page,
             plugin: "shop",
             fallback: undefined,

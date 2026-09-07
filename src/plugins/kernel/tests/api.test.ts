@@ -104,8 +104,8 @@ describe("declarations", () =>
     {
         const page = (): null => null;
         const fault = await refused([
-            createPlugin("auth", { routes: [{ path: "/x", component: page }] }),
-            createPlugin("billing", { routes: [{ path: "/x", component: page }] }),
+            createPlugin("auth", { routes: [{ path: "/x", title: "A page", component: page }] }),
+            createPlugin("billing", { routes: [{ path: "/x", title: "A page", component: page }] }),
         ]);
 
         expect(fault?.code).toBe("DUPLICATE_ROUTE");
@@ -114,7 +114,7 @@ describe("declarations", () =>
 
     test("refuses a route path in the wrong syntax", async () =>
     {
-        const fault = await refused([createPlugin("auth", { routes: [{ path: "auth/login", component: () => null }] })]);
+        const fault = await refused([createPlugin("auth", { routes: [{ path: "auth/login", title: "A page", component: () => null }] })]);
 
         expect(fault?.code).toBe("INVALID_ROUTE");
         expect(fault?.message).toMatch(/must start with "\/"/);
@@ -180,7 +180,7 @@ describe("references", () =>
     test("refuses a route needing a permission nothing declares", async () =>
     {
         const fault = await refused([
-            createPlugin("billing", { routes: [{ path: "/b", component: () => null, requires: ["billing.read"] }] }),
+            createPlugin("billing", { routes: [{ path: "/b", title: "A page", component: () => null, requires: ["billing.read"] }] }),
         ]);
 
         expect(fault?.code).toBe("UNDECLARED_PERMISSION");
@@ -505,7 +505,7 @@ describe("what only one plugin may own", () =>
         const fault = await refused([
             createPlugin("billing", {
                 permissions: { "billing.read": { describe: "Read." } },
-                routes: [{ path: "/billing", component: () => null, requires: ["billing.read"] }],
+                routes: [{ path: "/billing", title: "A page", component: () => null, requires: ["billing.read"] }],
             }),
         ]);
 
@@ -518,7 +518,7 @@ describe("what only one plugin may own", () =>
         const fault = await refused([
             createPlugin("billing", {
                 permissions: { "billing.read": { describe: "Read." } },
-                routes: [{ path: "/billing", component: () => null, requires: ["billing.read"] }],
+                routes: [{ path: "/billing", title: "A page", component: () => null, requires: ["billing.read"] }],
             }),
             createPlugin("auth", { grants: () => [] }),
         ]);
