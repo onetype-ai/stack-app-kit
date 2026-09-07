@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
-import { findUnknownClasses, findUnknownTokens } from "../styling";
+import { findLiterals, findUnknownClasses, findUnknownTokens } from "../styling";
 
 function folderWith(files: Record<string, string>): string
 {
@@ -123,5 +123,47 @@ describe("a class a component reads", () =>
         });
 
         expect(findUnknownClasses(at)).toEqual([]);
+    });
+});
+
+describe("a raw value written where the values are not declared", () =>
+{
+    test("is named, whether it is a colour, a length or a duration", () =>
+    {
+        const at = folderWith({
+            "card.module.css": ".root { color: #ff0000; padding: 12px; transition: all 200ms; }",
+        });
+
+        expect(findLiterals(at).map((one) => one.kind)).toEqual(["colour", "length", "duration"]);
+    });
+
+    test("but not in the sheet that declares them", () =>
+    {
+        const at = folderWith({ "tokens.css": ":root { --one: #ff0000; --two: 12px; }" });
+
+        expect(findLiterals(at)).toEqual([]);
+    });
+
+    test("nor in the one that only takes browser defaults away", () =>
+    {
+        const at = folderWith({ "reset.css": "* { margin: 0; padding: 12px; }" });
+
+        expect(findLiterals(at)).toEqual([]);
+    });
+
+    test("nor a breakpoint, which a custom property cannot reach inside", () =>
+    {
+        const at = folderWith({
+            "card.module.css": "@media (max-width: 60rem)\n{\n    .root { color: var(--one); }\n}",
+        });
+
+        expect(findLiterals(at)).toEqual([]);
+    });
+
+    test("nor nothing, nor the thinnest line a token would not carry", () =>
+    {
+        const at = folderWith({ "card.module.css": ".root { margin: 0; border-width: 1px; }" });
+
+        expect(findLiterals(at)).toEqual([]);
     });
 });

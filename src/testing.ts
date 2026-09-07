@@ -7,7 +7,7 @@ export type { Commented, OversizedDoc, PrivateComment, UndocumentedKey } from ".
 export { findUnusedFields } from "./testing/wiring";
 export type { UnusedField } from "./testing/wiring";
 
-export { findUnknownClasses, findUnknownTokens } from "./testing/styling";
+export { findLiterals, findUnknownClasses, findUnknownTokens } from "./testing/styling";
 export type { UnknownClass, UnknownToken } from "./testing/styling";
 
 export { fakeContext } from "./testing/context";

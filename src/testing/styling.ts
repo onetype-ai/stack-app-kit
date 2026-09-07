@@ -8,6 +8,13 @@ export type UnknownToken = {
 
 type Asked = UnknownToken & { at: string };
 
+export type Literal = {
+    file: string;
+    line: number;
+    kind: "colour" | "length" | "duration";
+    holds: string;
+};
+
 export type UnknownClass = {
     file: string;
     name: string;
@@ -147,4 +154,71 @@ function walk(at: string): string[]
     }
 
     return files;
+}
+
+
+const DECLARING = ["tokens.css", "reset.css"];
+
+const BREAKPOINT = /^\s*@(media|container)\b/;
+
+const COLOUR = /#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(|\boklch\s*\(/;
+
+const LENGTH = /(?<![\w.#-])\d*\.?\d+(px|rem|em)\b/;
+
+const DURATION = /(?<![\w.#-])\d*\.?\d+m?s\b/;
+
+const NOTHING_OR_HAIRLINE = /^(0|1px)$/;
+
+/**
+ * Every raw colour, length and duration written outside the sheets that
+ * declare them.
+ *
+ * A value written twice drifts: one rule says 12px and the next says 0.75rem,
+ * and nothing renders wrongly enough for anyone to look. A token names the
+ * decision once, so changing it changes every rule that took it.
+ * */
+export function findLiterals(root: string): Literal[]
+{
+    const found: Literal[] = [];
+
+    for (const file of walk(root))
+    {
+        if (!file.endsWith(".css") || DECLARING.some((named) => file.endsWith(named)))
+        {
+            continue;
+        }
+
+        const lines = readFileSync(file, "utf8").split("\n");
+
+        for (let at = 0; at < lines.length; at += 1)
+        {
+            const raw = lines[at] ?? "";
+
+            if (BREAKPOINT.test(raw))
+            {
+                continue;
+            }
+
+            const where = { file: relative(root, file), line: at + 1, holds: raw.trim() };
+
+            if (COLOUR.test(raw))
+            {
+                found.push({ ...where, kind: "colour" });
+            }
+
+            const measured = LENGTH.exec(raw);
+
+            if (measured !== null && !NOTHING_OR_HAIRLINE.test(measured[0]))
+            {
+                found.push({ ...where, kind: "length" });
+            }
+
+            if (DURATION.test(raw))
+            {
+                found.push({ ...where, kind: "duration" });
+            }
+        }
+    }
+
+    return found;
 }

@@ -2,11 +2,11 @@ import { join } from "node:path";
 
 import { findImportViolations } from "./boundaries";
 import { findComments, findUnexplainedPlugins } from "./docs";
-import { findUnknownClasses, findUnknownTokens } from "./styling";
+import { findLiterals, findUnknownClasses, findUnknownTokens } from "./styling";
 import { findUnusedFields } from "./wiring";
 
 export type ProjectProblem = {
-    check: "boundaries" | "wiring" | "oversized" | "missing" | "unexplained" | "token" | "class" | "comment";
+    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal";
     message: string;
 };
 
@@ -60,6 +60,11 @@ export const Project = {
             ...findComments(source).map((one) => ({
                 check: "comment" as const,
                 message: `${one.file}:${String(one.line)} is a comment. What it says goes in a name, or in the name of a test.`,
+            })),
+
+            ...findLiterals(source).map((one) => ({
+                check: "literal" as const,
+                message: `${one.file}:${String(one.line)} writes a ${one.kind} rather than naming one: ${one.holds}`,
             })),
 
             ...findUnknownClasses(source).map((unknown) => ({
