@@ -59,7 +59,8 @@
     "files": [
         "dist",
         "README.md",
-        "#docs"
+        "#docs",
+        "!#docs/progress"
     ],
     "keywords": [
         "plugins",
