@@ -73,4 +73,10 @@ export default tseslint.config(
             "@typescript-eslint/no-unused-expressions": "off",
         },
     },
+
+    // The packer is a command a person runs, and what it says is the answer.
+    {
+        files: ["src/packing.ts"],
+        rules: { "no-console": "off" },
+    }
 );

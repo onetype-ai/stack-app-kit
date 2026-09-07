@@ -1,8 +1,7 @@
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { findImportViolations } from "./boundaries";
-import { findComments, findMissingDocs, findOversizedDocs, findUnexplainedPlugins } from "./docs";
+import { findComments, findUnexplainedPlugins } from "./docs";
 import { findUnknownClasses, findUnknownTokens } from "./styling";
 import { findUnusedFields } from "./wiring";
 
@@ -17,9 +16,6 @@ export type ProjectCheckOptions = {
 
     /** Where pure code shared between plugins lives. */
     utils?: string;
-    docs?: string;
-    required?: readonly string[];
-    limit?: number;
 };
 
 /**
@@ -36,10 +32,7 @@ export const Project = {
     {
         const root = checking.root ?? process.cwd();
         const plugins = checking.plugins ?? join(root, "src", "plugins");
-        const docs = checking.docs ?? join(root, "#docs");
         const source = join(root, "src");
-
-        const unpacked = existsSync(docs);
 
         return [
             ...findImportViolations(plugins).map((crossing) => ({ check: "boundaries" as const, message: crossing.message })),
@@ -74,18 +67,6 @@ export const Project = {
                 message: `${unknown.file}: styles.${unknown.name} is read and its module never declared it.`,
             })),
 
-            ...(unpacked
-                ? [
-                    ...findOversizedDocs(docs, checking.limit).map((doc) => ({
-                        check: "oversized" as const,
-                        message: `${doc.path.replace(`${root}/`, "")} is ${String(doc.size)} characters, over the limit.`,
-                    })),
-                    ...findMissingDocs(root, checking.required ?? Project.required).map((path) => ({
-                        check: "missing" as const,
-                        message: `${path} is absent or says nothing.`,
-                    })),
-                ]
-                : []),
         ];
     },
 };

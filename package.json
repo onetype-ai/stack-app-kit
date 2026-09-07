@@ -82,6 +82,10 @@
         "./testing": {
             "types": "./dist/testing.d.ts",
             "import": "./dist/testing.js"
+        },
+        "./packing": {
+            "types": "./dist/packing.d.ts",
+            "import": "./dist/packing.js"
         }
     }
 }
