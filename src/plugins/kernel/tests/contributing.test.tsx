@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
 
 import { createKernel, definePlugin } from "../api";
@@ -28,6 +28,33 @@ describe("a plugin that fills another's slot", () =>
         await kernel.start();
 
         expect(kernel.started()).toBe(true);
+    });
+
+    test("twice, and React is given a key of its own for each", async () =>
+    {
+        const twice = definePlugin("twice", {
+            version: "1.0.0",
+            describe: "Fills one slot twice.",
+            contributes: [
+                { slot: "shell.nav", render: () => <p>first</p> },
+                { slot: "shell.nav", render: () => <p>second</p> },
+            ],
+        });
+
+        const kernel = createKernel({ plugins: [shell, twice] });
+
+        await kernel.start();
+
+        const said: string[] = [];
+        const watching = vi.spyOn(console, "error").mockImplementation((...given: unknown[]) => said.push(String(given[0])));
+
+        render(<KernelProvider kernel={kernel}><Slot name="shell.nav" payload={{}} /></KernelProvider>);
+
+        watching.mockRestore();
+
+        expect(said.filter((one) => one.includes("same key"))).toEqual([]);
+        expect(screen.getByText("first")).toBeTruthy();
+        expect(screen.getByText("second")).toBeTruthy();
     });
 
     test("so a shell may frame the plugins that fill it, which is the whole point of a slot", async () =>

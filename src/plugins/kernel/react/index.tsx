@@ -166,10 +166,11 @@ export function Slot({ name, payload }: { name: string; payload?: unknown }): Re
     return (
         <>
             {contributions
-                .filter((contribution) => kernel.permissions.all(contribution.requires ?? []))
-                .map((contribution) => (
+                .map((contribution, at) => ({ contribution, at }))
+                .filter(({ contribution }) => kernel.permissions.all(contribution.requires ?? []))
+                .map(({ contribution, at }) => (
                     <Boundary
-                        key={`${contribution.plugin}:${contribution.slot}:${contribution.order ?? 0}`}
+                        key={`${contribution.plugin}:${contribution.slot}:${String(at)}`}
                         plugin={contribution.plugin}
                         fallback={kernel.fallbackFor(contribution.plugin)}
                     >
