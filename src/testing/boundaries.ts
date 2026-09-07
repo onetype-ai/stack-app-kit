@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 export type ImportEdge = {
     from: string;
@@ -57,6 +57,7 @@ function files(root: string, name: string): { path: string; source: string }[]
 
     return readdirSync(at, { withFileTypes: true, recursive: true })
         .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+        .filter((entry) => !`${entry.parentPath}/`.includes(`${sep}tests${sep}`))
         .map((entry) =>
         {
             const path = join(entry.parentPath, entry.name);

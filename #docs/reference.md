@@ -117,6 +117,12 @@ Memoise what `useStore`'s `read` answers, or it never stops re-rendering.
 A contribution renders as `ComponentType<{ payload: unknown }>`. `Slot` filters
 by `requires` and wraps each in the contributing plugin's `fallback`.
 
+**A contribution needs no `dependsOn` on the plugin whose slot it fills.** It
+hands over a component and takes back a payload the kernel parses, so it
+reaches for nothing. A `listens` or `participates` does: both read a shape
+whose owner may change it, and name that owner. Without the difference a shell
+could never frame the plugins filling it, which is what a slot is for.
+
 `/react` also answers `StartupFailure`, `StatusPageProvider`, `useDismiss`,
 `useEventCallback` and `useFocusTrap`. `NotFound` is not optional: routes
 assembled without it throw.

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { findMissingDocs, findOversizedDocs, findPrivateComments, findUndocumentedKeys, findUnexplainedPlugins } from "../docs";
+import { findComments, findMissingDocs, findOversizedDocs, findPrivateComments, findUndocumentedKeys, findUnexplainedPlugins } from "../docs";
 
 let root = "";
 
@@ -148,5 +148,82 @@ describe("a comment nobody outside this package can read", () =>
             .map((one) => `${one.file}:${String(one.line)} ${one.sentence}`);
 
         expect(found).toEqual([]);
+    });
+});
+
+describe("a comment in an application's own source", () =>
+{
+    const wrote = (files: Readonly<Record<string, string>>): string =>
+    {
+        root = mkdtempSync(join(tmpdir(), "comments-"));
+
+        for (const [path, source] of Object.entries(files))
+        {
+            mkdirSync(join(root, path, ".."), { recursive: true });
+            writeFileSync(join(root, path), source);
+        }
+
+        return root;
+    };
+
+    test("is found, wherever it hides", () =>
+    {
+        const at = wrote({
+            "a.ts": "const one = 1;\n// a line\nconst two = 2;\n",
+            "b/c.tsx": "/* a block\n   over two lines */\nexport const C = () => null;\n",
+            "d.css": ".root { color: red; } /* beside a rule */\n",
+        });
+
+        const found = findComments(at).map((one) => `${one.file}:${String(one.line)}`);
+
+        expect(found).toEqual(["a.ts:2", "b/c.tsx:1", "b/c.tsx:2", "d.css:1"]);
+    });
+
+    test("including one hiding at the end of a line of code", () =>
+    {
+        const at = wrote({ "a.ts": "const one = 1; // said here\n" });
+
+        expect(findComments(at)).toHaveLength(1);
+    });
+
+    test("and source with none of them answers nothing", () =>
+    {
+        const at = wrote({ "a.ts": "const one = 1;\nconst two = 2;\n" });
+
+        expect(findComments(at)).toEqual([]);
+    });
+
+    test("while a url in a string is not one", () =>
+    {
+        const at = wrote({ "a.ts": 'const at = "https://example.invalid/thing";\n' });
+
+        expect(findComments(at)).toEqual([]);
+    });
+});
+
+describe("what is not a comment, however much it looks like one", () =>
+{
+    const wrote = (source: string): string =>
+    {
+        root = mkdtempSync(join(tmpdir(), "notcomments-"));
+
+        writeFileSync(join(root, "a.ts"), source);
+
+        return root;
+    };
+
+    test("a slash inside a regular expression", () =>
+    {
+        expect(findComments(wrote('const at = /from "@plugins\\//;\n'))).toEqual([]);
+    });
+
+    test("a glob path inside a call", () =>
+    {
+        expect(findComments(wrote('const found = glob("../plugins/*/plugin.ts");\n'))).toEqual([]);
+    });
+
+    test("and a url in a template string", () =>
+    {
+        expect(findComments(wrote('const at = `https://example.invalid/x`;\n'))).toEqual([]);
     });
 });

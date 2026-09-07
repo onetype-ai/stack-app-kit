@@ -2,12 +2,12 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { findImportViolations } from "./boundaries";
-import { findMissingDocs, findOversizedDocs, findUnexplainedPlugins } from "./docs";
+import { findComments, findMissingDocs, findOversizedDocs, findUnexplainedPlugins } from "./docs";
 import { findUnknownClasses, findUnknownTokens } from "./styling";
 import { findUnusedFields } from "./wiring";
 
 export type ProjectProblem = {
-    check: "boundaries" | "wiring" | "oversized" | "missing" | "unexplained" | "token" | "class";
+    check: "boundaries" | "wiring" | "oversized" | "missing" | "unexplained" | "token" | "class" | "comment";
     message: string;
 };
 
@@ -62,6 +62,11 @@ export const Project = {
             ...findUnknownTokens(source).map((unknown) => ({
                 check: "token" as const,
                 message: `${unknown.file}: var(${unknown.token}) is asked for and nothing declares it.`,
+            })),
+
+            ...findComments(source).map((one) => ({
+                check: "comment" as const,
+                message: `${one.file}:${String(one.line)} is a comment. What it says goes in a name, or in the name of a test.`,
             })),
 
             ...findUnknownClasses(source).map((unknown) => ({

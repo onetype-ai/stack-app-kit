@@ -193,3 +193,36 @@ describe("an import the pattern used to miss", () =>
         expect(violations.map((violation) => violation.rule)).toContain("deep");
     });
 });
+
+describe("a plugin's own tests", () =>
+{
+    test("may reach a plugin it does not depend on, since a test is not shipped code", () =>
+    {
+        const at = tree({
+            shell: { "plugin.ts": contractFor("shell"), "tests/whole.test.ts": `import { Billing } from "@plugins/billing";` },
+            billing: { "plugin.ts": contractFor("billing"), "index.ts": "export const Billing = {};" },
+        });
+
+        expect(findImportViolations(at)).toEqual([]);
+    });
+
+    test("and may reach another's contract, which is how a slot is proved to be filled", () =>
+    {
+        const at = tree({
+            shell: { "plugin.ts": contractFor("shell"), "tests/slot.test.ts": `import billing from "@plugins/billing/plugin";` },
+            billing: { "plugin.ts": contractFor("billing") },
+        });
+
+        expect(findImportViolations(at)).toEqual([]);
+    });
+
+    test("while the plugin itself is still held to what it declared", () =>
+    {
+        const at = tree({
+            shell: { "plugin.ts": contractFor("shell"), "sections/Bar.tsx": `import { Billing } from "@plugins/billing";` },
+            billing: { "plugin.ts": contractFor("billing"), "index.ts": "export const Billing = {};" },
+        });
+
+        expect(findImportViolations(at)).toHaveLength(1);
+    });
+});

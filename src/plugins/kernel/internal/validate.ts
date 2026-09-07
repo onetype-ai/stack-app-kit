@@ -202,6 +202,19 @@ function checkReferences(
         }
     }
 
+    const declaredSomewhere = (
+        kind: keyof Owned,
+        key: string,
+        code: KernelFault["code"],
+        label: string,
+    ): void =>
+    {
+        if (owned[kind].get(key) === undefined)
+        {
+            say(code, name, `${label} "${key}" is not declared by any plugin. Declare it, or correct the name.`);
+        }
+    };
+
     const reach = (
         kind: keyof Owned,
         key: string,
@@ -236,11 +249,11 @@ function checkReferences(
 
     for (const contribution of plugin.definition.contributes ?? [])
     {
-        reach("slots", contribution.slot, "UNDECLARED_SLOT", "Slot");
+        declaredSomewhere("slots", contribution.slot, "UNDECLARED_SLOT", "Slot");
 
         for (const permission of contribution.requires ?? [])
         {
-            reach("permissions", permission, "UNDECLARED_PERMISSION", "Permission");
+            declaredSomewhere("permissions", permission, "UNDECLARED_PERMISSION", "Permission");
         }
     }
 

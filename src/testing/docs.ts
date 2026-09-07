@@ -187,3 +187,94 @@ export function findPrivateComments(source: string, dist: string): PrivateCommen
 
     return found;
 }
+
+export type Commented = {
+    file: string;
+    line: number;
+};
+
+function withoutLiterals(source: string): string
+{
+    const blank = (held: string): string => " ".repeat(held.length);
+
+    return source
+        .replace(/"(?:[^"\\\n]|\\.)*"/g, blank)
+        .replace(/'(?:[^'\\\n]|\\.)*'/g, blank)
+        .replace(/`(?:[^`\\]|\\.)*`/g, blank)
+        .replace(/(?<=[=(,:[]\s*)\/(?:[^/\\\n[]|\\.|\[(?:[^\]\\]|\\.)*\])+\/[gimsuy]*/g, blank);
+}
+
+export function findComments(source: string): Commented[]
+{
+    if (!existsSync(source))
+    {
+        return [];
+    }
+
+    const found: Commented[] = [];
+
+    const walk = (folder: string): void =>
+    {
+        for (const entry of readdirSync(folder, { withFileTypes: true }))
+        {
+            const path = join(folder, entry.name);
+
+            if (entry.isDirectory())
+            {
+                if (entry.name !== "node_modules")
+                {
+                    walk(path);
+                }
+
+                continue;
+            }
+
+            if (!/\.(tsx?|css)$/.test(entry.name))
+            {
+                continue;
+            }
+
+            const lines = withoutLiterals(readFileSync(path, "utf8")).split("\n");
+            let inside = false;
+
+            for (let at = 0; at < lines.length; at += 1)
+            {
+                const line = lines[at] ?? "";
+                const said = (): void =>
+                {
+                    found.push({ file: path.replace(`${source}/`, ""), line: at + 1 });
+                };
+
+                if (inside)
+                {
+                    said();
+
+                    if (line.includes("*/"))
+                    {
+                        inside = false;
+                    }
+
+                    continue;
+                }
+
+                if (line.includes("//"))
+                {
+                    said();
+
+                    continue;
+                }
+
+                if (line.includes("/*"))
+                {
+                    said();
+
+                    inside = !line.includes("*/");
+                }
+            }
+        }
+    };
+
+    walk(source);
+
+    return found;
+}
