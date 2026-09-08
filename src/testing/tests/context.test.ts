@@ -199,3 +199,39 @@ describe("a request that carried a header", () =>
         expect(fake.asked[0]).not.toHaveProperty("headers");
     });
 });
+
+describe("a channel a plugin listens to", () =>
+{
+    test("hears what the fake pushes, so a subscription is provable", () =>
+    {
+        const fake = fakeContext({});
+        const heard: unknown[] = [];
+
+        fake.ctx.realtime.subscribe("labels.put", (message) => heard.push(message));
+        fake.push("labels.put", { word: "green" });
+
+        expect(heard).toEqual([{ word: "green" }]);
+    });
+
+    test("and hears nothing once it closed", () =>
+    {
+        const fake = fakeContext({});
+        const heard: unknown[] = [];
+
+        fake.ctx.realtime.subscribe("labels.put", (message) => heard.push(message)).close();
+        fake.push("labels.put", { word: "green" });
+
+        expect(heard).toEqual([]);
+    });
+
+    test("nor what went to another channel", () =>
+    {
+        const fake = fakeContext({});
+        const heard: unknown[] = [];
+
+        fake.ctx.realtime.subscribe("labels.put", (message) => heard.push(message));
+        fake.push("labels.gone", { word: "green" });
+
+        expect(heard).toEqual([]);
+    });
+});

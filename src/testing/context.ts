@@ -77,6 +77,14 @@ export type Fake<Config = unknown, Services = unknown> = {
 
     /** What `ctx.hooks.run` answers next. Set it to refuse. */
     refusal: string | undefined;
+
+    /**
+     * Sends a message on a channel, as a server would.
+     *
+     * Nothing here opens a socket, so a plugin listening for a push would
+     * otherwise be testable only by asserting it did not throw.
+     */
+    push: (channel: string, message: unknown) => void;
 };
 
 const isAnswered = (answer: unknown): answer is Answered =>
@@ -109,6 +117,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
     const invalidated: (readonly unknown[])[] = [];
     const commanded: Commanded[] = [];
     const logged: { level: string; line: string }[] = [];
+    const listeners = new Map<string, Set<(message: unknown) => void>>();
 
     const fake: Fake<Config, Services> = {
         asked,
@@ -117,6 +126,15 @@ export function fakeContext<Config = unknown, Services = unknown>(
         commanded,
         logged,
         refusal: faking.refusal,
+
+        push: (channel: string, message: unknown): void =>
+        {
+            for (const receive of listeners.get(channel) ?? [])
+            {
+                receive(message);
+            }
+        },
+
         ctx: undefined as unknown as Context<Config, Services>,
     };
 
@@ -174,7 +192,16 @@ export function fakeContext<Config = unknown, Services = unknown>(
 
     const realtime: Realtime = {
         channel: () => "http",
-        subscribe: () => ({ close: () => {} }),
+
+        subscribe: (channel, receive) =>
+        {
+            const heard = listeners.get(channel) ?? new Set<(message: unknown) => void>();
+
+            heard.add(receive);
+            listeners.set(channel, heard);
+
+            return { close: () => heard.delete(receive) };
+        },
     };
 
     const at = (level: string) =>
