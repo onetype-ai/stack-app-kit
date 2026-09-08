@@ -57,6 +57,18 @@ describe("what a project refuses", () =>
         expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("wiring");
     });
 
+    test("and the shared layer, where the same dead field reads the same way", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "src", "ui", "components"), { recursive: true });
+        const shape = ["export", "type", "Look", "=", "{ tone: string; unread: string };"].join(" ");
+
+        writeFileSync(join(at, "src", "ui", "components", "Look.ts"), `${shape}\n`);
+
+        expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("wiring");
+    });
+
     test("and names a class a module never declared", () =>
     {
         const at = createProject();

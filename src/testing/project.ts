@@ -37,15 +37,12 @@ export const Project = {
         return [
             ...findImportViolations(plugins).map((crossing) => ({ check: "boundaries" as const, message: crossing.message })),
 
-            ...findUnusedFields(plugins).map((unread) => ({
-                check: "wiring" as const,
-                message: `${unread.file}: ${unread.shape}.${unread.field} is declared and nothing reads it.`,
-            })),
-
-            ...findUnusedFields(checking.utils ?? join(root, "src", "utils")).map((unread) => ({
-                check: "wiring" as const,
-                message: `${unread.file}: ${unread.shape}.${unread.field} is declared and nothing reads it.`,
-            })),
+            ...[plugins, checking.utils ?? join(root, "src", "utils"), join(source, "ui")]
+                .flatMap((at) => findUnusedFields(at))
+                .map((unread) => ({
+                    check: "wiring" as const,
+                    message: `${unread.file}: ${unread.shape}.${unread.field} is declared and nothing reads it.`,
+                })),
 
             ...findUnexplainedPlugins(plugins).map((name) => ({
                 check: "unexplained" as const,
