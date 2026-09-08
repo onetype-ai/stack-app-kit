@@ -193,7 +193,7 @@ describe("without a socket", () =>
 
 describe("with a socket", () =>
 {
-    function startSocket(answers: Answering[] = [{ body: {} }])
+    function startSocket(answers: Answering[] = [{ body: {} }], reconnectBase?: number)
     {
         const fetches = fakeFetch(answers);
 
@@ -204,6 +204,7 @@ describe("with a socket", () =>
             plugin({
                 baseUrl: "https://example.test/api",
                 wsUrl: "wss://example.test/ws",
+                ...(reconnectBase === undefined ? {} : { reconnectBase }),
                 openSocket: () =>
                 {
                     const socket = fakeSocket();
@@ -246,6 +247,79 @@ describe("with a socket", () =>
         await transport.connect();
 
         expect(sockets).toHaveLength(1);
+    });
+
+    test("subscribing says so, since a server sends nothing it was not told of", async () =>
+    {
+        const { transport, sockets } = startSocket();
+        const connecting = transport.connect();
+
+        sockets[0]?.opened();
+        await connecting;
+
+        transport.subscribe("items", () => undefined);
+
+        expect(sockets[0]?.sent()).toEqual([JSON.stringify({ subscribe: "items" })]);
+    });
+
+    test("and says it once, however many listeners a channel gathers", async () =>
+    {
+        const { transport, sockets } = startSocket();
+        const connecting = transport.connect();
+
+        sockets[0]?.opened();
+        await connecting;
+
+        transport.subscribe("items", () => undefined);
+        transport.subscribe("items", () => undefined);
+
+        expect(sockets[0]?.sent()).toEqual([JSON.stringify({ subscribe: "items" })]);
+    });
+
+    test("and takes it back when the last listener leaves, not the first", async () =>
+    {
+        const { transport, sockets } = startSocket();
+        const connecting = transport.connect();
+
+        sockets[0]?.opened();
+        await connecting;
+
+        const first = transport.subscribe("items", () => undefined);
+        const second = transport.subscribe("items", () => undefined);
+
+        first.close();
+
+        expect(sockets[0]?.sent()).toHaveLength(1);
+
+        second.close();
+
+        expect(sockets[0]?.sent()).toEqual([
+            JSON.stringify({ subscribe: "items" }),
+            JSON.stringify({ unsubscribe: "items" }),
+        ]);
+    });
+
+    test("and says every one again on the socket a reconnect opens", async () =>
+    {
+        const { transport, sockets } = startSocket(undefined, 1);
+        const connecting = transport.connect();
+
+        sockets[0]?.opened();
+        await connecting;
+
+        transport.subscribe("items", () => undefined);
+        transport.subscribe("orders", () => undefined);
+
+        sockets[0]?.dropped();
+
+        await new Promise((settle) => setTimeout(settle, 50));
+
+        sockets[1]?.opened();
+
+        expect(sockets[1]?.sent()).toEqual([
+            JSON.stringify({ subscribe: "items" }),
+            JSON.stringify({ subscribe: "orders" }),
+        ]);
     });
 
     test("a push reaches every subscriber on its channel", async () =>

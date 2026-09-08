@@ -83,6 +83,14 @@ export function socket(settings: Settings)
         }
     }
 
+    function tell(what: "subscribe" | "unsubscribe", topic: string): void
+    {
+        if (open && wire !== undefined)
+        {
+            wire.send(JSON.stringify({ [what]: topic }));
+        }
+    }
+
     function connect(): Promise<boolean>
     {
         return new Promise<boolean>((resolve) =>
@@ -125,6 +133,11 @@ export function socket(settings: Settings)
                 wire = next;
                 open = true;
                 tries = 0;
+                for (const topic of subscribers.keys())
+                {
+                    tell("subscribe", topic);
+                }
+
                 settings.say("transport connected over websocket");
                 settle(true);
             });
@@ -247,6 +260,11 @@ export function socket(settings: Settings)
             listeners.add(receive);
             subscribers.set(topic, listeners);
 
+            if (listeners.size === 1)
+            {
+                tell("subscribe", topic);
+            }
+
             return {
                 close: () =>
                 {
@@ -255,6 +273,7 @@ export function socket(settings: Settings)
                     if (listeners.size === 0)
                     {
                         subscribers.delete(topic);
+                        tell("unsubscribe", topic);
                     }
                 },
             };
