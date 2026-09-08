@@ -244,6 +244,31 @@ describe("RouteGuard", () =>
         expect(screen.getByText("billing is down")).toBeDefined();
     });
 
+    test("and names the tab anyway, so it never carries the last page's", async () =>
+    {
+        document.title = "Somewhere else";
+
+        const kernel = createKernel({
+            plugins: [
+                createPlugin("billing", {
+                    permissions: { "billing.read": { describe: "may see billing" } },
+                    routes: [{ path: "/billing", title: "Billing", component: () => <h1>Billing</h1>, requires: ["billing.read"] }],
+                }),
+            ],
+            permissions: { granted: () => [] },
+        });
+
+        await kernel.start();
+
+        render(
+            <KernelProvider kernel={kernel}>
+                <RouteGuard route={kernel.routes()[0]!} />
+            </KernelProvider>,
+        );
+
+        expect(document.title).toBe("Billing");
+    });
+
     test("a replaced 403 is what shows", async () =>
     {
         const kernel = createKernel({

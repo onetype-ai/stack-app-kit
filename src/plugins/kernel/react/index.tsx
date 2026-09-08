@@ -235,14 +235,17 @@ export function RouteGuard({ route, send }: { route: Registered; send?: (to: str
         return send === undefined ? null : send(elsewhere);
     }
 
+    // Named before the guard runs, not after: a reader refused a page is on
+    // that page, and a tab carrying the last one's name says they are
+    // somewhere they have left.
+    if (typeof document !== "undefined")
+    {
+        document.title = route.title;
+    }
+
     if (lacking.length > 0)
     {
         return <pages.forbidden permission={lacking[0]} />;
-    }
-
-    if (route.title !== undefined && typeof document !== "undefined")
-    {
-        document.title = route.title;
     }
 
     return (
