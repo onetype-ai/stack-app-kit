@@ -52,6 +52,16 @@ describe("a token a stylesheet asks for", () =>
         expect(findUnknownTokens(at)).toEqual([{ file: "card.module.css", token: "--one" }]);
     });
 
+    test("however an application spells it, and names the whole of one that is missing", () =>
+    {
+        const at = folderWith({
+            "tokens.css": ":root { --oneTwo: 4px; --one_two: 4px; }",
+            "card.module.css": ".root { padding: var(--oneTwo); margin: var(--one_two); gap: var(--threeFour); }",
+        });
+
+        expect(findUnknownTokens(at)).toEqual([{ file: "card.module.css", token: "--threeFour" }]);
+    });
+
     test("counts one a stylesheet declares for itself", () =>
     {
         const at = folderWith({

@@ -50,7 +50,7 @@ export function findUnknownTokens(root: string): UnknownToken[]
                 ? (inside.get(file) ?? new Set<string>())
                 : anywhere;
 
-            for (const match of source.matchAll(/(?:^|[{;])\s*(--[a-z0-9-]+)\s*:\s*[^\s;][^;]*/gm))
+            for (const match of source.matchAll(/(?:^|[{;])\s*(--[\w-]+)\s*:\s*[^\s;][^;]*/gm))
             {
                 reach.add(match[1] ?? "");
             }
@@ -60,7 +60,7 @@ export function findUnknownTokens(root: string): UnknownToken[]
                 inside.set(file, reach);
             }
 
-            for (const match of source.matchAll(/var\((--[a-z0-9-]+)/g))
+            for (const match of source.matchAll(/var\((--[\w-]+)/g))
             {
                 used.push({ at: file, file: relative(root, file), token: match[1] ?? "" });
             }
@@ -68,7 +68,7 @@ export function findUnknownTokens(root: string): UnknownToken[]
             continue;
         }
 
-        for (const match of source.matchAll(/["'](--[a-z0-9-]+)["']\s*:/g))
+        for (const match of source.matchAll(/["'](--[\w-]+)["']\s*:/g))
         {
             anywhere.add(match[1] ?? "");
         }
