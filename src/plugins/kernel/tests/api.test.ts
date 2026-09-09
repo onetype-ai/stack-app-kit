@@ -647,4 +647,39 @@ describe("config defaults", () =>
 
         expect(fault?.code).toBe("INVALID_CONFIG");
     });
+
+    test("a plugin sends a header, and the kernel answers it", async () =>
+    {
+        const kernel = createKernel({
+            plugins: [createPlugin("auth", { sends: () => ({ "x-session-key": "abc" }) })],
+        });
+
+        await kernel.start();
+
+        expect(kernel.sent()).toEqual({ "x-session-key": "abc" });
+    });
+
+    test("two plugins sending the same header is refused, however it is spelled", async () =>
+    {
+        const kernel = createKernel({
+            plugins: [
+                createPlugin("auth", { sends: () => ({ "x-key": "1" }) }),
+                createPlugin("billing", { sends: () => ({ "X-Key": "2" }) }),
+            ],
+        });
+
+        await kernel.start();
+
+        expect(() => kernel.sent()).toThrow(KernelFault);
+        expect(() => kernel.sent()).toThrow(/both send "X-Key"/);
+    });
+
+    test("a plugin that sends nothing leaves the headers alone", async () =>
+    {
+        const kernel = createKernel({ plugins: [createPlugin("billing")] });
+
+        await kernel.start();
+
+        expect(kernel.sent()).toEqual({});
+    });
 });

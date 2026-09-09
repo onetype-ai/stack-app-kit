@@ -39,7 +39,7 @@ export type Participant<Context> = Described & {
 
 /** Something a plugin can be asked to do, behind the permissions it names. */
 export type Command<Context> = Schematic & {
-    requires?: readonly string[];
+    requires?: readonly string[] | undefined;
     run: (input: unknown, ctx: Context) => void | Promise<void>;
 };
 
@@ -49,8 +49,8 @@ export type Slot = Schematic;
 /** What one plugin renders in another's slot. */
 export type Contribution = {
     slot: string;
-    order?: number;
-    requires?: readonly string[];
+    order?: number | undefined;
+    requires?: readonly string[] | undefined;
     render: ComponentType<{ payload: unknown }>;
 };
 
@@ -68,7 +68,7 @@ export type Route<Config = unknown, Services = unknown> = {
      */
     title: string;
 
-    requires?: readonly string[];
+    requires?: readonly string[] | undefined;
 
     /**
      * What this route reads from the query string.
@@ -76,7 +76,7 @@ export type Route<Config = unknown, Services = unknown> = {
      * Declared, like everything else: a parameter no route names is one no
      * page may read, and a value that fails this never reaches a component.
      */
-    search?: z.ZodType;
+    search?: z.ZodType | undefined;
 
     /**
      * Where the viewer belongs instead, when this page is not it.
@@ -90,7 +90,8 @@ export type Route<Config = unknown, Services = unknown> = {
      * signed-out case, where "not yours to open" is no use to somebody
      * nobody has asked to sign in yet.
      */
-    instead?: (ctx: Context<Config, Services>) => string | undefined;
+    instead?: ((ctx: Context<Config, Services>) => string | undefined) | undefined;
+
 };
 
 /** What a component sees when a contribution or a page threw. */
@@ -103,7 +104,7 @@ export type FallbackProps = {
 /** What shows when a viewer may not see a page, or nothing declared it. */
 export type Pages = {
     forbidden?: FunctionComponent<{ permission?: string | undefined }>;
-    missing?: FunctionComponent;
+    missing?: FunctionComponent | undefined;
 };
 
 /** Where a plugin's lines go. The application decides. */
@@ -185,6 +186,20 @@ export type Context<Config = unknown, Services = unknown> = {
     permissions: {
         has: (permission: string) => boolean;
         all: (permissions: readonly string[]) => boolean;
+
+        /**
+         * Says the answer moved, so every guard asks again.
+         *
+         * What a viewer may do is the one declaration that is not static: it
+         * depends on who is looking, and that changes while the page is open.
+         * The plugin holding identity calls this when a session ends, starts
+         * or takes a different role, and the guards catch up without the
+         * application reloading itself.
+         */
+        changed: () => void;
+
+        /** Runs `notify` whenever `changed` is called. Returns a stop. */
+        watch: (notify: () => void) => () => void;
     };
 
     commands: {
@@ -206,10 +221,10 @@ type Given<Api> = NoInfer<Api>;
 /** Everything a plugin declares about itself. */
 export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown> = Described & {
     version: string;
-    dependsOn?: readonly string[];
-    config?: Schema;
+    dependsOn?: readonly string[] | undefined;
+    config?: Schema | undefined;
 
-    permissions?: Readonly<Record<string, Permission>>;
+    permissions?: Readonly<Record<string, Permission>> | undefined;
 
     /**
      * What the viewer may do, read on every check.
@@ -221,10 +236,10 @@ export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown>
      * This decides what a viewer sees, never what they may do. The server
      * checks again, and is the only place a refusal counts.
      */
-    grants?: (ctx: Context<z.infer<Schema>, Given<Services>>) => readonly string[];
+    grants?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => readonly string[]) | undefined;
 
-    services?: (ctx: Context<z.infer<Schema>, never>) => Services;
-    fallback?: ComponentType<FallbackProps>;
+    services?: ((ctx: Context<z.infer<Schema>, never>) => Services) | undefined;
+    fallback?: ComponentType<FallbackProps> | undefined;
 
     /**
      * The frame every page renders inside.
@@ -232,28 +247,40 @@ export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown>
      * At most one plugin offers this. An application that named its own would
      * be naming a plugin, which is the thing the kernel exists to avoid.
      */
-    frame?: FunctionComponent;
+    frame?: FunctionComponent | undefined;
 
     /**
      * What shows instead of a page: 403 when a permission is missing, 404 when
      * nothing declared the path. At most one plugin offers each.
      */
-    pages?: Pages;
+    pages?: Pages | undefined;
 
-    routes?: readonly Route<z.infer<Schema>, Given<Services>>[];
-    slots?: Readonly<Record<string, Slot>>;
-    contributes?: readonly Contribution[];
+    routes?: readonly Route<z.infer<Schema>, Given<Services>>[] | undefined;
+    slots?: Readonly<Record<string, Slot>> | undefined;
+    contributes?: readonly Contribution[] | undefined;
 
-    emits?: Readonly<Record<string, Event>>;
-    listens?: Readonly<Record<string, Listener<Context<z.infer<Schema>, Given<Services>>>>>;
+    emits?: Readonly<Record<string, Event>> | undefined;
+    listens?: Readonly<Record<string, Listener<Context<z.infer<Schema>, Given<Services>>>>> | undefined;
 
-    hooks?: Readonly<Record<string, Hook>>;
-    participates?: Readonly<Record<string, Participant<Context<z.infer<Schema>, Given<Services>>>>>;
+    hooks?: Readonly<Record<string, Hook>> | undefined;
+    participates?: Readonly<Record<string, Participant<Context<z.infer<Schema>, Given<Services>>>>> | undefined;
 
-    commands?: Readonly<Record<string, Command<Context<z.infer<Schema>, Given<Services>>>>>;
+    commands?: Readonly<Record<string, Command<Context<z.infer<Schema>, Given<Services>>>>> | undefined;
 
-    setup?: (ctx: Context<z.infer<Schema>, Given<Services>>) => void | Promise<void>;
-    teardown?: (ctx: Context<z.infer<Schema>, Given<Services>>) => void | Promise<void>;
+    /**
+     * What this plugin adds to the headers of every request the kit makes.
+     *
+     * Asked on each request, so a value that changes is read again. Two
+     * plugins naming the same header is refused, because a header with two
+     * authors is one nobody owns.
+     *
+     * Requests never leave `baseUrl`, so what is declared here reaches only
+     * the application's own server.
+     */
+    sends?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => Readonly<Record<string, string>>) | undefined;
+
+    setup?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => void | Promise<void>) | undefined;
+    teardown?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => void | Promise<void>) | undefined;
 };
 
 /** A plugin: its name, and what it declared. */

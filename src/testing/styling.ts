@@ -15,6 +15,11 @@ export type Literal = {
     holds: string;
 };
 
+export type Unmeasured = {
+    file: string;
+    holds: number;
+};
+
 export type UnknownClass = {
     file: string;
     name: string;
@@ -169,6 +174,8 @@ const DURATION = /(?<![\w.#-])\d*\.?\d+m?s\b/;
 
 const NOTHING_OR_HAIRLINE = /^(0|1px)$/;
 
+const INSTANT = /^(0|0m?s|1ms)$/;
+
 /**
  * Every raw colour, length and duration written outside the sheets that
  * declare them.
@@ -177,13 +184,15 @@ const NOTHING_OR_HAIRLINE = /^(0|1px)$/;
  * and nothing renders wrongly enough for anyone to look. A token names the
  * decision once, so changing it changes every rule that took it.
  * */
-export function findLiterals(root: string): Literal[]
+export function findLiterals(root: string, alsoIn: readonly string[] = []): Literal[]
 {
     const found: Literal[] = [];
 
     for (const file of walk(root))
     {
-        if (!file.endsWith(".css") || DECLARING.some((named) => file.endsWith(named)))
+        const named = alsoIn.some((one) => relative(root, file).startsWith(one));
+
+        if ((!file.endsWith(".css") && !named) || DECLARING.some((one) => file.endsWith(one)))
         {
             continue;
         }
@@ -213,10 +222,36 @@ export function findLiterals(root: string): Literal[]
                 found.push({ ...where, kind: "length" });
             }
 
-            if (DURATION.test(raw))
+            const waited = DURATION.exec(raw);
+
+            if (waited !== null && !INSTANT.test(waited[0]))
             {
                 found.push({ ...where, kind: "duration" });
             }
+        }
+    }
+
+    return found;
+}
+
+export function findUnmeasured(root: string, alsoIn: readonly string[] = []): Unmeasured[]
+{
+    const found: Unmeasured[] = [];
+
+    for (const file of walk(root))
+    {
+        if (file.endsWith(".css") || alsoIn.some((one) => relative(root, file).startsWith(one)))
+        {
+            continue;
+        }
+
+        const holds = readFileSync(file, "utf8").split("\n")
+            .filter((line) => COLOUR.test(line) || LENGTH.exec(line) !== null || DURATION.test(line))
+            .length;
+
+        if (holds > 0)
+        {
+            found.push({ file: relative(root, file), holds });
         }
     }
 

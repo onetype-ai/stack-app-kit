@@ -30,9 +30,12 @@ export async function start(starting: Starting): Promise<Started>
         beforeKernel.push(path);
     };
 
+    let contributed = (): Readonly<Record<string, string>> => ({});
+
     const app = boot(say, [
         transportPlugin({
             ...starting.transport,
+            headers: () => ({ ...starting.transport.headers?.(), ...contributed() }),
             onUnauthorized: (path: string) =>
             {
                 starting.transport.onUnauthorized?.(path);
@@ -95,6 +98,8 @@ export async function start(starting: Starting): Promise<Started>
     {
         kernel.context("transport").events.emit("transport.unauthorized", { path });
     };
+
+    contributed = () => kernel.sent();
 
     for (const path of beforeKernel.splice(0))
     {

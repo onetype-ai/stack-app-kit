@@ -25,13 +25,13 @@ export function slots()
             return openedBy.has(name);
         },
 
-        contentsOf: (name: string, payload: unknown): { contributions: readonly PlacedContribution[]; problem?: string } =>
+        contentsOf: (name: string, payload: unknown): { contributions: readonly PlacedContribution[]; payload: unknown; problem?: string } =>
         {
             const opened = openedBy.get(name);
 
             if (opened === undefined)
             {
-                return { contributions: [], problem: `Slot "${name}" is not declared by any plugin.` };
+                return { contributions: [], payload, problem: `Slot "${name}" is not declared by any plugin.` };
             }
 
             const answer = opened.slot.schema.safeParse(payload ?? {});
@@ -40,13 +40,14 @@ export function slots()
             {
                 return {
                     contributions: [],
+                    payload,
                     problem: `The payload for slot "${name}" does not match its schema: ${answer.error.issues[0]?.message ?? "it was rejected"}.`,
                 };
             }
 
             const contributions = [...(placed.get(name) ?? [])].sort((first, second) => (first.order ?? 0) - (second.order ?? 0));
 
-            return { contributions };
+            return { contributions, payload: answer.data };
         },
 
         payload: (name: string, payload: unknown): unknown =>

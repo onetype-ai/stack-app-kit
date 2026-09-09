@@ -173,4 +173,39 @@ describe("hearing and joining, which are not the same as filling", () =>
 
         await expect(kernel.start()).rejects.toThrow(/does not depend on/);
     });
+
+    test("a contribution reads what the schema answered, not what the caller wrote", async () =>
+    {
+        const opener = definePlugin("opener", {
+            version: "1.0.0",
+            describe: "Opens a slot whose schema fills a value in.",
+            slots: {
+                "opener.side": {
+                    describe: "A place.",
+                    schema: z.object({ current: z.string(), tone: z.string().default("quiet") }),
+                },
+            },
+        });
+
+        const giver = definePlugin("giver", {
+            version: "1.0.0",
+            describe: "Reads the payload it is given.",
+            contributes: [{
+                slot: "opener.side",
+                render: ({ payload }) => <p>{JSON.stringify(payload)}</p>,
+            }],
+        });
+
+        const kernel = createKernel({ plugins: [opener, giver] });
+
+        await kernel.start();
+
+        render(
+            <KernelProvider kernel={kernel}>
+                <Slot name="opener.side" payload={{ current: "/a" }} />
+            </KernelProvider>,
+        );
+
+        expect(screen.getByText(/quiet/)).toBeDefined();
+    });
 });

@@ -29,8 +29,7 @@ type Realtime = {
 ```
 
 These three arrive without being declared. With no socket, `channel()` answers
-`"http"` and `subscribe` delivers nothing, so a caller needs no branch. With no
-client, `http` and `cache` throw naming what to pass.
+`"http"` and `subscribe` delivers nothing, so a caller needs no branch.
 
 **`http` answers the body, never an envelope.** A 204 is `undefined`, anything
 but a 2xx throws. A fake answering `{ status, body }` describes the channel
@@ -59,6 +58,7 @@ slots?: Record<string, Slot>; contributes?: readonly Contribution[];
 emits?: Record<string, Event>; listens?: Record<string, Listener>;
 hooks?: Record<string, Hook>; participates?: Record<string, Participant>;
 commands?: Record<string, Command>;
+sends?: (ctx) => Record<string, string>;      // headers, one owner each
 setup?: (ctx) => void | Promise<void>; teardown?: (ctx) => void | Promise<void>;
 ```
 
@@ -66,9 +66,7 @@ Rules: the application's `contract.md`.
 
 ## What a start refuses
 
-`INVALID_NAME`, `DUPLICATE_PLUGIN`, `UNKNOWN_DEPENDENCY`,
-`UNDECLARED_DEPENDENCY`, `DEPENDENCY_CYCLE`, `DUPLICATE_ROUTE`,
-`INVALID_ROUTE`, `INVALID_CONFIG`. Every one names the plugin and the key.
+A refusal names its code, the plugin and the fix, one line per problem.
 
 A plugin name is lowercase letters, digits and hyphens, starting with a
 letter. Everything it declares is `plugin.thing`: an event, hook, slot or
@@ -81,6 +79,7 @@ start(): Promise<void>          stop(): Promise<void>       started(): boolean
 routes(): readonly Registered[] frame(): FunctionComponent | undefined
 slot(name, payload): { contributions: readonly PlacedContribution[]; problem?: string }
 context(plugin): Context        pages(): Pages
+sent(): Record<string, string>  // what `sends` adds to every request
 ```
 
 `Registered` is a route plus the plugin that declared it and its `fallback`.
@@ -153,7 +152,10 @@ expect(Project.checks()).toEqual([]);
 ```
 
 One call runs every check, so one the kit adds later needs no new test here.
-Each answers `{ check, message }`: an import that crossed a boundary, a field
-nothing reads, a plugin with no `usage.md`, a `var()` or `styles.name` nothing
-declares, and what a document promised. Document checks skip when `#docs` is
-packed; the rest always run. Each `find*` is exported alone as well.
+Each answers `{ check, message }`. Two plugins each holding one util or one
+enum is refused; a copy that cannot import names itself in `sharing`.
+`budgets: { "public/x.js": 2048 }`
+weighs a built file gzipped.
+Each `find*` is exported too.
+`across: ["../api/src/plugins"]` names the other half of a two-stack
+application; a guard that cannot reach it is `skipped`, never a pass.

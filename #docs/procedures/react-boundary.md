@@ -17,6 +17,11 @@ state. The React entry holds the Provider, `Slot`, `RouteGuard` and hooks.
 
 The test: could it run in a Node script with no DOM? Then it is core.
 
+`start` is core by that test, which is what makes a prerender possible with
+nothing added: start the kernel in a Node script, take `kernel.frame()` and
+`kernel.routes()`, and `renderToString(<Frame><route.page /></Frame>)` for
+each. `discover` still wants a bundler's glob, so pass the plugins yourself.
+
 A component holds no logic. `Slot` asks the core what contributions exist and
 who may see them; it decides neither.
 

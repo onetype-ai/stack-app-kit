@@ -141,6 +141,22 @@ export function useStore<Value>(
         return latestRead.current();
     }, []);
 
+    const checked = useRef(false);
+
+    if (!checked.current)
+    {
+        checked.current = true;
+
+        if (!Object.is(read(), read()))
+        {
+            throw new Error(
+                "useStore was given a read that answers something different every "
+                + "call, so React re-renders forever. Answer the value the service "
+                + "already holds, or read one field at a time.",
+            );
+        }
+    }
+
     return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
@@ -154,7 +170,7 @@ export function useStore<Value>(
 export function Slot({ name, payload }: { name: string; payload?: unknown }): ReactNode
 {
     const kernel = useKernel();
-    const { contributions, problem } = kernel.slot(name, payload);
+    const { contributions, payload: answered, problem } = kernel.slot(name, payload);
 
     useGranting();
 
@@ -174,7 +190,7 @@ export function Slot({ name, payload }: { name: string; payload?: unknown }): Re
                         plugin={contribution.plugin}
                         fallback={kernel.fallbackFor(contribution.plugin)}
                     >
-                        <contribution.render payload={payload} />
+                        <contribution.render payload={answered} />
                     </Boundary>
                 ))}
         </>

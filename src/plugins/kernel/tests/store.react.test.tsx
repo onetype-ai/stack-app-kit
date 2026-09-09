@@ -128,4 +128,30 @@ describe("a value a service keeps", () =>
 
         expect(subscribed).toBe(1);
     });
+
+    test("a read answering a new value every call is refused, not left to loop", () =>
+    {
+        function Screen(): ReactNode
+        {
+            useStore(() => () => undefined, () => ({ n: 1 }));
+
+            return null;
+        }
+
+        expect(() => render(<Screen />)).toThrow(/re-renders forever/);
+    });
+
+    test("a read answering the value the service holds is left alone", () =>
+    {
+        const store = createStore(7);
+
+        function Screen(): ReactNode
+        {
+            return <p>{useStore((notify) => store.watch(notify), () => store.read())}</p>;
+        }
+
+        render(<Screen />);
+
+        expect(screen.getByText("7")).toBeDefined();
+    });
 });

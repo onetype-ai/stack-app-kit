@@ -154,6 +154,23 @@ describe("a raw value written where the values are not declared", () =>
         expect(findLiterals(at)).toEqual([]);
     });
 
+    test("but not the instant that kills an animation, in any spelling", () =>
+    {
+        const at = folderWith({
+            "reduced.module.css": ".a { animation-duration: 0; }\n.b { animation-duration: 0s; }\n"
+                + ".c { transition-duration: 0ms; }\n.d { animation-duration: 1ms; }\n",
+        });
+
+        expect(findLiterals(at)).toEqual([]);
+    });
+
+    test("and one millisecond longer is a duration again", () =>
+    {
+        const at = folderWith({ "reduced.module.css": ".a { animation-duration: 2ms; }" });
+
+        expect(findLiterals(at).map((one) => one.kind)).toEqual(["duration"]);
+    });
+
     test("nor in the one that only takes browser defaults away", () =>
     {
         const at = folderWith({ "reset.css": "* { margin: 0; padding: 12px; }" });

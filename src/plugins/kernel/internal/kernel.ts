@@ -42,7 +42,7 @@ export type Kernel = {
     routes: () => readonly Registered[];
     frame: () => FunctionComponent | undefined;
     pages: () => Pages;
-    slot: (name: string, payload: unknown) => { contributions: readonly PlacedContribution[]; problem?: string };
+    slot: (name: string, payload: unknown) => { contributions: readonly PlacedContribution[]; payload: unknown; problem?: string };
     knownSlot: (name: string) => boolean;
     fallbackFor: (plugin: string) => ComponentType<FallbackProps> | undefined;
 
@@ -57,6 +57,8 @@ export type Kernel = {
     };
     events: { failures: () => readonly Failure[] };
     run: (command: string, input: unknown) => Promise<void>;
+
+    sent: () => Readonly<Record<string, string>>;
 };
 
 const quiet: Log = () => {};
@@ -374,6 +376,14 @@ export function createKernel(options: Options): Kernel
             }
 
             running = true;
+
+            // Setup is the one moment the answer moves without anybody doing
+            // anything: the plugin holding identity spends it asking the
+            // server who is here, and a guard that rendered before that is
+            // holding an answer from before there was one. Said once, and
+            // free when nothing moved, since a store only re-renders on a
+            // value that actually differs.
+            may.changed();
         },
 
         async stop(): Promise<void>
@@ -444,6 +454,34 @@ export function createKernel(options: Options): Kernel
         events: { failures: bus.failures },
 
         run,
+
+        sent: () =>
+        {
+            const headers: Record<string, string> = {};
+            const author = new Map<string, string>();
+
+            for (const plugin of registry.values())
+            {
+                for (const [name, value] of Object.entries(plugin.definition.sends?.(context(plugin.name)) ?? {}))
+                {
+                    const wrote = author.get(name.toLowerCase());
+
+                    if (wrote !== undefined)
+                    {
+                        throw new KernelFault(
+                            "DUPLICATE_HEADER",
+                            `"${plugin.name}" and "${wrote}" both send "${name}". One plugin owns a header, or which one answers depends on the order they booted.`,
+                            { plugin: plugin.name },
+                        );
+                    }
+
+                    author.set(name.toLowerCase(), plugin.name);
+                    headers[name] = value;
+                }
+            }
+
+            return headers;
+        },
     };
 }
 

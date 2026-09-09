@@ -1,4 +1,5 @@
 import type { Host } from "../../kernel/host";
+import { address } from "./internal/address";
 import { TransportFault } from "./internal/faults";
 import type { FaultCode } from "./internal/faults";
 import type { Method } from "./internal/method";
@@ -87,5 +88,6 @@ export function from(host: Host): Transport | undefined
     return host.take<Transport>(NAME);
 }
 
+export { address };
 export { TransportFault };
 export type { FaultCode, Method };

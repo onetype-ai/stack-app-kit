@@ -107,13 +107,34 @@ describe("a path the fake was never given", () =>
 
         await expect(fake.ctx.http.get("/nothing")).resolves.toBeUndefined();
     });
+
+    test("and a query the answer turns on is part of the address, so two calls differ", async () =>
+    {
+        const fake = fakeContext({
+            "GET /leads?botId=one": { leads: ["first"] },
+            "GET /leads?botId=two": { leads: ["second"] },
+        });
+
+        await expect(fake.ctx.http.get("/leads", { query: { botId: "one" } })).resolves.toEqual({ leads: ["first"] });
+        await expect(fake.ctx.http.get("/leads", { query: { botId: "two" } })).resolves.toEqual({ leads: ["second"] });
+    });
+
+    test("so a key naming the bare path answers nothing once a query goes with it", async () =>
+    {
+        const fake = fakeContext({ "GET /leads": { leads: [] } });
+
+        const thrown = await fake.ctx.http.get("/leads", { query: { botId: "one" } })
+            .catch((cause: unknown) => cause) as transport.TransportFault;
+
+        expect(thrown.message).toContain("GET /leads?botId=one");
+    });
 });
 
 describe("what a fake records", () =>
 {
     test("every request, with the query and body that went with it", async () =>
     {
-        const fake = fakeContext({ "POST /parts": { id: "p_1" } });
+        const fake = fakeContext({ "POST /parts?kind=seal": { id: "p_1" } });
 
         await fake.ctx.http.post("/parts", { query: { kind: "seal" }, body: { name: "One" } });
 
@@ -233,5 +254,34 @@ describe("a channel a plugin listens to", () =>
         fake.push("labels.gone", { word: "green" });
 
         expect(heard).toEqual([]);
+    });
+});
+
+describe("a plugin saying what a viewer may do has moved", () =>
+{
+    test("counts it, so a test can prove the plugin said so", () =>
+    {
+        const fake = fakeContext({});
+
+        expect(fake.regranted).toBe(0);
+
+        fake.ctx.permissions.changed();
+        fake.ctx.permissions.changed();
+
+        expect(fake.regranted).toBe(2);
+    });
+
+    test("passes it on to whoever is watching, and stops when they leave", () =>
+    {
+        const fake = fakeContext({});
+        const heard: number[] = [];
+
+        const stop = fake.ctx.permissions.watch(() => heard.push(1));
+
+        fake.ctx.permissions.changed();
+        stop();
+        fake.ctx.permissions.changed();
+
+        expect(heard).toEqual([1]);
     });
 });

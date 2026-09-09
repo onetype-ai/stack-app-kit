@@ -1,11 +1,19 @@
 # done
 
-Five plugins, 273 tests, each watched to fail before it was trusted.
+Five plugins, 325 tests, each watched to fail before it was trusted.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events
 - `kernel` plugin: `definePlugin`, `createKernel`, contract validation, events,
   hooks, slots, permissions, commands, services
 - validation reports every problem in one run, naming plugin, key, owner, fix
+- `sends`: a plugin adds headers to every request, one owner per header, and a
+  second author is refused however the name is spelled
+- a contribution reads what the slot's schema answered, so a default or a
+  transform the opener declared reaches it
+- `useStore` refuses a `read` that answers something new each call, rather than
+  leaving React to loop until it throws about its own internals
+- every optional key in the contract takes `undefined`, so a caller building a
+  route from values it may not have is not asked to change a type it cannot
 - nothing partially starts: a wrong contract leaves no plugin set up
 - React: `KernelProvider`, `Slot`, `RouteGuard`, `usePlugin`,
   `StatusPageProvider`
@@ -57,5 +65,5 @@ Five plugins, 273 tests, each watched to fail before it was trusted.
 - **Eight documents said things the code did not**, including an example whose
   `dependsOn` would refuse the boot it was teaching.
 
-Five builds, five domains, 273 tests. Every one read the source for the same
+Five builds, five domains, 325 tests. Every one read the source for the same
 five things, all now in `reference.md`.

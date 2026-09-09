@@ -75,6 +75,9 @@ export type Fake<Config = unknown, Services = unknown> = {
     /** Every line logged, by level. */
     logged: readonly { level: string; line: string }[];
 
+    /** How many times the plugin said what a viewer may do had moved. */
+    regranted: number;
+
     /** What `ctx.hooks.run` answers next. Set it to refuse. */
     refusal: string | undefined;
 
@@ -118,6 +121,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
     const commanded: Commanded[] = [];
     const logged: { level: string; line: string }[] = [];
     const listeners = new Map<string, Set<(message: unknown) => void>>();
+    const watching = new Set<() => void>();
 
     const fake: Fake<Config, Services> = {
         asked,
@@ -125,6 +129,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
         invalidated,
         commanded,
         logged,
+        regranted: 0,
         refusal: faking.refusal,
 
         push: (channel: string, message: unknown): void =>
@@ -150,11 +155,21 @@ export function fakeContext<Config = unknown, Services = unknown>(
                 ...(request.headers !== undefined && { headers: request.headers }),
             });
 
-            const answer = answers[`${method} ${path}`];
+            // Keyed by the address the real transport would dial, so a query
+            // that decides the answer tells two calls apart here as it does
+            // there: a fake that answered whatever the query said left the
+            // screens that follow a picker untested.
+            const dialled = transport.address("", path, request.query);
+            const asKey = `${method} ${dialled.startsWith("/") ? dialled : `/${dialled}`}`;
+            const answer = answers[asKey];
 
-            if (answer === undefined && !(`${method} ${path}` in answers))
+            if (answer === undefined && !(asKey in answers))
             {
-                return Promise.reject(transport.TransportFault.fromStatus(404, { method, path }));
+                return Promise.reject(new transport.TransportFault(
+                    "NOT_FOUND",
+                    `Nothing answers "${asKey}". A fake answers the address the transport dials, query and all: name that one, or drop the query.`,
+                    { method, path: asKey.slice(method.length + 1), status: 404 },
+                ));
             }
 
             if (isAnswered(answer))
@@ -250,6 +265,28 @@ export function fakeContext<Config = unknown, Services = unknown>(
             {
                 return faking.permissions === undefined
                     || permissions.every((one) => faking.permissions?.includes(one));
+            },
+
+            // Counted and passed on, because both halves are worth proving: a
+            // plugin that says the answer moved, and a guard that hears it.
+            changed: () =>
+            {
+                fake.regranted += 1;
+
+                for (const notify of watching)
+                {
+                    notify();
+                }
+            },
+
+            watch: (notify: () => void) =>
+            {
+                watching.add(notify);
+
+                return () =>
+                {
+                    watching.delete(notify);
+                };
             },
         },
 
