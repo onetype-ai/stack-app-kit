@@ -222,6 +222,11 @@ export function findDanglingPaths(root: string, files: readonly string[] = ["tsc
                     continue;
                 }
 
+                if (packedAway(root, target.replace(/^\.?\//, "")))
+                {
+                    continue;
+                }
+
                 found.push({ alias, target, file: name });
             }
         }
@@ -300,4 +305,22 @@ export function findUnwatched(root: string): Unwatched[]
     }
 
     return found;
+}
+
+function packedAway(root: string, target: string): boolean
+{
+    for (const entry of readdirSync(root, { withFileTypes: true, recursive: true }))
+    {
+        if (!entry.isFile() || entry.name !== "example.txt")
+        {
+            continue;
+        }
+
+        if (readFileSync(join(entry.parentPath, entry.name), "utf8").includes(`==> ${target}`))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }

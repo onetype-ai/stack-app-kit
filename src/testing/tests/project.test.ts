@@ -144,6 +144,17 @@ describe("what a project refuses", () =>
         expect(Project.checks({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
     });
 
+    test("and leaving one alone whose file is folded into an example, which is how a scaffold ships", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "src", "ui"), { recursive: true });
+        writeFileSync(join(at, "src", "ui", "example.txt"), "==> src/ui/index.ts\nexport const nothing = 1;\n");
+        writeFileSync(join(at, "tsconfig.json"), '{ "compilerOptions": { "paths": { "@ui": ["./src/ui/index.ts"] } } }\n');
+
+        expect(Project.checks({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
+    });
+
     test("and leaving a folder pattern alone, since it names no single file", () =>
     {
         const at = createProject();
