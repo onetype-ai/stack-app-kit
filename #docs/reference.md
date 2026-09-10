@@ -7,7 +7,7 @@ What every service, listener, participant and command is handed.
 ```ts
 type Context<Config = unknown, Services = unknown> = {
     name: string; config: Config; services: Services;
-    log: Logger; http: Client; cache: Cache; realtime: Realtime;
+    log: Logger; http: HttpClient; cache: Cache; realtime: Realtime;
     events: {
         emit: (event: string, payload: unknown) => void;
         on: (event: string, handle: (payload: unknown) => void) => () => void;
@@ -20,7 +20,7 @@ type Context<Config = unknown, Services = unknown> = {
 ```
 
 ```ts
-type Client = { get; post; put; patch; delete: (path: string, request?: Request) => Promise<unknown> };
+type HttpClient = { get; post; put; patch; delete: (path: string, request?: CallOptions) => Promise<unknown> };
 type Cache = { invalidate: (key: readonly unknown[]) => void };
 type Realtime = {
     channel: () => "ws" | "http";
@@ -54,7 +54,7 @@ grants?: (ctx) => readonly string[];          // at most one plugin
 services?: (ctx) => Services;                 // ctx.services is never here
 frame?: FunctionComponent; pages?: Pages; fallback?: ComponentType;
 routes?: readonly Route[];   // path, component, title, requires?, search?, instead?
-slots?: Record<string, Slot>; contributes?: readonly Contribution[];
+slots?: Record<string, Slot>; contributes?: readonly SlotContribution[];
 emits?: Record<string, Event>; listens?: Record<string, Listener>;
 hooks?: Record<string, Hook>; participates?: Record<string, Participant>;
 commands?: Record<string, Command>;
@@ -76,13 +76,11 @@ command not starting with its own name is refused.
 
 ```ts
 start(): Promise<void>          stop(): Promise<void>       started(): boolean
-routes(): readonly Registered[] frame(): FunctionComponent | undefined
+routes(): readonly RegisteredRoute[] frame(): FunctionComponent | undefined
 slot(name, payload): { contributions: readonly PlacedContribution[]; problem?: string }
 context(plugin): Context        pages(): Pages
 sent(): Record<string, string>  // what `sends` adds to every request
 ```
-
-`Registered` is a route plus the plugin that declared it and its `fallback`.
 
 ## Imports
 
@@ -148,7 +146,7 @@ mount owns it, so a plugin that listens names `transport` in `dependsOn`.
 ```ts
 import { Project } from "@onetype/stack-app-kit/testing";
 
-expect(Project.checks()).toEqual([]);
+expect(Project.findAll()).toEqual([]);
 ```
 
 One call runs every check, so one the kit adds later needs no new test here.

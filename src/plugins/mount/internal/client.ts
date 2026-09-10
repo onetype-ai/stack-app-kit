@@ -1,10 +1,10 @@
-import type { Client, Request } from "../../kernel/api";
+import type { HttpClient, CallOptions } from "../../kernel/api";
 import type { Transport } from "../../transport/api";
 
-export function client(transport: Transport): Client
+export function client(transport: Transport): HttpClient
 {
     const send = (method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE") =>
-        async (path: string, request: Request = {}): Promise<unknown> =>
+        async (path: string, request: CallOptions = {}): Promise<unknown> =>
             transport.request({
                 method,
                 path,

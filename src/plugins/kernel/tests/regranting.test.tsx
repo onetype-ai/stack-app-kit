@@ -4,7 +4,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { createKernel, definePlugin } from "../api";
 import { KernelProvider, RouteGuard } from "../react";
 
-import type { Registered } from "../api";
+import type { RegisteredRoute } from "../api";
 
 afterEach(cleanup);
 
@@ -29,7 +29,7 @@ describe("a viewer who signs in while the page is open", () =>
 
         await kernel.start();
 
-        const route: Registered = {
+        const route: RegisteredRoute = {
             path: "/pay",
             title: "A page",
             component: Page,
@@ -71,7 +71,7 @@ describe("a viewer who signs in while the page is open", () =>
         const kernel = createKernel({ plugins: [shop] });
         const starting = kernel.start();
 
-        const route: Registered = {
+        const route: RegisteredRoute = {
             path: "/pay",
             title: "A page",
             component: Page,
@@ -110,7 +110,7 @@ describe("a viewer who signs in while the page is open", () =>
 
         await kernel.start();
 
-        const route: Registered = {
+        const route: RegisteredRoute = {
             path: "/pay",
             title: "A page",
             component: Page,

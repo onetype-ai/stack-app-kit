@@ -53,16 +53,16 @@ function read(root: string, name: string, names: readonly string[]): PluginImpor
 
 function files(root: string, name: string): { path: string; source: string }[]
 {
-    const at = join(root, name);
+    const pluginFolder = join(root, name);
 
-    return readdirSync(at, { withFileTypes: true, recursive: true })
+    return readdirSync(pluginFolder, { withFileTypes: true, recursive: true })
         .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
         .filter((entry) => !`${entry.parentPath}/`.includes(`${sep}tests${sep}`))
         .map((entry) =>
         {
             const path = join(entry.parentPath, entry.name);
 
-            return { path: path.replace(`${at}/`, ""), source: readFileSync(path, "utf8") };
+            return { path: path.replace(`${pluginFolder}/`, ""), source: readFileSync(path, "utf8") };
         });
 }
 
@@ -178,47 +178,27 @@ function findCycles(plugins: readonly PluginImports[]): ImportViolation[]
     return wrong;
 }
 
-export type SharedName = {
+export type DuplicateSignature = {
     signature: string;
     plugins: readonly string[];
     files: readonly string[];
 };
 
-/**
- * A util two plugins wrote for themselves, matched by name and signature.
- *
- * Bodies are not compared, and comparing them was tried first: of sixteen
- * names written in more than one plugin, exactly two had identical bodies and
- * both were one line — `randomUUID()` and a bearer header. The ones that
- * mattered all differed. Three plugins each wrote `searchable(raw: string):
- * string` and the three disagree: "Café, s.r.o." folds to "cafe s r o" in two
- * of them and "cafe, s.r.o." in the third, so a row written by one is not
- * found by another. Same name, same types, three meanings, and nothing
- * compared them.
- *
- * So the signature is the claim: a function taking these types and answering
- * this one is answering the same question, however it is written. A pair that
- * genuinely differs says so by taking different types or answering a different
- * one, which is the honest way to hold two meanings apart.
- *
- * Only `utils/` is read. A service knows its domain and is meant to differ; a
- * util is pure by definition, and a pure function written twice is one that
- * drifts in silence.
- */
-export function findSharedNames(root: string): SharedName[]
+/** A util two plugins wrote for themselves, matched by name and signature. */
+export function findSharedNames(root: string): DuplicateSignature[]
 {
     const owners = new Map<string, { plugins: Set<string>; files: string[] }>();
 
     for (const plugin of readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()))
     {
-        const at = join(root, plugin.name, "utils");
+        const utilsFolder = join(root, plugin.name, "utils");
 
-        if (!existsSync(at))
+        if (!existsSync(utilsFolder))
         {
             continue;
         }
 
-        for (const entry of readdirSync(at, { withFileTypes: true, recursive: true }))
+        for (const entry of readdirSync(utilsFolder, { withFileTypes: true, recursive: true }))
         {
             if (!entry.isFile() || !/\.tsx?$/.test(entry.name))
             {
@@ -267,13 +247,13 @@ export function findSplitVocabulary(root: string): SplitVocabulary[]
 
             const path = join(entry.parentPath, entry.name);
 
-            for (const found of readFileSync(path, "utf8").matchAll(/(?:export )?const (\w+) = z\.enum\(\[([^\]]*)\]/g))
+            for (const match of readFileSync(path, "utf8").matchAll(/(?:export )?const (\w+) = z\.enum\(\[([^\]]*)\]/g))
             {
-                const values = [...(found[2] ?? "").matchAll(/"([^"]+)"/g)].map((one) => one[1] ?? "").sort();
-                const held = byName.get(found[1] ?? "") ?? [];
+                const values = [...(match[2] ?? "").matchAll(/"([^"]+)"/g)].map((one) => one[1] ?? "").sort();
+                const held = byName.get(match[1] ?? "") ?? [];
 
                 held.push({ plugin: plugin.name, file: relative(root, path), values });
-                byName.set(found[1] ?? "", held);
+                byName.set(match[1] ?? "", held);
             }
         }
     }
@@ -283,13 +263,13 @@ export function findSplitVocabulary(root: string): SplitVocabulary[]
 
 function compare(root: string, name: string, held: { plugin: string; file: string; values: string[] }[]): SplitVocabulary[]
 {
-    const found: SplitVocabulary[] = [];
+    const split: SplitVocabulary[] = [];
 
-    for (let one = 0; one < held.length; one += 1)
+    for (let index = 0; index < held.length; index += 1)
     {
-        for (let two = one + 1; two < held.length; two += 1)
+        for (let two = index + 1; two < held.length; two += 1)
         {
-            const first = held[one]!;
+            const first = held[index]!;
             const second = held[two]!;
 
             if (first.plugin === second.plugin)
@@ -297,54 +277,40 @@ function compare(root: string, name: string, held: { plugin: string; file: strin
                 continue;
             }
 
-            const shared = first.values.filter((value) => second.values.includes(value));
+            const inBoth = first.values.filter((value) => second.values.includes(value));
             const apart = [
                 ...first.values.filter((value) => !second.values.includes(value)),
                 ...second.values.filter((value) => !first.values.includes(value)),
             ];
 
-            if (shared.length === 0 || (apart.length > 0 && !reaches(root, first.plugin, second.plugin)))
+            if (inBoth.length === 0 || (apart.length > 0 && !reaches(root, first.plugin, second.plugin)))
             {
                 continue;
             }
 
-            found.push({
+            split.push({
                 name,
                 plugins: [first.plugin, second.plugin],
                 files: [first.file, second.file],
-                shared,
+                shared: inBoth,
                 apart,
             });
         }
     }
 
-    return found;
+    return split;
 }
 
-/**
- * One vocabulary two plugins each wrote out, matched by name and by members.
- *
- * An enum is not a helper: it is the set of words a concept is allowed to
- * take, and two plugins holding their own copy of that set is the shape every
- * drift in this stack has taken. A fourth role added on one side is a silent
- * mismatch on the other, and nothing compiles differently.
- *
- * Both halves have to match. The same name over a different set is two
- * concepts that happen to share a word, which is a reading problem rather than
- * a drifting one; the same set under different names is a rename waiting to
- * happen, and neither is worth stopping a build for. A copy that is deliberate
- * — a bundle built on its own, which cannot import from a sibling — says so in
- * `sharing`, the same way a shared util does.
- */
-export function findSharedVocabulary(root: string): SharedName[]
+/** One vocabulary two plugins each wrote out, matched by name and by members. */
+export function findSharedVocabulary(root: string): DuplicateSignature[]
 {
     const owners = new Map<string, { plugins: Set<string>; files: string[] }>();
 
     for (const plugin of readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()))
     {
-        const at = join(root, plugin.name);
+        const pluginFolder = join(root, plugin.name);
 
-        for (const entry of readdirSync(at, { withFileTypes: true, recursive: true }))
+        for (const entry of readdirSync(pluginFolder, { withFileTypes: true, recursive: true }))
         {
             if (!entry.isFile() || !/\.tsx?$/.test(entry.name))
             {
@@ -384,22 +350,7 @@ export type ShadowedExport = {
     file: string;
 };
 
-/**
- * A component a plugin wrote for itself, where one it depends on exports the
- * same name.
- *
- * Three facts, all already known: the dependency is declared, the export
- * exists, and the folder is there anyway. Nobody writes that on purpose, and
- * the copy is always the poorer one: it is made by hand from what the screen
- * needed that day, so it arrives without whatever the original grew since.
- *
- * Measured on a twenty-plugin panel: nine, and every one real. Two showed on
- * screen, as a footer whose headings were a different weight and a sidebar
- * whose counts were missing.
- *
- * Only `components/`. A service or a util named the same is a different
- * question, answered by `findSharedNames`.
- */
+/** A component a plugin wrote for itself, where one it depends on exports the same name. */
 export function findShadowedExports(root: string): ShadowedExport[]
 {
     const names = readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
@@ -420,12 +371,11 @@ export function findShadowedExports(root: string): ShadowedExport[]
         {
             for (const raw of (block[1] ?? "").split(","))
             {
-                // The name it leaves under, not the one it was written as.
-                const one = raw.trim().split(/\s+as\s+/).pop()?.trim() ?? "";
+                const leaving = raw.trim().split(/\s+as\s+/).pop()?.trim() ?? "";
 
-                if (one !== "" && !one.startsWith("type "))
+                if (leaving !== "" && !leaving.startsWith("type "))
                 {
-                    held.add(one);
+                    held.add(leaving);
                 }
             }
         }

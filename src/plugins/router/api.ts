@@ -1,18 +1,13 @@
 import type { ComponentType } from "react";
 
 import type { Host } from "../../kernel/host";
-import type { Kernel, Registered } from "../kernel/api";
+import type { Kernel, RegisteredRoute } from "../kernel/api";
 
 /** What this plugin offers itself as. */
 export const NAME = "router";
 
-/**
- * The part of a router library this plugin drives.
- *
- * A shape rather than the library: the kit does not force a version, and a
- * test builds a tree without one.
- */
-export type Building = {
+/** The part of a router library this plugin drives. */
+export type RouterOptions = {
     createRootRoute: (options: {
         component: ComponentType;
         notFoundComponent: ComponentType;
@@ -38,7 +33,7 @@ export type Frame = {
 
 /** What the router plugin offers: the tree, built from what plugins declared. */
 export type Router = {
-    build: (kernel: Kernel, frame: Frame, guard: (route: Registered) => ComponentType) => unknown;
+    build: (kernel: Kernel, frame: Frame, guard: (route: RegisteredRoute) => ComponentType) => unknown;
 };
 
 /** The router, for a plugin that declared "router" in needs. */

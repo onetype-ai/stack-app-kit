@@ -1,15 +1,15 @@
-import type { Cache, Client, Context, FallbackProps, Pages, Plugin, Realtime, Route } from "./contract";
-import { events, type Failure } from "./events";
+import type { Cache, HttpClient, Context, FallbackProps, Pages, Plugin, Realtime, Route } from "./contract";
+import { events, type ListenerFailure } from "./events";
 import { KernelFault } from "./faults";
 import { hooks } from "./hooks";
-import { permissions, type Source } from "./permissions";
-import { slots, type PlacedContribution } from "./slots";
+import { permissions, type PermissionSource } from "./permissions";
+import { slots, type MountedContribution } from "./slots";
 import { validate } from "./validate";
 
 import type { ComponentType, FunctionComponent } from "react";
 
 /** Where a line goes. The application decides; a plugin never writes directly. */
-export type Log = (
+export type LogFn = (
     level: "debug" | "info" | "warn" | "error",
     plugin: string,
     line: string,
@@ -17,18 +17,18 @@ export type Log = (
 ) => void;
 
 /** What an application gives the kernel. */
-export type Options = {
+export type KernelOptions = {
     plugins: readonly Plugin[];
     config?: Readonly<Record<string, unknown>>;
-    http?: Client;
+    http?: HttpClient;
     cache?: Cache;
     realtime?: Realtime;
-    permissions?: Source;
-    log?: Log;
+    permissions?: PermissionSource;
+    log?: LogFn;
 };
 
 /** A route, and the plugin it came from. */
-export type Registered = Route & {
+export type RegisteredRoute = Route & {
     plugin: string;
     fallback: ComponentType<FallbackProps> | undefined;
 };
@@ -39,10 +39,10 @@ export type Kernel = {
     stop: () => Promise<void>;
     started: () => boolean;
 
-    routes: () => readonly Registered[];
+    routes: () => readonly RegisteredRoute[];
     frame: () => FunctionComponent | undefined;
     pages: () => Pages;
-    slot: (name: string, payload: unknown) => { contributions: readonly PlacedContribution[]; payload: unknown; problem?: string };
+    slot: (name: string, payload: unknown) => { contributions: readonly MountedContribution[]; payload: unknown; problem?: string };
     knownSlot: (name: string) => boolean;
     fallbackFor: (plugin: string) => ComponentType<FallbackProps> | undefined;
 
@@ -55,13 +55,13 @@ export type Kernel = {
 
         watch: (notify: () => void) => () => void;
     };
-    events: { failures: () => readonly Failure[] };
+    events: { failures: () => readonly ListenerFailure[] };
     run: (command: string, input: unknown) => Promise<void>;
 
     sent: () => Readonly<Record<string, string>>;
 };
 
-const quiet: Log = () => {};
+const quiet: LogFn = () => {};
 
 function missing(what: string, field: string): never
 {
@@ -71,7 +71,7 @@ function missing(what: string, field: string): never
     );
 }
 
-const noClient: Client = {
+const noClient: HttpClient = {
     get: () =>
     {
         return missing("http client", "http");
@@ -110,14 +110,8 @@ const noRealtime: Realtime = {
     subscribe: () => ({ close: () => {} }),
 };
 
-/**
- * Builds a kernel from what the application declared.
- *
- * Nothing runs here: `start` validates first, and either brings up every
- * plugin or throws. A half-started kernel behaves according to where it
- * stopped, which is not a state anyone can reason about.
- */
-export function createKernel(options: Options): Kernel
+/** Builds a kernel from what the application declared. */
+export function createKernel(options: KernelOptions): Kernel
 {
     const config = options.config ?? {};
     const log = options.log ?? quiet;
@@ -377,12 +371,6 @@ export function createKernel(options: Options): Kernel
 
             running = true;
 
-            // Setup is the one moment the answer moves without anybody doing
-            // anything: the plugin holding identity spends it asking the
-            // server who is here, and a guard that rendered before that is
-            // holding an answer from before there was one. Said once, and
-            // free when nothing moved, since a store only re-renders on a
-            // value that actually differs.
             may.changed();
         },
 
@@ -403,7 +391,7 @@ export function createKernel(options: Options): Kernel
             running = false;
         },
 
-        routes: (): readonly Registered[] =>
+        routes: (): readonly RegisteredRoute[] =>
             order.flatMap((plugin) =>
                 (plugin.definition.routes ?? []).map((route) => ({
                     ...route,

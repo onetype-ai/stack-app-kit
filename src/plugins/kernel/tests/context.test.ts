@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createKernel, definePlugin } from "../api";
-import type { Client, Realtime } from "../api";
+import type { HttpClient, Realtime } from "../api";
 
-const answering: Client = {
+const answering: HttpClient = {
     get: () => Promise.resolve({}),
     post: () => Promise.resolve({}),
     put: () => Promise.resolve({}),

@@ -1,4 +1,4 @@
-import type { Request, Channel, Settings, Subscription, Transport } from "../api";
+import type { HttpRequest, Channel, TransportOptions, Subscription, Transport } from "../api";
 import type { Answer } from "./channel";
 import { TransportFault } from "./faults";
 import { http } from "./http";
@@ -8,7 +8,7 @@ import { socket } from "./socket";
 
 type Said = (line: string, about?: Readonly<Record<string, unknown>>) => void;
 
-export function transport(settings: Settings, say: Said): Transport
+export function transport(settings: TransportOptions, say: Said): Transport
 {
     const timeout = settings.timeout ?? 15_000;
     const retries = settings.retries ?? 2;
@@ -32,7 +32,7 @@ export function transport(settings: Settings, say: Said): Transport
         })
         : undefined;
 
-    async function sendOnce(request: Request): Promise<Answer>
+    async function sendOnce(request: HttpRequest): Promise<Answer>
     {
         const channel = socketChannel !== undefined && socketChannel.channel.open() ? socketChannel.channel : overHttp;
 
@@ -86,7 +86,7 @@ export function transport(settings: Settings, say: Said): Transport
             return socketChannel !== undefined && socketChannel.channel.open() ? "ws" : "http";
         },
 
-        request: async (request: Request): Promise<unknown> =>
+        request: async (request: HttpRequest): Promise<unknown> =>
         {
             let refusal: unknown;
 

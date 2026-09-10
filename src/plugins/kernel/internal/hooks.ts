@@ -40,20 +40,20 @@ export function hooks<Context>()
                 throw new KernelFault("INVALID_PAYLOAD", `The payload for "${name}" does not match its schema: ${answer.error.issues[0]?.message ?? "it was rejected"}.`, { plugin });
             }
 
-            for (const one of participants.get(name) ?? [])
+            for (const entry of participants.get(name) ?? [])
             {
                 try
                 {
-                    const said = await one.participant.handle(answer.data, ctx(one.plugin));
+                    const refusal = await entry.participant.handle(answer.data, ctx(entry.plugin));
 
-                    if (said !== undefined)
+                    if (refusal !== undefined)
                     {
-                        return said;
+                        return refusal;
                     }
                 }
                 catch (cause)
                 {
-                    return `"${one.plugin}" refused: ${cause instanceof Error ? cause.message : String(cause)}`;
+                    return `"${entry.plugin}" refused: ${cause instanceof Error ? cause.message : String(cause)}`;
                 }
             }
 

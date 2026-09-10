@@ -1,15 +1,15 @@
-import type { Request } from "../api";
+import type { HttpRequest } from "../api";
 import { address } from "./address";
 import type { Answer, Channel } from "./channel";
 import { TransportFault } from "./faults";
 
-type Settings = {
+type TransportOptions = {
     baseUrl: string;
     timeout: number;
     headers?: (() => Readonly<Record<string, string>>) | undefined;
 };
 
-export function http(settings: Settings): Channel
+export function http(settings: TransportOptions): Channel
 {
     return {
         name: "http",
@@ -19,7 +19,7 @@ export function http(settings: Settings): Channel
             return true;
         },
 
-        send: async (request: Request): Promise<Answer> =>
+        send: async (request: HttpRequest): Promise<Answer> =>
         {
             const aborter = new AbortController();
             const timer = setTimeout(() => aborter.abort(), settings.timeout);
@@ -97,7 +97,7 @@ export function http(settings: Settings): Channel
     };
 }
 
-function shape(cause: unknown, request: Request, aborter: AbortController, timeout: number): unknown
+function shape(cause: unknown, request: HttpRequest, aborter: AbortController, timeout: number): unknown
 {
     if (cause instanceof TransportFault)
     {

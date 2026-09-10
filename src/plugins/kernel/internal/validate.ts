@@ -293,9 +293,9 @@ function checkConfig(
     if (!answer.success)
     {
         const first = answer.error.issues[0];
-        const at = first === undefined || first.path.length === 0 ? "" : ` at "${first.path.join(".")}"`;
+        const where = first === undefined || first.path.length === 0 ? "" : ` at "${first.path.join(".")}"`;
 
-        say("INVALID_CONFIG", name, `Config for "${name}" is invalid${at}: ${first?.message ?? "it does not match the schema"}.`);
+        say("INVALID_CONFIG", name, `Config for "${name}" is invalid${where}: ${first?.message ?? "it does not match the schema"}.`);
     }
 }
 
@@ -320,10 +320,6 @@ function checkGrants(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["c
     alone("DUPLICATE_PAGE", "a 403 page", (plugin) => plugin.definition.pages?.forbidden !== undefined);
     alone("DUPLICATE_PAGE", "a 404 page", (plugin) => plugin.definition.pages?.missing !== undefined);
 
-    // A guard nothing can lift renders the 403 page and says nothing: the
-    // route works, every reader is refused, and the two look alike from
-    // outside. Whether a grants that exists answers this one is a question
-    // only a request can settle; whether anything answers at all is not.
     if (!granted && [...by.values()].every((plugin) => plugin.definition.grants === undefined))
     {
         for (const [name, plugin] of by)
@@ -354,8 +350,8 @@ function checkCycles(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["c
 
         if (state.get(name) === "open")
         {
-            const at = walking.indexOf(name);
-            const loop = [...walking.slice(at === -1 ? 0 : at), name];
+            const seenAt = walking.indexOf(name);
+            const loop = [...walking.slice(seenAt === -1 ? 0 : seenAt), name];
             const key = [...loop].sort().join(",");
 
             if (!reported.has(key))

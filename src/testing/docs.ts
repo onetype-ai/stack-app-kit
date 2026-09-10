@@ -76,14 +76,7 @@ export function findUndocumentedKeys(contract: string, procedure: string): strin
     });
 }
 
-/**
- * The plugins with no `usage.md`, or one that says nothing.
- *
- * A plugin is a capability someone else has to understand before they can
- * depend on it, and its contract says what crosses the boundary rather than
- * why anyone would want it. A folder with no `usage.md` is one nobody can
- * decide about without reading its source.
- */
+/** The plugins with no `usage.md`, or one that says nothing. */
 export function findUnexplainedPlugins(plugins: string): string[]
 {
     if (!existsSync(plugins))
@@ -130,7 +123,7 @@ export function findPrivateComments(source: string, dist: string): PrivateCommen
         .map((one) => readFileSync(join(dist, one), "utf8"))
         .join("\n");
 
-    const found: PrivateComment[] = [];
+    const comments: PrivateComment[] = [];
 
     const walk = (folder: string): void =>
     {
@@ -155,37 +148,37 @@ export function findPrivateComments(source: string, dist: string): PrivateCommen
 
             const lines = readFileSync(path, "utf8").split("\n");
 
-            for (let at = 0; at < lines.length; at += 1)
+            for (let lineNumber = 0; lineNumber < lines.length; lineNumber += 1)
             {
-                if (!(lines[at] ?? "").trim().startsWith("/**"))
+                if (!(lines[lineNumber] ?? "").trim().startsWith("/**"))
                 {
                     continue;
                 }
 
-                let end = at;
+                let end = lineNumber;
 
                 while (end < lines.length && !(lines[end] ?? "").includes("*/"))
                 {
                     end += 1;
                 }
 
-                const sentence = lines.slice(at, end + 1)
+                const sentence = lines.slice(lineNumber, end + 1)
                     .map((one) => one.replace(/^\s*\/?\*+\/?\s?/, "").trim())
                     .filter(Boolean)[0] ?? "";
 
                 if (sentence !== "" && !published.includes(sentence.slice(0, 45)))
                 {
-                    found.push({ file: path.replace(`${source}/`, ""), line: at + 1, sentence });
+                    comments.push({ file: path.replace(`${source}/`, ""), line: lineNumber + 1, sentence });
                 }
 
-                at = end;
+                lineNumber = end;
             }
         }
     };
 
     walk(source);
 
-    return found;
+    return comments;
 }
 
 export type Commented = {
@@ -212,7 +205,7 @@ export function findComments(source: string): Commented[]
         return [];
     }
 
-    const found: Commented[] = [];
+    const comments: Commented[] = [];
 
     const walk = (folder: string): void =>
     {
@@ -238,17 +231,17 @@ export function findComments(source: string): Commented[]
             const lines = withoutLiterals(readFileSync(path, "utf8")).split("\n");
             let inside = false;
 
-            for (let at = 0; at < lines.length; at += 1)
+            for (let lineNumber = 0; lineNumber < lines.length; lineNumber += 1)
             {
-                const line = lines[at] ?? "";
-                const said = (): void =>
+                const line = lines[lineNumber] ?? "";
+                const record = (): void =>
                 {
-                    found.push({ file: path.replace(`${source}/`, ""), line: at + 1 });
+                    comments.push({ file: path.replace(`${source}/`, ""), line: lineNumber + 1 });
                 };
 
                 if (inside)
                 {
-                    said();
+                    record();
 
                     if (line.includes("*/"))
                     {
@@ -260,14 +253,14 @@ export function findComments(source: string): Commented[]
 
                 if (line.includes("//"))
                 {
-                    said();
+                    record();
 
                     continue;
                 }
 
                 if (line.includes("/*"))
                 {
-                    said();
+                    record();
 
                     inside = !line.includes("*/");
                 }
@@ -277,5 +270,5 @@ export function findComments(source: string): Commented[]
 
     walk(source);
 
-    return found;
+    return comments;
 }

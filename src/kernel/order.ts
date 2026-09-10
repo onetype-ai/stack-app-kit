@@ -1,9 +1,9 @@
-import { Fault } from "./errors";
-import type { Plugin } from "./plugin";
+import { BootFault } from "./errors";
+import type { HostPlugin } from "./plugin";
 
-export function order(plugins: ReadonlyMap<string, Plugin>): Plugin[]
+export function order(plugins: ReadonlyMap<string, HostPlugin>): HostPlugin[]
 {
-    const ordered: Plugin[] = [];
+    const ordered: HostPlugin[] = [];
     const state = new Map<string, "open" | "done">();
     const walking: string[] = [];
 
@@ -16,14 +16,14 @@ export function order(plugins: ReadonlyMap<string, Plugin>): Plugin[]
 
         if (state.get(name) === "open")
         {
-            throw new Fault("CYCLE", `plugins need each other in a loop: ${loop(walking, name)}.`);
+            throw new BootFault("CYCLE", `plugins need each other in a loop: ${loop(walking, name)}.`);
         }
 
         const plugin = plugins.get(name);
 
         if (plugin === undefined)
         {
-            throw new Fault("UNKNOWN_NEED", `no plugin provides "${name}".`);
+            throw new BootFault("UNKNOWN_NEED", `no plugin provides "${name}".`);
         }
 
         state.set(name, "open");
@@ -33,7 +33,7 @@ export function order(plugins: ReadonlyMap<string, Plugin>): Plugin[]
         {
             if (need === name)
             {
-                throw new Fault("CYCLE", `"${name}" needs itself.`, name);
+                throw new BootFault("CYCLE", `"${name}" needs itself.`, name);
             }
 
             walk(need);
@@ -54,7 +54,7 @@ export function order(plugins: ReadonlyMap<string, Plugin>): Plugin[]
 
 function loop(walking: readonly string[], name: string): string
 {
-    const at = walking.indexOf(name);
+    const seenAt = walking.indexOf(name);
 
-    return [...walking.slice(at === -1 ? 0 : at), name].join(" -> ");
+    return [...walking.slice(seenAt === -1 ? 0 : seenAt), name].join(" -> ");
 }

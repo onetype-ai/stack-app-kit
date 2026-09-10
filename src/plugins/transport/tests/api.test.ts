@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { boot } from "../../../kernel/boot";
 import { TransportFault, from } from "../api";
 import type { Transport } from "../api";
-import { plugin } from "../plugin";
+import { transportPlugin } from "../plugin";
 import { fakeFetch, fakeSocket, type Answering } from "./fake";
 
 const quiet = (): void => {};
@@ -16,13 +16,13 @@ afterEach(() =>
     restore = undefined;
 });
 
-function startTransport(answers: Answering[], settings: Partial<Parameters<typeof plugin>[0]> = {})
+function startTransport(answers: Answering[], settings: Partial<Parameters<typeof transportPlugin>[0]> = {})
 {
     const fetches = fakeFetch(answers);
 
     restore = fetches.restore;
 
-    const app = boot(quiet, [plugin({ baseUrl: "https://example.test/api", ...settings })]);
+    const app = boot(quiet, [transportPlugin({ baseUrl: "https://example.test/api", ...settings })]);
     const transport = from(app.host);
 
     if (transport === undefined)
@@ -201,7 +201,7 @@ describe("with a socket", () =>
 
         const sockets: ReturnType<typeof fakeSocket>[] = [];
         const app = boot(quiet, [
-            plugin({
+            transportPlugin({
                 baseUrl: "https://example.test/api",
                 wsUrl: "wss://example.test/ws",
                 ...(reconnectBase === undefined ? {} : { reconnectBase }),

@@ -8,16 +8,16 @@ export const NAME = "kernel";
 
 export { createKernel, definePlugin, KernelFault };
 
-export type { FaultCode } from "./internal/faults";
+export type { KernelFaultCode } from "./internal/faults";
 
 export type {
     Cache,
-    Client,
+    HttpClient,
     Command,
     Context,
-    Contribution,
+    SlotContribution,
     Definition,
-    Described,
+    Describable,
     Event,
     FallbackProps,
     Hook,
@@ -27,16 +27,16 @@ export type {
     Permission,
     Plugin,
     Realtime,
-    Request,
+    CallOptions,
     Route,
-    Schematic,
+    DescribableWithSchema,
     Slot,
 } from "./internal/contract";
 
-export type { Failure } from "./internal/events";
-export type { PlacedContribution } from "./internal/slots";
-export type { Source } from "./internal/permissions";
-export type { Kernel, Log, Options, Registered } from "./internal/kernel";
+export type { ListenerFailure } from "./internal/events";
+export type { MountedContribution } from "./internal/slots";
+export type { PermissionSource } from "./internal/permissions";
+export type { Kernel, LogFn, KernelOptions, RegisteredRoute } from "./internal/kernel";
 export type { ContractProblem } from "./internal/validate";
 
 export type Runtime = {

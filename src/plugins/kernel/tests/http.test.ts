@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { createKernel, definePlugin, KernelFault } from "../api";
 
-import type { Client, Definition, Plugin } from "../api";
+import type { HttpClient, Definition, Plugin } from "../api";
 
 function createPlugin(name: string, definition: Partial<Definition> = {}): Plugin
 {
@@ -32,7 +32,7 @@ function recordClient(answer: unknown = { ok: true })
             put: of("put"),
             patch: of("patch"),
             delete: of("delete"),
-        } as Client,
+        } as HttpClient,
     };
 }
 

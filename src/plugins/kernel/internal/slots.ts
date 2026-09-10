@@ -1,13 +1,13 @@
-import type { Contribution, Slot } from "./contract";
+import type { SlotContribution, Slot } from "./contract";
 import { KernelFault } from "./faults";
 
 /** One thing to render in a slot, and what it needs to be seen. */
-export type PlacedContribution = Contribution & { plugin: string };
+export type MountedContribution = SlotContribution & { plugin: string };
 
 export function slots()
 {
     const openedBy = new Map<string, { owner: string; slot: Slot }>();
-    const placed = new Map<string, PlacedContribution[]>();
+    const placed = new Map<string, MountedContribution[]>();
 
     return {
         declare: (owner: string, name: string, slot: Slot): void =>
@@ -15,7 +15,7 @@ export function slots()
             openedBy.set(name, { owner, slot });
         },
 
-        fill: (plugin: string, contribution: Contribution): void =>
+        fill: (plugin: string, contribution: SlotContribution): void =>
         {
             placed.set(contribution.slot, [...(placed.get(contribution.slot) ?? []), { ...contribution, plugin }]);
         },
@@ -25,7 +25,7 @@ export function slots()
             return openedBy.has(name);
         },
 
-        contentsOf: (name: string, payload: unknown): { contributions: readonly PlacedContribution[]; payload: unknown; problem?: string } =>
+        contentsOf: (name: string, payload: unknown): { contributions: readonly MountedContribution[]; payload: unknown; problem?: string } =>
         {
             const opened = openedBy.get(name);
 

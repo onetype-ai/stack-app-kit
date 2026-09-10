@@ -3,7 +3,7 @@ import { KernelFault } from "./faults";
 import * as names from "./names";
 
 /** A delivery that threw, kept so an application can see it happened. */
-export type Failure = {
+export type ListenerFailure = {
     event: string;
     plugin: string;
     error: unknown;
@@ -16,7 +16,7 @@ export function events<Context>(now: () => number = Date.now)
 {
     const declaredBy = new Map<string, { owner: string; event: Event }>();
     const listeners = new Map<string, Subscriber<Context>[]>();
-    const failures: Failure[] = [];
+    const failures: ListenerFailure[] = [];
 
     return {
         declare: (owner: string, name: string, event: Event): void =>
@@ -80,7 +80,7 @@ export function events<Context>(now: () => number = Date.now)
             }
         },
 
-        failures: (): readonly Failure[] =>
+        failures: (): readonly ListenerFailure[] =>
         {
             return [...failures];
         },

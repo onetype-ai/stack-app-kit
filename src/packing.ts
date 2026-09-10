@@ -1,6 +1,3 @@
-//
-// Folders as one readable file, and back again.
-//
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
@@ -22,26 +19,11 @@ export type Packing = {
     /** The file a project runs, named in the usage line. */
     tool: string;
 
-    /**
-     * The most characters one packed file may hold, or 0 for no limit.
-     *
-     * A document past it is refused at the pack rather than at a test: a
-     * limit that has to be measured is one nobody was watching anyway.
-     *
-     * A function answers per file, because a reference is searched where a
-     * procedure is read, and the two do not fit one number.
-     */
+    /** The most characters one packed file may hold, or 0 for no limit. */
     limit?: number | ((path: string) => number);
 };
 
-/**
- * One folder, folded into one file and back.
- *
- * Packing writes the file beside what it read and removes the originals, so
- * there is one copy rather than two that drift apart. Reading that file is
- * meant to replace walking the tree: every path and every line, in the order
- * somebody would read them.
- */
+/** One folder, folded into one file and back. */
 export class Packer
 {
     readonly mark = "==> ";
@@ -117,8 +99,6 @@ export class Packer
                 throw new Error(`${path} holds a line starting with "${this.mark}", which would unpack wrongly.`);
             }
 
-            // Refused here rather than counted later: the writer is the one
-            // holding it, and a limit found at a test is one found too late.
             const most = typeof this.limit === "function" ? this.limit(path) : this.limit;
 
             if (most > 0 && body.length > most)
@@ -141,9 +121,9 @@ export class Packer
 
         this.clear(this.whole ? undefined : names, (name) => this.pathFor(name));
 
-        const said = this.whole ? this.at : names.join(", ");
+        const describing = this.whole ? this.at : names.join(", ");
 
-        console.log(`packed ${said} (${String(losing)} files) into ${relative(this.root, this.file)}`);
+        console.log(`packed ${describing} (${String(losing)} files) into ${relative(this.root, this.file)}`);
         console.log(`those ${String(losing)} files are now gone from disk. \`unpack\` writes them back.`);
     }
 
@@ -242,12 +222,7 @@ export class Packer
         return existsSync(folder) && statSync(folder).isDirectory() ? folder : `${folder}.ts`;
     }
 
-    /**
-     * Removes what was folded away, keeping the file it was folded into.
-     *
-     * A pack knows whether a name is a folder or a file beside it, so it
-     * resolves one; an unpack has only the name the packed file carried.
-     */
+    /** Removes what was folded away, keeping the file it was folded into. */
     clear(names: readonly string[] | undefined, resolve?: (name: string) => string): void
     {
         if (names !== undefined)
@@ -260,8 +235,6 @@ export class Packer
             return;
         }
 
-        // The packed file may live inside the folder it packs, so the folder
-        // is emptied around it rather than removed under it.
         if (!this.file.startsWith(`${this.folder}${sep}`))
         {
             rmSync(this.folder, { recursive: true, force: true });
@@ -287,7 +260,7 @@ export class Packer
             return at === this.file ? [] : [at];
         }
 
-        const found: string[] = [];
+        const paths: string[] = [];
 
         for (const entry of readdirSync(at))
         {
@@ -295,17 +268,17 @@ export class Packer
 
             if (statSync(full).isDirectory())
             {
-                found.push(...this.walk(full));
+                paths.push(...this.walk(full));
                 continue;
             }
 
             if (full !== this.file)
             {
-                found.push(full);
+                paths.push(full);
             }
         }
 
-        return found;
+        return paths;
     }
 
     /** What a reader opens first comes first. */
@@ -323,12 +296,12 @@ export class Packer
 
     head(names: readonly string[]): string
     {
-        const said = this.whole ? this.at : names.join(", ");
+        const describing = this.whole ? this.at : names.join(", ");
         const many = this.whole || names.length > 1;
 
         if (this.whole)
         {
-            return `# ${said} packed
+            return `# ${describing} packed
 
 Every file of ${many ? `these ${this.name}s` : `this ${this.name}`}, one after another. A line starting
 with "${this.mark}" opens a file and names its path; everything until the next
@@ -341,7 +314,7 @@ the next pack throws away.
 
         /* Examples say so at both ends: an agent that joins in the middle
            still learns it is reading a sample, not the application. */
-        return `# EXAMPLES START HERE: ${said}
+        return `# EXAMPLES START HERE: ${describing}
 
 These are example ${this.name}s, here to be read, not the application you are
 building. Take the mechanics from them and leave the domain alone: yours has

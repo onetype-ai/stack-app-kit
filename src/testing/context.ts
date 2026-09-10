@@ -1,9 +1,9 @@
 import { transport } from "../index";
 
-import type { Cache, Client, Context, Logger, Realtime, Request } from "../index";
+import type { Cache, HttpClient, Context, Logger, Realtime, CallOptions } from "../index";
 
 /** One request a plugin made, as the fake recorded it. */
-export type Asked = {
+export type FakeRequest = {
     method: string;
     path: string;
     query?: Readonly<Record<string, unknown>> | undefined;
@@ -12,32 +12,24 @@ export type Asked = {
 };
 
 /** One event a plugin announced. */
-export type Announced = {
+export type EmittedEvent = {
     event: string;
     payload: unknown;
 };
 
 /** One command a plugin ran through `ctx.commands`. */
-export type Commanded = {
+export type RanCommand = {
     command: string;
     input: unknown;
 };
 
 /** A status a route answers with, and whatever came with it. */
-export type Answered = {
+export type FakeResponse = {
     status: number;
     body?: unknown;
 };
 
-/**
- * What routes a fake answers, keyed `"GET /parts"`.
- *
- * A bare value is a 200 carrying it, which is most of them. An `Answered`
- * says the status too: 204 for nothing, a 4xx for a refusal a caller reads
- * its fields off. Deliberately `unknown` rather than a union: every union
- * with `unknown` in it is `unknown`, and one written otherwise would only
- * look like it checked something.
- */
+/** What routes a fake answers, keyed `"GET /parts"`. */
 export type Answers = Readonly<Record<string, unknown>>;
 
 /** What a fake was given, beyond its answers. */
@@ -61,16 +53,16 @@ export type Fake<Config = unknown, Services = unknown> = {
     ctx: Context<Config, Services>;
 
     /** Every request, in order. */
-    asked: readonly Asked[];
+    asked: readonly FakeRequest[];
 
     /** Every event announced. */
-    announced: readonly Announced[];
+    announced: readonly EmittedEvent[];
 
     /** Every cache key dropped. */
     invalidated: readonly (readonly unknown[])[];
 
     /** Every command run. */
-    commanded: readonly Commanded[];
+    commanded: readonly RanCommand[];
 
     /** Every line logged, by level. */
     logged: readonly { level: string; line: string }[];
@@ -81,44 +73,28 @@ export type Fake<Config = unknown, Services = unknown> = {
     /** What `ctx.hooks.run` answers next. Set it to refuse. */
     refusal: string | undefined;
 
-    /**
-     * Sends a message on a channel, as a server would.
-     *
-     * Nothing here opens a socket, so a plugin listening for a push would
-     * otherwise be testable only by asserting it did not throw.
-     */
+    /** Sends a message on a channel, as a server would. */
     push: (channel: string, message: unknown) => void;
 };
 
-const isAnswered = (answer: unknown): answer is Answered =>
+const isAnswered = (answer: unknown): answer is FakeResponse =>
 {
     return typeof answer === "object"
         && answer !== null
         && "status" in answer
-        && typeof (answer as Answered).status === "number";
+        && typeof (answer as FakeResponse).status === "number";
 };
 
-/**
- * A context that answers the way the real one does.
- *
- * Every plugin used to write its own, and the shapes drifted: one answered an
- * envelope `ctx.http` never hands back, another resolved `undefined` where the
- * transport refuses. A fake that agrees with a wrong belief tests the belief,
- * and on one project two hundred tests stayed green over thirty-nine broken
- * calls for exactly that reason.
- *
- * So this answers the body, refuses an unanswered path, and throws the same
- * `TransportFault` a server's 4xx throws, carrying `status` and `body`.
- */
+/** A context that answers the way the real one does. */
 export function fakeContext<Config = unknown, Services = unknown>(
     answers: Answers = {},
     faking: Faking<Config> = {},
 ): Fake<Config, Services>
 {
-    const asked: Asked[] = [];
-    const announced: Announced[] = [];
+    const asked: FakeRequest[] = [];
+    const announced: EmittedEvent[] = [];
     const invalidated: (readonly unknown[])[] = [];
-    const commanded: Commanded[] = [];
+    const commanded: RanCommand[] = [];
     const logged: { level: string; line: string }[] = [];
     const listeners = new Map<string, Set<(message: unknown) => void>>();
     const watching = new Set<() => void>();
@@ -145,7 +121,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
 
     const send = (method: string) =>
     {
-        return (path: string, request: Request = {}): Promise<unknown> =>
+        return (path: string, request: CallOptions = {}): Promise<unknown> =>
         {
             asked.push({
                 method,
@@ -155,10 +131,6 @@ export function fakeContext<Config = unknown, Services = unknown>(
                 ...(request.headers !== undefined && { headers: request.headers }),
             });
 
-            // Keyed by the address the real transport would dial, so a query
-            // that decides the answer tells two calls apart here as it does
-            // there: a fake that answered whatever the query said left the
-            // screens that follow a picker untested.
             const dialled = transport.address("", path, request.query);
             const asKey = `${method} ${dialled.startsWith("/") ? dialled : `/${dialled}`}`;
             const answer = answers[asKey];
@@ -190,7 +162,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
         };
     };
 
-    const http: Client = {
+    const http: HttpClient = {
         get: send("GET"),
         post: send("POST"),
         put: send("PUT"),
@@ -210,16 +182,16 @@ export function fakeContext<Config = unknown, Services = unknown>(
 
         subscribe: (channel, receive) =>
         {
-            const heard = listeners.get(channel) ?? new Set<(message: unknown) => void>();
+            const receivers = listeners.get(channel) ?? new Set<(message: unknown) => void>();
 
-            heard.add(receive);
-            listeners.set(channel, heard);
+            receivers.add(receive);
+            listeners.set(channel, receivers);
 
-            return { close: () => heard.delete(receive) };
+            return { close: () => receivers.delete(receive) };
         },
     };
 
-    const at = (level: string) =>
+    const logAt = (level: string) =>
     {
         return (line: string): void =>
         {
@@ -228,10 +200,10 @@ export function fakeContext<Config = unknown, Services = unknown>(
     };
 
     const log: Logger = {
-        debug: at("debug"),
-        info: at("info"),
-        warn: at("warn"),
-        error: at("error"),
+        debug: logAt("debug"),
+        info: logAt("info"),
+        warn: logAt("warn"),
+        error: logAt("error"),
     };
 
     fake.ctx = {
@@ -267,8 +239,6 @@ export function fakeContext<Config = unknown, Services = unknown>(
                     || permissions.every((one) => faking.permissions?.includes(one));
             },
 
-            // Counted and passed on, because both halves are worth proving: a
-            // plugin that says the answer moved, and a guard that hears it.
             changed: () =>
             {
                 fake.regranted += 1;

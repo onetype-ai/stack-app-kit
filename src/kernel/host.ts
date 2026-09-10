@@ -1,15 +1,15 @@
-import { Fault } from "./errors";
+import { BootFault } from "./errors";
 
 type Phase = "booting" | "running" | "stopped";
 
 /** Where a line goes. The application decides; a plugin never writes directly. */
-export type WriteLine = (line: string, about?: Readonly<Record<string, unknown>>) => void;
+export type LogLine = (line: string, about?: Readonly<Record<string, unknown>>) => void;
 
 type Listener = { who: string; run: (payload: unknown) => void };
 
 type Wiring = {
     at: Phase;
-    say: WriteLine;
+    say: LogLine;
     offers: Map<string, unknown>;
     owners: Map<string, string>;
     listeners: Map<string, Listener[]>;
@@ -25,7 +25,7 @@ export class Host
 
     readonly #who: string;
 
-    constructor(say: WriteLine, shared?: Wiring, who = "")
+    constructor(say: LogLine, shared?: Wiring, who = "")
     {
         this.#shared = shared ?? {
             at: "booting",
@@ -62,22 +62,22 @@ export class Host
     {
         if (this.#shared.at !== "booting")
         {
-            throw new Fault("NOT_BOOTING", `offer "${name}" happened after boot.`, this.#who);
+            throw new BootFault("NOT_BOOTING", `offer "${name}" happened after boot.`, this.#who);
         }
 
         if (name === "")
         {
-            throw new Fault("NO_NAME", "offer was given no name.", this.#who);
+            throw new BootFault("NO_NAME", "offer was given no name.", this.#who);
         }
 
         if (api === undefined || api === null)
         {
-            throw new Fault("NO_API", `offer "${name}" was given nothing to offer.`, this.#who);
+            throw new BootFault("NO_API", `offer "${name}" was given nothing to offer.`, this.#who);
         }
 
         if (this.#shared.offers.has(name))
         {
-            throw new Fault(
+            throw new BootFault(
                 "OFFERED_TWICE",
                 `"${name}" was already offered by "${this.#shared.owners.get(name) ?? "?"}".`,
                 this.#who,
@@ -102,7 +102,7 @@ export class Host
     {
         if (this.#shared.at !== "booting")
         {
-            throw new Fault("NOT_BOOTING", `on "${name}" happened after boot.`, this.#who);
+            throw new BootFault("NOT_BOOTING", `on "${name}" happened after boot.`, this.#who);
         }
 
         const listeners = this.#shared.listeners.get(name) ?? [];

@@ -32,7 +32,7 @@ describe("what a project refuses", () =>
 {
     test("says nothing about a project that holds together", () =>
     {
-        expect(Project.checks({ root: createProject() })).toEqual([]);
+        expect(Project.findAll({ root: createProject() })).toEqual([]);
     });
 
     test("still runs the structural checks when the documents are packed away", () =>
@@ -42,23 +42,23 @@ describe("what a project refuses", () =>
         mkdirSync(join(at, "src", "plugins", "ghost"), { recursive: true });
         writeFileSync(join(at, "src", "plugins", "ghost", "thing.ts"), "export const thing = 1;\n");
 
-        expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("unexplained");
+        expect(Project.findAll({ root: at }).map((problem) => problem.check)).toContain("unexplained");
     });
 
     test("and says which checks it could not run, so a green report is not mistaken for a full one", () =>
     {
         const at = createProject();
 
-        expect(Project.checks({ root: at })).toEqual([]);
-        expect(Project.skipped({ root: at }).map((one) => one.check)).toEqual(["documents"]);
-        expect(Project.skipped({ root: at })[0]?.message).toContain("not on disk");
+        expect(Project.findAll({ root: at })).toEqual([]);
+        expect(Project.findSkipped({ root: at }).map((one) => one.check)).toEqual(["documents"]);
+        expect(Project.findSkipped({ root: at })[0]?.message).toContain("not on disk");
     });
 
     test("without calling folded-away documents a breach, since that is how they ship", () =>
     {
         const at = createProject();
 
-        expect(Project.checks({ root: at, required: ["#docs/usage.md"] })).toEqual([]);
+        expect(Project.findAll({ root: at, required: ["#docs/usage.md"] })).toEqual([]);
     });
 
     test("and skips nothing once the documents are there to read", () =>
@@ -68,7 +68,7 @@ describe("what a project refuses", () =>
         mkdirSync(join(at, "#docs"), { recursive: true });
         writeFileSync(join(at, "#docs", "usage.md"), "# how\n");
 
-        expect(Project.skipped({ root: at })).toEqual([]);
+        expect(Project.findSkipped({ root: at })).toEqual([]);
     });
 
     test("measuring a document that outgrew its point once they are unpacked", () =>
@@ -78,7 +78,7 @@ describe("what a project refuses", () =>
         mkdirSync(join(at, "#docs"), { recursive: true });
         writeFileSync(join(at, "#docs", "long.md"), "x".repeat(2000));
 
-        expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("oversized");
+        expect(Project.findAll({ root: at }).map((problem) => problem.check)).toContain("oversized");
     });
 
     test("and naming a document every application is asked for and does not hold", () =>
@@ -88,7 +88,7 @@ describe("what a project refuses", () =>
         mkdirSync(join(at, "#docs"), { recursive: true });
         writeFileSync(join(at, "#docs", "usage.md"), "# how\n");
 
-        const found = Project.checks({ root: at, required: ["#docs/stack.md"] });
+        const found = Project.findAll({ root: at, required: ["#docs/stack.md"] });
 
         expect(found.map((problem) => problem.check)).toContain("missing");
     });
@@ -100,9 +100,9 @@ describe("what a project refuses", () =>
         mkdirSync(join(at, "src", "embed"), { recursive: true });
         writeFileSync(join(at, "src", "embed", "skin.ts"), 'export const skin = ".root { color: #ff0000; padding: 12px; }";\n');
 
-        expect(Project.checks({ root: at })).toEqual([]);
+        expect(Project.findAll({ root: at })).toEqual([]);
 
-        const said = Project.skipped({ root: at }).filter((one) => one.check === "literal");
+        const said = Project.findSkipped({ root: at }).filter((one) => one.check === "literal");
 
         expect(said.length).toBe(1);
         expect(said[0]?.message).toContain("embed");
@@ -115,10 +115,10 @@ describe("what a project refuses", () =>
         mkdirSync(join(at, "src", "embed"), { recursive: true });
         writeFileSync(join(at, "src", "embed", "skin.ts"), 'export const skin = ".root { color: #ff0000; padding: 12px; }";\n');
 
-        const found = Project.checks({ root: at, styleIn: ["embed"] });
+        const found = Project.findAll({ root: at, styleIn: ["embed"] });
 
         expect(found.map((problem) => problem.check)).toContain("literal");
-        expect(Project.skipped({ root: at, styleIn: ["embed"] }).filter((one) => one.check === "literal")).toEqual([]);
+        expect(Project.findSkipped({ root: at, styleIn: ["embed"] }).filter((one) => one.check === "literal")).toEqual([]);
     });
 
     test("naming an alias whose file is not there, which nothing says until the first import", () =>
@@ -127,7 +127,7 @@ describe("what a project refuses", () =>
 
         writeFileSync(join(at, "tsconfig.json"), '{ "compilerOptions": { "paths": { "@ui": ["./src/ui/index.ts"] } } }\n');
 
-        const found = Project.checks({ root: at });
+        const found = Project.findAll({ root: at });
 
         expect(found.map((problem) => problem.check)).toContain("dangling");
         expect(found.find((problem) => problem.check === "dangling")?.message).toContain("@ui");
@@ -141,7 +141,7 @@ describe("what a project refuses", () =>
         writeFileSync(join(at, "src", "ui", "index.ts"), "export const nothing = 1;\n");
         writeFileSync(join(at, "tsconfig.json"), '{ "compilerOptions": { "paths": { "@ui": ["./src/ui/index.ts"] } } }\n');
 
-        expect(Project.checks({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
+        expect(Project.findAll({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
     });
 
     test("and leaving one alone whose file is folded into an example, which is how a scaffold ships", () =>
@@ -152,7 +152,7 @@ describe("what a project refuses", () =>
         writeFileSync(join(at, "src", "ui", "example.txt"), "==> src/ui/index.ts\nexport const nothing = 1;\n");
         writeFileSync(join(at, "tsconfig.json"), '{ "compilerOptions": { "paths": { "@ui": ["./src/ui/index.ts"] } } }\n');
 
-        expect(Project.checks({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
+        expect(Project.findAll({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
     });
 
     test("and leaving a folder pattern alone, since it names no single file", () =>
@@ -161,7 +161,7 @@ describe("what a project refuses", () =>
 
         writeFileSync(join(at, "tsconfig.json"), '{ "compilerOptions": { "paths": { "@plugins/*": ["./src/plugins/*"] } } }\n');
 
-        expect(Project.checks({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
+        expect(Project.findAll({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
     });
 
     test("and saying that a shape it never looks in went unread, so the exemption is not a secret", () =>
@@ -170,9 +170,9 @@ describe("what a project refuses", () =>
 
         writeFileSync(join(at, "src", "plugins", "demo", "Held.ts"), "type Held = {\n    kept: string;\n};\n\nexport const held: Held = { kept: \"x\" };\n");
 
-        expect(Project.checks({ root: at }).filter((problem) => problem.check === "wiring")).toEqual([]);
+        expect(Project.findAll({ root: at }).filter((problem) => problem.check === "wiring")).toEqual([]);
 
-        const said = Project.skipped({ root: at }).filter((one) => one.check === "wiring");
+        const said = Project.findSkipped({ root: at }).filter((one) => one.check === "wiring");
 
         expect(said.length).toBe(1);
         expect(said[0]?.message).toContain("not exported");
@@ -184,7 +184,7 @@ describe("what a project refuses", () =>
 
         writeFileSync(join(at, "src", "plugins", "demo", "Open.ts"), "export type Open = {\n    kept: string;\n};\n\nexport const open: Open = { kept: \"x\" };\n");
 
-        expect(Project.skipped({ root: at }).filter((one) => one.check === "wiring")).toEqual([]);
+        expect(Project.findSkipped({ root: at }).filter((one) => one.check === "wiring")).toEqual([]);
     });
 
     test("naming a word two plugins no longer agree on, since one refuses what the other sends", () =>
@@ -200,7 +200,7 @@ describe("what a project refuses", () =>
         writeFileSync(join(at, "src", "plugins", "auth", "types", "Role.ts"), 'export const Role = z.enum(["owner", "admin", "staff"]);\n');
         writeFileSync(join(at, "src", "plugins", "settings", "types", "Role.ts"), 'export const Role = z.enum(["owner", "admin"]);\n');
 
-        const found = Project.checks({ root: at });
+        const found = Project.findAll({ root: at });
 
         expect(found.map((problem) => problem.check)).toContain("split");
         expect(found.find((problem) => problem.check === "split")?.message).toContain("staff");
@@ -219,7 +219,7 @@ describe("what a project refuses", () =>
         writeFileSync(join(at, "src", "plugins", "auth", "types", "Role.ts"), 'export const Role = z.enum(["owner", "admin", "staff"]);\n');
         writeFileSync(join(at, "src", "plugins", "chat", "types", "Role.ts"), 'export const Role = z.enum(["owner", "admin"]);\n');
 
-        expect(Project.checks({ root: at }).filter((problem) => problem.check === "split")).toEqual([]);
+        expect(Project.findAll({ root: at }).filter((problem) => problem.check === "split")).toEqual([]);
     });
 
     test("and refusing a copy of one, since the day a member is added only one of them learns", () =>
@@ -235,8 +235,8 @@ describe("what a project refuses", () =>
         writeFileSync(join(at, "src", "plugins", "auth", "types", "Role.ts"), 'export const Role = z.enum(["owner", "admin"]);\n');
         writeFileSync(join(at, "src", "plugins", "settings", "types", "Role.ts"), 'export const Role = z.enum(["admin", "owner"]);\n');
 
-        expect(Project.checks({ root: at }).filter((problem) => problem.check === "split")).toEqual([]);
-        expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("twice");
+        expect(Project.findAll({ root: at }).filter((problem) => problem.check === "split")).toEqual([]);
+        expect(Project.findAll({ root: at }).map((problem) => problem.check)).toContain("twice");
     });
 
     test("and reaches code shared between plugins, not only the plugins", () =>
@@ -248,7 +248,7 @@ describe("what a project refuses", () =>
 
         writeFileSync(join(at, "src", "utils", "Money.ts"), `${shape}\n`);
 
-        expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("wiring");
+        expect(Project.findAll({ root: at }).map((problem) => problem.check)).toContain("wiring");
     });
 
     test("and the shared layer, where the same dead field reads the same way", () =>
@@ -260,7 +260,7 @@ describe("what a project refuses", () =>
 
         writeFileSync(join(at, "src", "ui", "components", "Look.ts"), `${shape}\n`);
 
-        expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("wiring");
+        expect(Project.findAll({ root: at }).map((problem) => problem.check)).toContain("wiring");
     });
 
     test("and names a class a module never declared", () =>
@@ -270,7 +270,7 @@ describe("what a project refuses", () =>
         writeFileSync(join(at, "src", "plugins", "demo", "Card.module.css"), ".root { color: red; }\n");
         writeFileSync(join(at, "src", "plugins", "demo", "Card.tsx"), "export const Card = () => <p className={styles.head} />;\n");
 
-        expect(Project.checks({ root: at }).map((problem) => problem.check)).toContain("class");
+        expect(Project.findAll({ root: at }).map((problem) => problem.check)).toContain("class");
     });
 });
 
@@ -289,7 +289,7 @@ describe("a size a project promised about a file it serves", () =>
 
         built(at, "public/widget.js", "a");
 
-        expect(Project.checks({ root: at, budgets: { "public/widget.js": 4096 } })).toEqual([]);
+        expect(Project.findAll({ root: at, budgets: { "public/widget.js": 4096 } })).toEqual([]);
     });
 
     test("names the file, what it weighs, and what was promised", () =>
@@ -300,7 +300,7 @@ describe("a size a project promised about a file it serves", () =>
         // string that compresses, and the point is the weight on the wire.
         built(at, "public/widget.js", [...Array(8192)].map(() => Math.random().toString(36)).join(""));
 
-        const [problem] = Project.checks({ root: at, budgets: { "public/widget.js": 1024 } });
+        const [problem] = Project.findAll({ root: at, budgets: { "public/widget.js": 1024 } });
 
         expect(problem?.check).toBe("budget");
         expect(problem?.message).toMatch(/public\/widget\.js is \d+ bytes gzipped, over the 1024/);
@@ -312,9 +312,9 @@ describe("a size a project promised about a file it serves", () =>
 
         // The whole reason this is not a pass: a budget nobody measured reads
         // exactly like one that held.
-        expect(Project.checks({ root: at, budgets: { "public/widget.js": 1024 } })).toEqual([]);
+        expect(Project.findAll({ root: at, budgets: { "public/widget.js": 1024 } })).toEqual([]);
 
-        const [skipped] = Project.skipped({ root: at, budgets: { "public/widget.js": 1024 } })
+        const [skipped] = Project.findSkipped({ root: at, budgets: { "public/widget.js": 1024 } })
             .filter((one) => one.check === "budget");
 
         expect(skipped?.message).toMatch(/public\/widget\.js is not built/);
@@ -327,7 +327,7 @@ describe("a size a project promised about a file it serves", () =>
         built(at, "public/small.js", "a");
         built(at, "public/large.js", [...Array(8192)].map(() => Math.random().toString(36)).join(""));
 
-        const named = Project.checks({ root: at, budgets: { "public/small.js": 4096, "public/large.js": 1024 } })
+        const named = Project.findAll({ root: at, budgets: { "public/small.js": 4096, "public/large.js": 1024 } })
             .filter((one) => one.check === "budget")
             .map((one) => one.message.split(" ")[0]);
 
@@ -341,7 +341,7 @@ describe("the other half of an application split across two stacks", () =>
     {
         const at = createProject();
 
-        const said = Project.skipped({ root: at, across: ["../api/src/plugins"] })
+        const said = Project.findSkipped({ root: at, across: ["../api/src/plugins"] })
             .filter((one) => one.check === "across");
 
         expect(said).toHaveLength(1);
@@ -355,7 +355,7 @@ describe("the other half of an application split across two stacks", () =>
 
         mkdirSync(join(at, "..", "api", "src", "plugins"), { recursive: true });
 
-        const said = Project.skipped({ root: at, across: ["../api/src/plugins"] })
+        const said = Project.findSkipped({ root: at, across: ["../api/src/plugins"] })
             .filter((one) => one.check === "across");
 
         rmSync(join(at, "..", "api"), { recursive: true, force: true });
@@ -367,6 +367,6 @@ describe("the other half of an application split across two stacks", () =>
     {
         const at = createProject();
 
-        expect(Project.skipped({ root: at }).filter((one) => one.check === "across")).toEqual([]);
+        expect(Project.findSkipped({ root: at }).filter((one) => one.check === "across")).toEqual([]);
     });
 });

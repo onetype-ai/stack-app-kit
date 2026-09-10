@@ -4,17 +4,7 @@ export type StartupFailureProps = {
     message: string;
 };
 
-/**
- * What a refused start looks like.
- *
- * The kernel's message names the plugin, the key and the fix, and it is the
- * most useful text in the system. The build before this one threw it into a
- * console behind a blank white page, so it reached nobody.
- *
- * Styles are inline rather than a stylesheet: this renders when startup
- * failed, which is exactly when a stylesheet may not have loaded, and it
- * must not depend on tokens the application defines.
- */
+/** What a refused start looks like. */
 export function StartupFailure({ message }: StartupFailureProps): ReactNode
 {
     return (

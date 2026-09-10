@@ -2,20 +2,25 @@ import type { ComponentType, FunctionComponent } from "react";
 import type { z } from "zod";
 
 /** Anything declared carries a sentence saying what it is for. */
-export type Described = {
+export type Describable = {
     describe: string;
 };
 
 /** A declaration whose payload is checked before it reaches anyone. */
-export type Schematic = Described & {
+export type DescribableWithSchema = Describable & {
     schema: z.ZodType;
 };
 
 /** What a plugin may do, named so an application can grant it. */
-export type Permission = Described;
+export type Permission = {
+    describe: string;
+};
 
 /** An event a plugin publishes. */
-export type Event = Schematic;
+export type Event = {
+    describe: string;
+    schema: z.ZodType;
+};
 
 /**
  * What a listener does when an event arrives.
@@ -25,29 +30,32 @@ export type Event = Schematic;
  * compiler endorses a claim about a completely different schema. `unknown`
  * forces the parse that should happen anyway.
  */
-export type Listener<Context> = Described & {
+export type Listener<Context> = Describable & {
     handle: (payload: unknown, ctx: Context) => void | Promise<void>;
 };
 
 /** A point where a plugin may refuse what is about to happen. */
-export type Hook = Schematic;
+export type Hook = {
+    describe: string;
+    schema: z.ZodType;
+};
 
 /** What a participant answers: nothing to allow, a reason to refuse. */
-export type Participant<Context> = Described & {
+export type Participant<Context> = Describable & {
     handle: (payload: unknown, ctx: Context) => string | undefined | Promise<string | undefined>;
 };
 
 /** Something a plugin can be asked to do, behind the permissions it names. */
-export type Command<Context> = Schematic & {
+export type Command<Context> = DescribableWithSchema & {
     requires?: readonly string[] | undefined;
     run: (input: unknown, ctx: Context) => void | Promise<void>;
 };
 
 /** A place other plugins may render into. */
-export type Slot = Schematic;
+export type Slot = DescribableWithSchema;
 
 /** What one plugin renders in another's slot. */
-export type Contribution = {
+export type SlotContribution = {
     slot: string;
     order?: number | undefined;
     requires?: readonly string[] | undefined;
@@ -116,7 +124,7 @@ export type Logger = {
 };
 
 /** One request, as a plugin makes it. */
-export type Request = {
+export type CallOptions = {
     query?: Readonly<Record<string, string | number | boolean | null | undefined>> | undefined;
     body?: unknown;
     headers?: Readonly<Record<string, string>> | undefined;
@@ -134,12 +142,12 @@ export type Request = {
  * throws. A fake answering `{ status, body }` describes the channel
  * underneath rather than this, and every call written against it is wrong.
  */
-export type Client = {
-    get: (path: string, request?: Request) => Promise<unknown>;
-    post: (path: string, request?: Request) => Promise<unknown>;
-    put: (path: string, request?: Request) => Promise<unknown>;
-    patch: (path: string, request?: Request) => Promise<unknown>;
-    delete: (path: string, request?: Request) => Promise<unknown>;
+export type HttpClient = {
+    get: (path: string, request?: CallOptions) => Promise<unknown>;
+    post: (path: string, request?: CallOptions) => Promise<unknown>;
+    put: (path: string, request?: CallOptions) => Promise<unknown>;
+    patch: (path: string, request?: CallOptions) => Promise<unknown>;
+    delete: (path: string, request?: CallOptions) => Promise<unknown>;
 };
 
 /** What the kernel needs to drop what a view is holding. */
@@ -160,7 +168,7 @@ export type Context<Config = unknown, Services = unknown> = {
     services: Services;
 
     log: Logger;
-    http: Client;
+    http: HttpClient;
     cache: Cache;
     realtime: Realtime;
 
@@ -219,7 +227,7 @@ export type Context<Config = unknown, Services = unknown> = {
 type Given<Api> = NoInfer<Api>;
 
 /** Everything a plugin declares about itself. */
-export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown> = Described & {
+export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown> = Describable & {
     version: string;
     dependsOn?: readonly string[] | undefined;
     config?: Schema | undefined;
@@ -257,7 +265,7 @@ export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown>
 
     routes?: readonly Route<z.infer<Schema>, Given<Services>>[] | undefined;
     slots?: Readonly<Record<string, Slot>> | undefined;
-    contributes?: readonly Contribution[] | undefined;
+    contributes?: readonly SlotContribution[] | undefined;
 
     emits?: Readonly<Record<string, Event>> | undefined;
     listens?: Readonly<Record<string, Listener<Context<z.infer<Schema>, Given<Services>>>>> | undefined;

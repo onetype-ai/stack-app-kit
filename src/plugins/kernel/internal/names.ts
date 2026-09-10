@@ -6,9 +6,9 @@ const NAMESPACED = /^[a-z][a-z0-9-]{0,63}(\.[a-z][a-z0-9-]{0,63})+$/;
 
 function describe(value: string): string
 {
-    const at = [...value].findIndex((character) => !/[a-z0-9.-]/.test(character));
+    const badAt = [...value].findIndex((character) => !/[a-z0-9.-]/.test(character));
 
-    return at === -1 ? `"${value}"` : `"${value}" (unsupported character at position ${at + 1}: "${value[at]}")`;
+    return badAt === -1 ? `"${value}"` : `"${value}" (unsupported character at position ${badAt + 1}: "${value[badAt]}")`;
 }
 
 export function plugin(value: string): string

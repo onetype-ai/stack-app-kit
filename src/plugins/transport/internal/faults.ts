@@ -1,5 +1,5 @@
 /** What a request was refused for. A closed union, so a caller can branch. */
-export type FaultCode =
+export type TransportFaultCode =
     | "NETWORK"
     | "TIMEOUT"
     | "ABORTED"
@@ -21,16 +21,10 @@ type FaultDetail = {
     cause?: unknown;
 };
 
-/**
- * A refused request, carrying what it was and what came back.
- *
- * `body` is what the server sent with the refusal: a form needs the
- * field-level errors inside it, and an error that dropped them made
- * server-side validation unreachable.
- */
+/** A refused request, carrying what it was and what came back. */
 export class TransportFault extends Error
 {
-    readonly code: FaultCode;
+    readonly code: TransportFaultCode;
 
     readonly status: number | undefined;
 
@@ -42,7 +36,7 @@ export class TransportFault extends Error
 
     readonly body: unknown;
 
-    constructor(code: FaultCode, message: string, about: FaultDetail)
+    constructor(code: TransportFaultCode, message: string, about: FaultDetail)
     {
         super(message, about.cause === undefined ? undefined : { cause: about.cause });
 
@@ -57,7 +51,7 @@ export class TransportFault extends Error
 
     static fromStatus(status: number, about: { method: string; path: string; body?: unknown }): TransportFault
     {
-        const known: Readonly<Record<number, { code: FaultCode; message: string }>> = {
+        const known: Readonly<Record<number, { code: TransportFaultCode; message: string }>> = {
             400: { code: "CLIENT", message: "The request was rejected as invalid." },
             401: { code: "UNAUTHORIZED", message: "The request was rejected as unauthenticated." },
             403: { code: "FORBIDDEN", message: "The request was rejected as not permitted." },
@@ -91,8 +85,8 @@ export class TransportFault extends Error
 
     override toString(): string
     {
-        const at = this.status === undefined ? "" : ` -> ${this.status}`;
+        const andStatus = this.status === undefined ? "" : ` -> ${this.status}`;
 
-        return `${this.name} [${this.code}] ${this.method} ${this.path}${at}: ${this.message}`;
+        return `${this.name} [${this.code}] ${this.method} ${this.path}${andStatus}: ${this.message}`;
     }
 }

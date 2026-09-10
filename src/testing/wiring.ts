@@ -76,24 +76,24 @@ function declared(source: string): { shape: string; field: string }[]
 function closingBrace(source: string, from: number): number
 {
     let depth = 1;
-    let at = from;
+    let cursor = from;
 
-    while (at < source.length && depth > 0)
+    while (cursor < source.length && depth > 0)
     {
-        if (source[at] === "{")
+        if (source[cursor] === "{")
         {
             depth += 1;
         }
 
-        if (source[at] === "}")
+        if (source[cursor] === "}")
         {
             depth -= 1;
         }
 
-        at += 1;
+        cursor += 1;
     }
 
-    return at - 1;
+    return cursor - 1;
 }
 
 function withoutParameters(body: string): string
@@ -144,17 +144,17 @@ function isRead(field: string, sources: readonly [string, string][], where: stri
 function withoutShapes(source: string): string
 {
     let body = "";
-    let at = 0;
+    let cursor = 0;
 
     for (const shape of source.matchAll(/export\s+(?:type\s+\w+\s*=\s*|interface\s+\w+[^{]*)\{/g))
     {
         const from = (shape.index ?? 0) + shape[0].length;
 
-        body += source.slice(at, shape.index);
-        at = closingBrace(source, from) + 1;
+        body += source.slice(cursor, shape.index);
+        cursor = closingBrace(source, from) + 1;
     }
 
-    return body + source.slice(at);
+    return body + source.slice(cursor);
 }
 
 export type Unwatched = {
@@ -170,34 +170,10 @@ export type DanglingPath = {
     file: string;
 };
 
-/**
- * Aliases whose target is not on disk, in every file that declares one.
- *
- * One nobody imports yet resolves to nothing and says so to nobody: the
- * compiler only speaks when a file asks for it, so an alias written ahead of
- * the code it points at looks wired until somebody tries the first import.
- *
- * Both maps are read rather than one. A project keeps the same aliases twice,
- * once for the compiler and once for the bundler, and those two disagreeing is
- * the same defect wearing a different coat: one measured case had `@ui`
- * resolving to a file nobody had written, in both, with `@ui/styles/*`
- * resolving separately and working, so nothing looked wrong.
- *
- * A trailing `*` names a folder and is checked as one, because an alias
- * pointing a whole layer at a directory that does not exist fails exactly as
- * loudly and exactly as late. An empty folder is still a folder: a layer with
- * nothing in it yet is not a broken alias.
- *
- * A vite config is read as text, never evaluated: it is a module that computes
- * its own paths, and running one to read it would run whatever else it does.
- * Its pattern says which shape an entry is — one anchored with `$` names a
- * file, one ending in an escaped slash a folder — because the replacement
- * cannot, a folder's trailing slash being written outside the quotes. A map
- * written some other way is skipped rather than guessed at.
- */
+/** Aliases whose target is not on disk, in every file that declares one. */
 export function findDanglingPaths(root: string, files: readonly string[] = ["tsconfig.json", "vite.config.ts"]): DanglingPath[]
 {
-    const found: DanglingPath[] = [];
+    const dangling: DanglingPath[] = [];
 
     for (const name of files)
     {
@@ -215,9 +191,9 @@ export function findDanglingPaths(root: string, files: readonly string[] = ["tsc
             for (const target of targets)
             {
                 const folder = /[/*]$/.test(target) || alias.endsWith("*");
-                const at = join(root, target.replace(/\/?\*?$/, ""));
+                const path = join(root, target.replace(/\/?\*?$/, ""));
 
-                if (existsSync(at) && (folder ? statSync(at).isDirectory() : statSync(at).isFile()))
+                if (existsSync(path) && (folder ? statSync(path).isDirectory() : statSync(path).isFile()))
                 {
                     continue;
                 }
@@ -227,49 +203,49 @@ export function findDanglingPaths(root: string, files: readonly string[] = ["tsc
                     continue;
                 }
 
-                found.push({ alias, target, file: name });
+                dangling.push({ alias, target, file: name });
             }
         }
     }
 
-    return found;
+    return dangling;
 }
 
 function readAliases(source: string): Map<string, string[]>
 {
-    const found = new Map<string, string[]>();
+    const byAlias = new Map<string, string[]>();
 
     for (const match of source.matchAll(/find:\s*\/\^(@[a-zA-Z0-9_-]+)(\$|\\\/)\/[^,]*,\s*replacement:[^"]*"\.\/([^"]+)"/g))
     {
         const folder = match[2] !== "$";
 
-        found.set(folder ? `${match[1]!}/*` : match[1]!, [folder ? `${match[3]!}/*` : match[3]!]);
+        byAlias.set(folder ? `${match[1]!}/*` : match[1]!, [folder ? `${match[3]!}/*` : match[3]!]);
     }
 
-    return found;
+    return byAlias;
 }
 
 function readPaths(source: string): Map<string, string[]> 
 {
-    const at = source.indexOf('"paths"');
-    const block = at === -1 ? "" : source.slice(at, closingOf(source, at));
-    const found = new Map<string, string[]>();
+    const opens = source.indexOf('"paths"');
+    const block = opens === -1 ? "" : source.slice(opens, closingOf(source, opens));
+    const byAlias = new Map<string, string[]>();
 
     for (const entry of block.matchAll(/"([^"]+)"\s*:\s*\[([^\]]*)\]/g))
     {
         const targets = [...(entry[2] ?? "").matchAll(/"([^"]+)"/g)].map((one) => one[1] ?? "");
 
-        found.set(entry[1] ?? "", targets);
+        byAlias.set(entry[1] ?? "", targets);
     }
 
-    return found;
+    return byAlias;
 }
 
-function closingOf(source: string, at: string | number): number
+function closingOf(source: string, from: string | number): number
 {
     let depth = 0;
 
-    for (let index = Number(at); index < source.length; index += 1)
+    for (let index = Number(from); index < source.length; index += 1)
     {
         if (source[index] === "{")
         {
@@ -292,7 +268,7 @@ function closingOf(source: string, at: string | number): number
 
 export function findUnwatched(root: string): Unwatched[]
 {
-    const found: Unwatched[] = [];
+    const unwatched: Unwatched[] = [];
 
     for (const file of walk(root))
     {
@@ -300,11 +276,11 @@ export function findUnwatched(root: string): Unwatched[]
 
         for (const shape of source.matchAll(/^(?:type\s+(\w+)\s*=\s*\{|interface\s+(\w+)[^{]*\{)/gm))
         {
-            found.push({ file: relative(root, file), shape: shape[1] ?? shape[2] ?? "" });
+            unwatched.push({ file: relative(root, file), shape: shape[1] ?? shape[2] ?? "" });
         }
     }
 
-    return found;
+    return unwatched;
 }
 
 function packedAway(root: string, target: string): boolean

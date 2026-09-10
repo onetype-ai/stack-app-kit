@@ -1,10 +1,5 @@
-/**
- * What the kernel refuses.
- *
- * A closed union rather than a string: an application branches on it, and a
- * new member is a compile error everywhere it is handled exhaustively.
- */
-export type FaultCode =
+/** What the kernel refuses. */
+export type KernelFaultCode =
     | "DUPLICATE_PLUGIN"
     | "UNKNOWN_DEPENDENCY"
     | "DEPENDENCY_CYCLE"
@@ -33,28 +28,22 @@ export type FaultCode =
     | "PERMISSION_DENIED"
     | "NOT_STARTED";
 
-type FaultDetail = {
+type KernelFaultDetail = {
     plugin?: string;
     detail?: Readonly<Record<string, unknown>>;
     cause?: unknown;
 };
 
-/**
- * A refusal, naming the plugin it came from.
- *
- * Three trials of the previous build called startup validation the best part
- * of the system, and what made it so was the message: the plugin, the key,
- * the owner, and what to do about it. A code alone costs an hour.
- */
+/** A refusal, naming the plugin it came from. */
 export class KernelFault extends Error
 {
-    readonly code: FaultCode;
+    readonly code: KernelFaultCode;
 
     readonly plugin: string | undefined;
 
     readonly detail: Readonly<Record<string, unknown>>;
 
-    constructor(code: FaultCode, message: string, about: FaultDetail = {})
+    constructor(code: KernelFaultCode, message: string, about: KernelFaultDetail = {})
     {
         super(message, about.cause === undefined ? undefined : { cause: about.cause });
 

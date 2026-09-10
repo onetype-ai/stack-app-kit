@@ -1,13 +1,13 @@
 import { describe, expect, test } from "vitest";
 
 import { boot } from "../boot";
-import { Fault } from "../errors";
+import { BootFault } from "../errors";
 import type { Host } from "../host";
-import type { Plugin } from "../plugin";
+import type { HostPlugin } from "../plugin";
 
 const quiet = (): void => {};
 
-function createPlugin(name: string, needs: readonly string[] = [], into: string[] = []): Plugin
+function createPlugin(name: string, needs: readonly string[] = [], into: string[] = []): HostPlugin
 {
     return {
         name,
@@ -49,7 +49,7 @@ describe("boot order", () =>
     {
         const booting = (): unknown => boot(quiet, [createPlugin("a", ["b"]), createPlugin("b", ["a"])]);
 
-        expect(booting).toThrow(Fault);
+        expect(booting).toThrow(BootFault);
         expect(booting).toThrow(/a -> b -> a|b -> a -> b/);
     });
 
@@ -74,7 +74,7 @@ describe("start and stop", () =>
     test("starts in boot order and stops in reverse", async () =>
     {
         const order: string[] = [];
-        const recordingPlugin = (name: string, needs: readonly string[] = []): Plugin => ({
+        const recordingPlugin = (name: string, needs: readonly string[] = []): HostPlugin => ({
             name,
             needs,
             boot: () => {},

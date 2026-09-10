@@ -1,18 +1,18 @@
-import { Fault } from "./errors";
-import { Host, type WriteLine } from "./host";
+import { BootFault } from "./errors";
+import { Host, type LogLine } from "./host";
 import { order } from "./order";
-import type { Plugin } from "./plugin";
+import type { HostPlugin } from "./plugin";
 
 /** One run of the kernel: the plugins it booted, and the host they share. */
 export class RunningApp
 {
     readonly #host: Host;
 
-    readonly #order: readonly Plugin[];
+    readonly #order: readonly HostPlugin[];
 
-    #started: Plugin[] = [];
+    #started: HostPlugin[] = [];
 
-    constructor(host: Host, plugins: readonly Plugin[])
+    constructor(host: Host, plugins: readonly HostPlugin[])
     {
         this.#host = host;
         this.#order = plugins;
@@ -66,31 +66,26 @@ export class RunningApp
     }
 }
 
-/**
- * Orders the plugins given and boots each one.
- *
- * Wiring only. A plugin that fails here stops everything, named, before
- * anything has run.
- */
-export function boot(say: WriteLine, plugins: readonly Plugin[]): RunningApp
+/** Orders the plugins given and boots each one. */
+export function boot(say: LogLine, plugins: readonly HostPlugin[]): RunningApp
 {
-    const registry = new Map<string, Plugin>();
+    const registry = new Map<string, HostPlugin>();
 
     for (const plugin of plugins)
     {
         if (plugin.name === "")
         {
-            throw new Fault("NO_NAME", "a plugin was given without a name.");
+            throw new BootFault("NO_NAME", "a plugin was given without a name.");
         }
 
         if (typeof plugin.boot !== "function")
         {
-            throw new Fault("NO_BOOT", `"${plugin.name}" has no boot.`, plugin.name);
+            throw new BootFault("NO_BOOT", `"${plugin.name}" has no boot.`, plugin.name);
         }
 
         if (registry.has(plugin.name))
         {
-            throw new Fault("REGISTERED_TWICE", `"${plugin.name}" was given twice.`, plugin.name);
+            throw new BootFault("REGISTERED_TWICE", `"${plugin.name}" was given twice.`, plugin.name);
         }
 
         registry.set(plugin.name, plugin);

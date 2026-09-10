@@ -4,12 +4,7 @@ import type { Cache } from "../kernel/api";
 /** What this plugin offers itself as. */
 export const NAME = "cache";
 
-/**
- * The part of a query client this plugin drives.
- *
- * A shape rather than the library, so a test passes its own and the kit does
- * not force a version on the application.
- */
+/** The part of a query client this plugin drives. */
 export type Queries = {
     invalidateQueries: (filters: { queryKey: unknown[] }) => unknown;
 };

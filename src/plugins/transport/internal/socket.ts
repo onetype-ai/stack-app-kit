@@ -1,9 +1,9 @@
-import type { Request, Socket, Subscription } from "../api";
+import type { HttpRequest, Socket, Subscription } from "../api";
 import type { Answer, Channel } from "./channel";
 import { TransportFault } from "./faults";
 import { frame } from "./frame";
 
-type Settings = {
+type TransportOptions = {
     wsUrl: string;
     timeout: number;
     connectTimeout: number;
@@ -19,7 +19,7 @@ type InFlight = {
     timer: ReturnType<typeof setTimeout>;
 };
 
-export function socket(settings: Settings)
+export function socket(settings: TransportOptions)
 {
     const waiting = new Map<string, InFlight>();
     const subscribers = new Map<string, Set<(message: unknown) => void>>();
@@ -191,7 +191,7 @@ export function socket(settings: Settings)
             return open;
         },
 
-        send: async (request: Request): Promise<Answer> =>
+        send: async (request: HttpRequest): Promise<Answer> =>
         {
             const live = wire;
 

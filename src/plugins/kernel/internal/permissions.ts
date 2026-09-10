@@ -1,9 +1,9 @@
 /** Where the viewer's permissions come from. The application owns this. */
-export type Source = {
+export type PermissionSource = {
     granted: () => readonly string[];
 };
 
-export function permissions(source: Source | undefined)
+export function permissions(source: PermissionSource | undefined)
 {
     const granted = (): Set<string> =>
     {
@@ -27,9 +27,9 @@ export function permissions(source: Source | undefined)
 
         changed: (): void =>
         {
-            for (const one of watching)
+            for (const notify of watching)
             {
-                one();
+                notify();
             }
         },
 

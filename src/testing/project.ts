@@ -12,14 +12,7 @@ export type ProjectProblem = {
     message: string;
 };
 
-/**
- * What a run did not look at, and why.
- *
- * Separate from a problem on purpose: a project holding its documents folded
- * away has broken no rule, and a build that fails over it teaches nobody
- * anything. But a run that answers an empty list whether it read a hundred
- * files or none is one nobody can tell apart from a clean one, so it says.
- */
+/** What a run did not look at, and why. */
 export type ProjectSkipped = {
     check: string;
     message: string;
@@ -32,12 +25,7 @@ export type ProjectCheckOptions = {
     /** Where pure code shared between plugins lives. */
     utils?: string;
 
-    /**
-     * Where the documents sit while they are a folder.
-     *
-     * They are usually folded into one file, and then there is nothing to
-     * walk: the checks say so rather than answering as though they ran.
-     */
+    /** Where the documents sit while they are a folder. */
     docs?: string;
 
     /** What every application must hold, whatever else it keeps. */
@@ -46,70 +34,33 @@ export type ProjectCheckOptions = {
     /** The size a document may reach before it has outgrown its point. */
     limit?: number;
 
-    /**
-     * Where style lives outside a stylesheet, as paths under `src`.
-     *
-     * Code shipped to another origin carries its CSS as a string, and the
-     * literal rule reads `.css` alone. Naming those folders puts them back
-     * under the rule instead of leaving them unmeasured and unmentioned.
-     */
+    /** Where style lives outside a stylesheet, as paths under `src`. */
     styleIn?: readonly string[];
 
-    /**
-     * Signatures two plugins may each keep, because they answer different questions.
-     *
-     * Written as the signature itself, so an entry names what it excuses and
-     * goes stale loudly when the signature changes rather than quietly.
-     */
+    /** Signatures two plugins may each keep, because they answer different questions. */
     sharing?: readonly string[];
 
     /**
      * Components a plugin writes for itself although one it depends on
      * exports the same name, and means to.
-     *
-     * Written as "plugin/components/Name", so an entry names the one folder
-     * it excuses and goes stale loudly when that folder is renamed.
      */
     shadowing?: readonly string[];
 
     /** Enum names two plugins may each declare, where the two are not one idea. */
     apart?: readonly string[];
 
-    /**
-     * Where the other half of this application lives, when it has one.
-     *
-     * An application split across two stacks holds one vocabulary twice, and
-     * the guard comparing them reads the other side off the disk. That read is
-     * silent when the path is wrong: the guard returns early, the run is green,
-     * and nothing says the comparison never happened. Naming it here reports
-     * that rather than hiding it.
-     */
+    /** Where the other half of this application lives, when it has one. */
     across?: readonly string[];
 
-    /**
-     * Built files that must stay under a size, gzipped, as bytes.
-     *
-     * For what a project promises about a file it serves: a widget quoted as
-     * two kilobytes is a number a visitor pays, and one import can double it
-     * without a test failing or a build complaining.
-     *
-     * A file that is not built is not a pass. It is reported by `skipped`,
-     * because a budget nobody measured reads exactly like one that held.
-     */
+    /** Built files that must stay under a size, gzipped, as bytes. */
     budgets?: Readonly<Record<string, number>>;
 };
 
-/**
- * Every check an application runs on itself, in one call.
- *
- * One entry rather than six: a check added here reaches every project that
- * already calls this, instead of waiting for someone to notice it exists.
- * Two of these were missing from this repository for exactly that reason.
- */
+/** Every check an application runs on itself, in one call. */
 export const Project = {
     required: ["#docs/usage.md", "#docs/stack.md", "#docs/architecture.md"] as const,
 
-    checks: (checking: ProjectCheckOptions = {}): ProjectProblem[] =>
+    findAll: (checking: ProjectCheckOptions = {}): ProjectProblem[] =>
     {
         const root = checking.root ?? process.cwd();
         const plugins = checking.plugins ?? join(root, "src", "plugins");
@@ -189,24 +140,18 @@ export const Project = {
         ];
     },
 
-    /**
-     * Every check that could not run, and what it would have read.
-     *
-     * `checks` answers breaches; this answers silence. A project asserts on
-     * the first and reads the second, so a suite that has quietly stopped
-     * measuring anything is visible rather than green.
-     */
-    skipped: (checking: ProjectCheckOptions = {}): ProjectSkipped[] =>
+    /** Every check that could not run, and what it would have read. */
+    findSkipped: (checking: ProjectCheckOptions = {}): ProjectSkipped[] =>
     {
         const root = checking.root ?? process.cwd();
-        const at = checking.docs ?? join(root, "#docs");
+        const docsFolder = checking.docs ?? join(root, "#docs");
 
         const source = join(root, "src");
 
         return [
-            ...(existsSync(at) ? [] : [{
+            ...(existsSync(docsFolder) ? [] : [{
                 check: "documents",
-                message: `${at.replace(`${root}/`, "")} is not on disk, so no size was measured and no required document was looked for. Unpack them, or say where they are.`,
+                message: `${docsFolder.replace(`${root}/`, "")} is not on disk, so no size was measured and no required document was looked for. Unpack them, or say where they are.`,
             }]),
 
             ...unmeasured(source, checking.styleIn),
@@ -219,16 +164,16 @@ export const Project = {
 
 function documents(root: string, checking: ProjectCheckOptions): ProjectProblem[]
 {
-    const at = checking.docs ?? join(root, "#docs");
+    const docsFolder = checking.docs ?? join(root, "#docs");
     const required = checking.required ?? [];
 
-    if (!existsSync(at))
+    if (!existsSync(docsFolder))
     {
         return [];
     }
 
     return [
-        ...findOversizedDocs(at, checking.limit).map((doc) => ({
+        ...findOversizedDocs(docsFolder, checking.limit).map((doc) => ({
             check: "oversized" as const,
             message: `${doc.path.replace(`${root}/`, "")} is ${String(doc.size)} characters, past the size a document keeps its point at.`,
         })),
@@ -271,20 +216,20 @@ function unbuilt(root: string, budgets: Readonly<Record<string, number>>): Proje
 
 function unmeasured(source: string, styleIn: readonly string[] | undefined): ProjectSkipped[]
 {
-    const found = findUnmeasured(source, styleIn);
+    const holding = findUnmeasured(source, styleIn);
 
-    if (found.length === 0)
+    if (holding.length === 0)
     {
         return [];
     }
 
     const byFolder = new Map<string, number>();
 
-    for (const one of found)
+    for (const each of holding)
     {
-        const folder = one.file.split("/").slice(0, -1).join("/");
+        const folder = each.file.split("/").slice(0, -1).join("/");
 
-        byFolder.set(folder, (byFolder.get(folder) ?? 0) + one.holds);
+        byFolder.set(folder, (byFolder.get(folder) ?? 0) + each.holds);
     }
 
     const worst = [...byFolder.entries()]
@@ -294,22 +239,22 @@ function unmeasured(source: string, styleIn: readonly string[] | undefined): Pro
 
     return [{
         check: "literal",
-        message: `The literal rule reads stylesheets, and ${String(found.length)} other files carry a colour, length or duration that nothing measured. Most of it sits in ${worst.join(", ")}. Where that is style rather than a measurement mentioned in passing, name the folder in styleIn and it comes under the rule.`,
+        message: `The literal rule reads stylesheets, and ${String(holding.length)} other files carry a colour, length or duration that nothing measured. Most of it sits in ${worst.join(", ")}. Where that is style rather than a measurement mentioned in passing, name the folder in styleIn and it comes under the rule.`,
     }];
 }
 
 function unwatched(source: string): ProjectSkipped[]
 {
-    const found = findUnwatched(source);
+    const missing = findUnwatched(source);
 
-    if (found.length === 0)
+    if (missing.length === 0)
     {
         return [];
     }
 
     return [{
         check: "wiring",
-        message: `A field nothing reads is looked for in exported types alone, and ${String(found.length)} shapes here are not exported, so their fields went unread by this run. That is on purpose — a private shape is the file's own business — but a green report says nothing about them either way.`,
+        message: `A field nothing reads is looked for in exported types alone, and ${String(missing.length)} shapes here are not exported, so their fields went unread by this run. That is on purpose — a private shape is the file's own business — but a green report says nothing about them either way.`,
     }];
 }
 

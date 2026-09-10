@@ -25,16 +25,7 @@ export type UnknownClass = {
     name: string;
 };
 
-/**
- * Every `var(--name)` a stylesheet asks for that nothing declares.
- *
- * CSS answers an undeclared token with nothing and applies the rule as if it
- * were not written, so a stylesheet against the wrong names builds green and
- * changes no pixel. Types cannot see it and neither can a render test.
- *
- * A module's own token is answered in its own file, and a component may hand
- * one in through `style`. One module's token never reaches another.
- */
+/** Every `var(--name)` a stylesheet asks for that nothing declares. */
 export function findUnknownTokens(root: string): UnknownToken[]
 {
     const files = walk(root);
@@ -48,9 +39,6 @@ export function findUnknownTokens(root: string): UnknownToken[]
 
         if (file.endsWith(".css"))
         {
-            // A module's own token lives on its own root, so a second module
-            // asking for it gets nothing: it reaches the element only where
-            // that element is inside the first one.
             const reach = file.endsWith(".module.css")
                 ? (inside.get(file) ?? new Set<string>())
                 : anywhere;
@@ -84,14 +72,7 @@ export function findUnknownTokens(root: string): UnknownToken[]
         .map((one) => ({ file: one.file, token: one.token }));
 }
 
-/**
- * Every `styles.name` a component reads that its own module never declares.
- *
- * A CSS module answers an unknown name with undefined, and React drops an
- * undefined className without a word: the element renders unstyled and every
- * test still passes. Types cannot see it either, because the module is typed
- * as a record of strings.
- */
+/** Every `styles.name` a component reads that its own module never declares. */
 export function findUnknownClasses(root: string): UnknownClass[]
 {
     const wrong: UnknownClass[] = [];
@@ -105,9 +86,6 @@ export function findUnknownClasses(root: string): UnknownClass[]
 
         const source = readFileSync(file, "utf8");
 
-        // The module a component imports, not the one beside it: a component
-        // may reach for a stylesheet in another folder, and a check reading
-        // the name alone never opens the file it actually uses.
         const imported = /from\s+["']([^"']+\.module\.css)["']/.exec(source)?.[1];
         const module = imported === undefined
             ? file.replace(/\.tsx$/, ".module.css")
@@ -186,7 +164,7 @@ const INSTANT = /^(0|0m?s|1ms)$/;
  * */
 export function findLiterals(root: string, alsoIn: readonly string[] = []): Literal[]
 {
-    const found: Literal[] = [];
+    const literals: Literal[] = [];
 
     for (const file of walk(root))
     {
@@ -199,44 +177,44 @@ export function findLiterals(root: string, alsoIn: readonly string[] = []): Lite
 
         const lines = readFileSync(file, "utf8").split("\n");
 
-        for (let at = 0; at < lines.length; at += 1)
+        for (let line = 0; line < lines.length; line += 1)
         {
-            const raw = lines[at] ?? "";
+            const raw = lines[line] ?? "";
 
             if (BREAKPOINT.test(raw))
             {
                 continue;
             }
 
-            const where = { file: relative(root, file), line: at + 1, holds: raw.trim() };
+            const where = { file: relative(root, file), line: line + 1, holds: raw.trim() };
 
             if (COLOUR.test(raw))
             {
-                found.push({ ...where, kind: "colour" });
+                literals.push({ ...where, kind: "colour" });
             }
 
             const measured = LENGTH.exec(raw);
 
             if (measured !== null && !NOTHING_OR_HAIRLINE.test(measured[0]))
             {
-                found.push({ ...where, kind: "length" });
+                literals.push({ ...where, kind: "length" });
             }
 
             const waited = DURATION.exec(raw);
 
             if (waited !== null && !INSTANT.test(waited[0]))
             {
-                found.push({ ...where, kind: "duration" });
+                literals.push({ ...where, kind: "duration" });
             }
         }
     }
 
-    return found;
+    return literals;
 }
 
 export function findUnmeasured(root: string, alsoIn: readonly string[] = []): Unmeasured[]
 {
-    const found: Unmeasured[] = [];
+    const unmeasured: Unmeasured[] = [];
 
     for (const file of walk(root))
     {
@@ -251,9 +229,9 @@ export function findUnmeasured(root: string, alsoIn: readonly string[] = []): Un
 
         if (holds > 0)
         {
-            found.push({ file: relative(root, file), holds });
+            unmeasured.push({ file: relative(root, file), holds });
         }
     }
 
-    return found;
+    return unmeasured;
 }

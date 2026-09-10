@@ -2,32 +2,32 @@ import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
 import { boot } from "../../../kernel/boot";
-import { plugin as kernelPlugin } from "../../kernel/plugin";
+import { kernelPlugin } from "../../kernel/plugin";
 import { from } from "../api";
 import { tree } from "../internal/tree";
-import { plugin as routerPlugin } from "../plugin";
+import { routerPlugin } from "../plugin";
 
 import type { ComponentType } from "react";
-import type { Kernel, Registered } from "../../kernel/api";
-import type { Building, Frame } from "../api";
+import type { Kernel, RegisteredRoute } from "../../kernel/api";
+import type { RouterOptions, Frame } from "../api";
 
 const Page = (() => null) as ComponentType;
 const Shell = (() => null) as ComponentType;
 const Missing = (() => null) as ComponentType;
 
-function registered(path: string, plugin = "demo"): Registered
+function registered(path: string, plugin = "demo"): RegisteredRoute
 {
     return { path, title: "A page", component: Page, plugin, fallback: undefined };
 }
 
-function recordRouter(routes: readonly Registered[])
+function recordRouter(routes: readonly RegisteredRoute[])
 {
     const built: Record<string, unknown>[] = [];
     const roots: Record<string, unknown>[] = [];
 
     let router: unknown;
 
-    const building: Building = {
+    const building: RouterOptions = {
         createRootRoute: (options) =>
         {
             roots.push(options);

@@ -1,10 +1,5 @@
-/**
- * What the kernel refuses, and why.
- *
- * A code is a closed union rather than a string: a caller branches on it, and
- * a new member is a compile error everywhere it is handled exhaustively.
- */
-export type FaultCode =
+/** What the kernel refuses, and why. */
+export type BootFaultCode =
     | "NO_NAME"
     | "NO_BOOT"
     | "REGISTERED_TWICE"
@@ -14,23 +9,18 @@ export type FaultCode =
     | "OFFERED_TWICE"
     | "NO_API";
 
-/**
- * A refusal from the kernel itself, naming the plugin it came from.
- *
- * Never a bare Error: a caller cannot match on one, so it becomes "something
- * went wrong" in someone else's console.
- */
-export class Fault extends Error
+/** A refusal from the kernel itself, naming the plugin it came from. */
+export class BootFault extends Error
 {
-    readonly code: FaultCode;
+    readonly code: BootFaultCode;
 
     readonly plugin: string | undefined;
 
-    constructor(code: FaultCode, message: string, plugin?: string, cause?: unknown)
+    constructor(code: BootFaultCode, message: string, plugin?: string, cause?: unknown)
     {
         super(message, cause === undefined ? undefined : { cause });
 
-        this.name = "Fault";
+        this.name = "BootFault";
         this.code = code;
         this.plugin = plugin;
     }

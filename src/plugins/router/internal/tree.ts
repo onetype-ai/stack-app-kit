@@ -1,13 +1,13 @@
 import type { ComponentType } from "react";
 
-import type { Kernel, Registered } from "../../kernel/api";
-import type { Building, Frame } from "../api";
+import type { Kernel, RegisteredRoute } from "../../kernel/api";
+import type { RouterOptions, Frame } from "../api";
 
 export function tree(
     kernel: Kernel,
-    building: Building,
+    building: RouterOptions,
     frame: Frame,
-    guard: (route: Registered) => ComponentType,
+    guard: (route: RegisteredRoute) => ComponentType,
 ): unknown
 {
     const root = building.createRootRoute({

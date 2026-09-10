@@ -1,25 +1,19 @@
 import { boot } from "../../../kernel/boot";
-import type { WriteLine } from "../../../kernel/host";
+import type { LogLine } from "../../../kernel/host";
 import { z } from "zod";
 
 import { createKernel, definePlugin } from "../../kernel/api";
 import type { Realtime } from "../../kernel/api";
 import { from as transportFrom } from "../../transport/api";
-import { plugin as transportPlugin } from "../../transport/plugin";
-import type { Starting, Started } from "../api";
+import { transportPlugin } from "../../transport/plugin";
+import type { StartOptions, StartedApp } from "../api";
 import { client } from "./client";
 
-/**
- * Brings an application up: transport, then kernel, then plugins.
- *
- * The order matters. The transport connects before the kernel starts, so a
- * plugin's `setup` can make a request; and the kernel starts last, so a
- * refused contract stops everything before a plugin has run.
- */
-export async function start(starting: Starting): Promise<Started>
+/** Brings an application up: transport, then kernel, then plugins. */
+export async function start(starting: StartOptions): Promise<StartedApp>
 {
     const log = starting.log;
-    const say: WriteLine = (line, about) =>
+    const say: LogLine = (line, about) =>
     {
         log?.info(line, about);
     };

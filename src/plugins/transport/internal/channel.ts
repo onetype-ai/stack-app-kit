@@ -1,4 +1,4 @@
-import type { Request } from "../api";
+import type { HttpRequest } from "../api";
 
 export type Answer = {
     status: number;
@@ -9,5 +9,5 @@ export type Answer = {
 export type Channel = {
     name: "ws" | "http";
     open: () => boolean;
-    send: (request: Request) => Promise<Answer>;
+    send: (request: HttpRequest) => Promise<Answer>;
 };

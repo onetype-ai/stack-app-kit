@@ -1,15 +1,15 @@
 import type { Host } from "../../kernel/host";
 import { address } from "./internal/address";
 import { TransportFault } from "./internal/faults";
-import type { FaultCode } from "./internal/faults";
-import type { Method } from "./internal/method";
+import type { TransportFaultCode } from "./internal/faults";
+import type { HttpMethod } from "./internal/method";
 
 /** What this plugin offers itself as. */
 export const NAME = "transport";
 
 /** One request. Everything a caller may say about what it wants. */
-export type Request = {
-    method: Method;
+export type HttpRequest = {
+    method: HttpMethod;
     path: string;
     query?: Readonly<Record<string, string | number | boolean | null | undefined>> | undefined;
     body?: unknown;
@@ -26,7 +26,7 @@ export type Subscription = {
 };
 
 /** What the plugin needs before it can dial anything. */
-export type Settings = {
+export type TransportOptions = {
     baseUrl: string;
     wsUrl?: string | undefined;
     openSocket?: ((url: string) => Socket) | undefined;
@@ -40,12 +40,7 @@ export type Settings = {
     sleep?: ((ms: number) => Promise<void>) | undefined;
 };
 
-/**
- * The socket shape this plugin drives.
- *
- * A parameter rather than a call to WebSocket, so the plugin runs where there
- * is none and a test passes its own.
- */
+/** The socket shape this plugin drives. */
 export type Socket = {
     send: (data: string) => void;
     close: () => void;
@@ -54,13 +49,7 @@ export type Socket = {
 
 /** The one HTTP boundary. */
 export type Transport = {
-    /**
-     * Tries the socket once and answers which channel is live.
-     *
-     * A no-op on repeat: a second call while one is in flight joins it, and a
-     * call on a live socket answers without opening another. Two sockets
-     * would each deliver, so every push would arrive twice.
-     */
+    /** Tries the socket once and answers which channel is live. */
     connect: () => Promise<Channel>;
 
     /** Which channel is carrying now. */
@@ -70,7 +59,7 @@ export type Transport = {
      * One request. The body comes back as unknown: this plugin does not own
      * the caller's shapes, so the caller validates.
      */
-    request: (request: Request) => Promise<unknown>;
+    request: (request: HttpRequest) => Promise<unknown>;
 
     /**
      * Server-pushed messages. With no socket this succeeds and delivers
@@ -90,4 +79,4 @@ export function from(host: Host): Transport | undefined
 
 export { address };
 export { TransportFault };
-export type { FaultCode, Method };
+export type { TransportFaultCode, HttpMethod };

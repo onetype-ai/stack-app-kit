@@ -1,6 +1,6 @@
 import { Component, createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ComponentType, type FunctionComponent, type ReactNode } from "react";
 
-import type { Context, FallbackProps, Registered } from "../api";
+import type { Context, FallbackProps, RegisteredRoute } from "../api";
 import type { Kernel } from "../internal/kernel";
 
 export { StartupFailure } from "./StartupFailure";
@@ -71,14 +71,7 @@ export function useKernel(): Kernel
     return kernel;
 }
 
-/**
- * What a plugin holds: its config, its services, and everything a context
- * carries.
- *
- * Named so a plugin can alias it once: `export type DemoHandle =
- * PluginHandle<DemoConfig, DemoServices>`: rather than spelling the pair at
- * every call site.
- */
+/** What a plugin holds: its config, its services, and everything a context carries. */
 export type PluginHandle<Config = unknown, Services = unknown> = Context<Config, Services>;
 
 /** One plugin's context and services, by name. */
@@ -87,13 +80,7 @@ export function usePlugin<Config = unknown, Services = unknown>(name: string): P
     return useKernel().context(name) as PluginHandle<Config, Services>;
 }
 
-/**
- * Hears an event for as long as this component is on screen.
- *
- * `handle` is held in a ref, so a component may pass a new closure on every
- * render without the subscription being torn down and rebuilt. What decides
- * that is `plugin` and `event`, and nothing else.
- */
+/** Hears an event for as long as this component is on screen. */
 export function useEvent(plugin: string, event: string, handle: (payload: unknown) => void): void
 {
     const kernel = useKernel();
@@ -110,16 +97,7 @@ export function useEvent(plugin: string, event: string, handle: (payload: unknow
     }, [kernel, plugin, event]);
 }
 
-/**
- * Reads a value a service keeps, and re-renders when it changes.
- *
- * `watch` takes a callback and answers what stops it, which is the shape a
- * service already has when it keeps anything. `read` answers the value now.
- *
- * Both are held in refs, so a component may pass new closures on every render
- * without resubscribing. Pass a stable `read` or memoise what it answers: a
- * new object each call makes React re-render forever.
- */
+/** Reads a value a service keeps, and re-renders when it changes. */
 export function useStore<Value>(
     watch: (notify: () => void) => () => void,
     read: () => Value,
@@ -160,13 +138,7 @@ export function useStore<Value>(
     return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
-/**
- * Renders every contribution to a slot.
- *
- * Each gets the validated payload, because a contribution that cannot learn
- * what it decorates is the mechanism missed. Each renders behind its own
- * boundary, so one throwing does not blank the rest.
- */
+/** Renders every contribution to a slot. */
 export function Slot({ name, payload }: { name: string; payload?: unknown }): ReactNode
 {
     const kernel = useKernel();
@@ -220,7 +192,7 @@ function useGranting(): void
     }), read, read);
 }
 
-function useAllowed(route: Registered): readonly string[]
+function useAllowed(route: RegisteredRoute): readonly string[]
 {
     const kernel = useKernel();
 
@@ -238,7 +210,7 @@ function useAllowed(route: Registered): readonly string[]
 }
 
 /** A page, and what it takes to see it. */
-export function RouteGuard({ route, send }: { route: Registered; send?: (to: string) => ReactNode }): ReactNode
+export function RouteGuard({ route, send }: { route: RegisteredRoute; send?: (to: string) => ReactNode }): ReactNode
 {
     const kernel = useKernel();
     const pages = usePages();
@@ -251,9 +223,6 @@ export function RouteGuard({ route, send }: { route: Registered; send?: (to: str
         return send === undefined ? null : send(elsewhere);
     }
 
-    // Named before the guard runs, not after: a reader refused a page is on
-    // that page, and a tab carrying the last one's name says they are
-    // somewhere they have left.
     if (typeof document !== "undefined")
     {
         document.title = route.title;
@@ -271,12 +240,7 @@ export function RouteGuard({ route, send }: { route: Registered; send?: (to: str
     );
 }
 
-/**
- * The 404, for a path nothing declared.
- *
- * Takes no props: a router renders it with whatever shape that router uses,
- * and a component demanding its own would not typecheck against any of them.
- */
+/** The 404, for a path nothing declared. */
 export function NotFound(): ReactNode
 {
     const pages = usePages();
@@ -284,14 +248,7 @@ export function NotFound(): ReactNode
     return <pages.missing />;
 }
 
-/**
- * The frame every page renders inside, from whichever plugin owns it.
- *
- * A component rather than a wrapper: the frame renders the router's outlet
- * itself, so what goes inside is the router's business and not ours. An
- * application naming its own frame would be naming a plugin, which is the
- * thing the kernel exists to prevent.
- */
+/** The frame every page renders inside, from whichever plugin owns it. */
 export function useFrame(): FunctionComponent
 {
     return useKernel().frame() ?? Bare;

@@ -1,54 +1,54 @@
 
 export { boot, RunningApp } from "./kernel/boot";
-export { Fault } from "./kernel/errors";
-export type { FaultCode as BootFaultCode } from "./kernel/errors";
+export { BootFault } from "./kernel/errors";
+export type { BootFaultCode } from "./kernel/errors";
 export { Host } from "./kernel/host";
-export type { WriteLine } from "./kernel/host";
-export type { Plugin as HostPlugin } from "./kernel/plugin";
+export type { LogLine } from "./kernel/host";
+export type { HostPlugin } from "./kernel/plugin";
 
 export { createKernel, definePlugin, KernelFault } from "./plugins/kernel/api";
-export { plugin as kernelPlugin } from "./plugins/kernel/plugin";
+export { kernelPlugin } from "./plugins/kernel/plugin";
 export type {
     Cache,
-    Client,
+    HttpClient,
     Command,
     Context,
-    Contribution,
+    SlotContribution,
     Definition,
-    Described,
+    Describable,
     Event,
-    Failure,
+    ListenerFailure,
     FallbackProps,
-    FaultCode,
-    PlacedContribution,
+    KernelFaultCode,
+    MountedContribution,
     Hook,
     Kernel,
     Listener,
-    Log,
+    LogFn,
     Logger,
-    Options,
+    KernelOptions,
     Participant,
     Permission,
     Plugin,
     Realtime,
-    Registered,
-    Request,
+    RegisteredRoute,
+    CallOptions,
     Route,
-    Schematic,
+    DescribableWithSchema,
     Slot,
-    Source,
+    PermissionSource,
     ContractProblem,
 } from "./plugins/kernel/api";
 
 export * as transport from "./plugins/transport/api";
-export { plugin as transportPlugin } from "./plugins/transport/plugin";
+export { transportPlugin } from "./plugins/transport/plugin";
 
 export * as cache from "./plugins/cache/api";
-export { plugin as cachePlugin } from "./plugins/cache/plugin";
+export { cachePlugin } from "./plugins/cache/plugin";
 
 export * as router from "./plugins/router/api";
-export { plugin as routerPlugin } from "./plugins/router/plugin";
+export { routerPlugin } from "./plugins/router/plugin";
 
 export { discover, start } from "./plugins/mount/api";
-export { plugin as mountPlugin } from "./plugins/mount/plugin";
-export type { Modules, Started, Starting } from "./plugins/mount/api";
+export { mountPlugin } from "./plugins/mount/plugin";
+export type { PluginModules, StartedApp, StartOptions } from "./plugins/mount/api";

@@ -4,14 +4,14 @@ import { afterEach, describe, expect, test } from "vitest";
 import { createKernel, definePlugin } from "../api";
 import { KernelProvider, RouteGuard } from "../react/index";
 
-import type { Kernel, Registered } from "../api";
+import type { Kernel, RegisteredRoute } from "../api";
 import type { ReactNode } from "react";
 
 afterEach(cleanup);
 
 const Page = (): ReactNode => <p>the page</p>;
 
-async function startKernel(instead?: () => string | undefined): Promise<{ kernel: Kernel; route: Registered }>
+async function startKernel(instead?: () => string | undefined): Promise<{ kernel: Kernel; route: RegisteredRoute }>
 {
     const kernel = createKernel({
         plugins: [definePlugin("checkout", { version: "1.0.0", describe: "Pays." })],
@@ -98,7 +98,7 @@ describe("a page the viewer may see but should not be on yet", () =>
 
 describe("a route that is both forbidden and early", () =>
 {
-    async function startGuarded(granted: readonly string[]): Promise<{ kernel: Kernel; route: Registered }>
+    async function startGuarded(granted: readonly string[]): Promise<{ kernel: Kernel; route: RegisteredRoute }>
     {
         const kernel = createKernel({
             plugins: [
@@ -173,7 +173,7 @@ describe("a route that is both forbidden and early", () =>
 
         await kernel.start();
 
-        const route: Registered = {
+        const route: RegisteredRoute = {
             path: "/pay",
             title: "A page",
             component: Page,
