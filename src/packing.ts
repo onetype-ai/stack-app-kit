@@ -20,7 +20,7 @@ export type Packing = {
     tool: string;
 
     /** The most characters one packed file may hold, or 0 for no limit. */
-    limit?: number | ((path: string) => number);
+    maxCharacters?: number | ((path: string) => number);
 };
 
 /** One folder, folded into one file and back. */
@@ -46,9 +46,9 @@ export class Packer
 
     readonly tool: string;
 
-    readonly limit: number | ((path: string) => number);
+    readonly maxCharacters: number | ((path: string) => number);
 
-    constructor({ at, demo, name, into, tool, limit }: Packing)
+    constructor({ at, demo, name, into, tool, maxCharacters }: Packing)
     {
         this.tool = tool;
         this.root = process.cwd();
@@ -58,12 +58,12 @@ export class Packer
         this.demo = demo ?? [];
         this.name = name;
         this.at = at;
-        this.limit = limit ?? 0;
+        this.maxCharacters = maxCharacters ?? 0;
     }
 
-    pack(asked: readonly string[]): void
+    pack(requested: readonly string[]): void
     {
-        const names = asked.length > 0 ? [...asked] : [...this.demo];
+        const names = requested.length > 0 ? [...requested] : [...this.demo];
 
         for (const name of names)
         {
@@ -75,7 +75,7 @@ export class Packer
 
         const inOrder = (first: string, second: string): number =>
         {
-            return this.weigh(first) - this.weigh(second) || first.localeCompare(second);
+            return this.readingOrder(first) - this.readingOrder(second) || first.localeCompare(second);
         };
 
         const files = this.whole
@@ -99,11 +99,11 @@ export class Packer
                 throw new Error(`${path} holds a line starting with "${this.mark}", which would unpack wrongly.`);
             }
 
-            const most = typeof this.limit === "function" ? this.limit(path) : this.limit;
+            const maxCharacters = typeof this.maxCharacters === "function" ? this.maxCharacters(path) : this.maxCharacters;
 
-            if (most > 0 && body.length > most)
+            if (maxCharacters > 0 && body.length > maxCharacters)
             {
-                throw new Error(`${path} is ${String(body.length)} characters, over the ${String(most)} a ${this.name} may hold.`);
+                throw new Error(`${path} is ${String(body.length)} characters, over the ${String(maxCharacters)} a ${this.name} may hold.`);
             }
 
             packed += `\n${this.mark}${path}\n\n${body}${body.endsWith("\n") ? "" : "\n"}`;
@@ -114,7 +114,7 @@ export class Packer
             packed += `\n${this.ends}\n\nEverything above was an example. What you write goes in its own\nfolder beside them, and nothing here is yours to edit.\n`;
         }
 
-        const losing = files.length;
+        const packedCount = files.length;
 
         mkdirSync(dirname(this.file), { recursive: true });
         writeFileSync(this.file, packed);
@@ -123,8 +123,8 @@ export class Packer
 
         const describing = this.whole ? this.at : names.join(", ");
 
-        console.log(`packed ${describing} (${String(losing)} files) into ${relative(this.root, this.file)}`);
-        console.log(`those ${String(losing)} files are now gone from disk. \`unpack\` writes them back.`);
+        console.log(`packed ${describing} (${String(packedCount)} files) into ${relative(this.root, this.file)}`);
+        console.log(`those ${String(packedCount)} files are now gone from disk. \`unpack\` writes them back.`);
     }
 
     unpack(): void
@@ -162,9 +162,9 @@ export class Packer
             writeFileSync(full, body.endsWith("\n") ? body : `${body}\n`);
         }
 
-        const told = this.whole ? this.at : names.join(", ");
+        const describing = this.whole ? this.at : names.join(", ");
 
-        console.log(`unpacked ${told} (${String(files.length)} files) into ${relative(this.root, this.folder)}`);
+        console.log(`unpacked ${describing} (${String(files.length)} files) into ${relative(this.root, this.folder)}`);
     }
 
     /** What a packed file names, in the order it named them. */
@@ -282,7 +282,7 @@ export class Packer
     }
 
     /** What a reader opens first comes first. */
-    weigh(path: string): number
+    readingOrder(path: string): number
     {
         const name = path.split(sep).pop() ?? "";
 
@@ -329,7 +329,7 @@ the next pack throws away.
 `;
     }
 
-    ran(argv: readonly string[]): void
+    main(argv: readonly string[]): void
     {
         try
         {
@@ -344,16 +344,16 @@ the next pack throws away.
 
     run(argv: readonly string[]): void
     {
-        const [asked, ...names] = argv;
+        const [command, ...names] = argv;
 
-        if (asked === "pack")
+        if (command === "pack")
         {
             this.pack(names);
 
             return;
         }
 
-        if (asked === "unpack")
+        if (command === "unpack")
         {
             this.unpack();
 

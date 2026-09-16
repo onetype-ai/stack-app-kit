@@ -35,7 +35,7 @@ describe("what the progress notes claim about this package", () =>
             .trim().split("\n").filter(Boolean)
             .reduce((sum, file) =>
             {
-                return sum + (readFileSync(join(root, file), "utf8").match(/^\s*test(?:\.\w+)?\(/gm)?.length ?? 0);
+                return sum + (readFileSync(join(root, file), "utf8").match(/^\s*(?:test|it)(?:\.\w+)?\(/gm)?.length ?? 0);
             }, 0);
 
         expect(written).toBeGreaterThan(0);
@@ -47,8 +47,8 @@ describe("what the progress notes claim about this package", () =>
     test("names as many plugins as src/plugins holds", () =>
     {
         const spelled: Record<string, number> = { Three: 3, Four: 4, Five: 5, Six: 6, Seven: 7, Eight: 8 };
-        const said = /^(\w+) plugins/m.exec(progress("brief.md"))?.[1] ?? "";
+        const claimedWord = /^(\w+) plugins/m.exec(progress("brief.md"))?.[1] ?? "";
 
-        expect(spelled[said]).toBe(folders(join("src", "plugins")));
+        expect(spelled[claimedWord]).toBe(folders(join("src", "plugins")));
     });
 });

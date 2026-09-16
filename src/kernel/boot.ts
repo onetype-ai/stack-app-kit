@@ -1,10 +1,10 @@
 import { BootFault } from "./errors";
-import { Host, type LogLine } from "./host";
+import { Host, type HostLog } from "./host";
 import { order } from "./order";
 import type { HostPlugin } from "./plugin";
 
 /** One run of the kernel: the plugins it booted, and the host they share. */
-export class RunningApp
+export class BootedKernel
 {
     readonly #host: Host;
 
@@ -57,7 +57,7 @@ export class RunningApp
             }
             catch (cause)
             {
-                this.#host.say(`stop "${plugin.name}" threw`, { cause });
+                this.#host.log(`stop "${plugin.name}" threw`, { cause });
             }
         }
 
@@ -67,7 +67,7 @@ export class RunningApp
 }
 
 /** Orders the plugins given and boots each one. */
-export function boot(say: LogLine, plugins: readonly HostPlugin[]): RunningApp
+export function boot(log: HostLog, plugins: readonly HostPlugin[]): BootedKernel
 {
     const registry = new Map<string, HostPlugin>();
 
@@ -92,7 +92,7 @@ export function boot(say: LogLine, plugins: readonly HostPlugin[]): RunningApp
     }
 
     const ordered = order(registry);
-    const host = new Host(say);
+    const host = new Host(log);
 
     for (const plugin of ordered)
     {
@@ -101,5 +101,5 @@ export function boot(say: LogLine, plugins: readonly HostPlugin[]): RunningApp
 
     host.enter("running");
 
-    return new RunningApp(host, ordered);
+    return new BootedKernel(host, ordered);
 }

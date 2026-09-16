@@ -145,7 +145,7 @@ describe("a comment nobody outside this package can read", () =>
     test("does not exist: every one left in src reaches the published types", () =>
     {
         const found = findPrivateComments(join(process.cwd(), "src"), join(process.cwd(), "dist"))
-            .map((one) => `${one.file}:${String(one.line)} ${one.sentence}`);
+            .map((comment) => `${comment.file}:${String(comment.line)} ${comment.sentence}`);
 
         expect(found).toEqual([]);
     });
@@ -169,26 +169,26 @@ describe("a comment in an application's own source", () =>
     test("is found, wherever it hides", () =>
     {
         const at = wrote({
-            "a.ts": "const one = 1;\n// a line\nconst two = 2;\n",
+            "a.ts": "const before = 1;\n// a line\nconst after = 2;\n",
             "b/c.tsx": "/* a block\n   over two lines */\nexport const C = () => null;\n",
             "d.css": ".root { color: red; } /* beside a rule */\n",
         });
 
-        const found = findComments(at).map((one) => `${one.file}:${String(one.line)}`);
+        const found = findComments(at).map((comment) => `${comment.file}:${String(comment.line)}`);
 
         expect(found).toEqual(["a.ts:2", "b/c.tsx:1", "b/c.tsx:2", "d.css:1"]);
     });
 
     test("including one hiding at the end of a line of code", () =>
     {
-        const at = wrote({ "a.ts": "const one = 1; // said here\n" });
+        const at = wrote({ "a.ts": "const value = 1; // trailing comment\n" });
 
         expect(findComments(at)).toHaveLength(1);
     });
 
     test("and source with none of them answers nothing", () =>
     {
-        const at = wrote({ "a.ts": "const one = 1;\nconst two = 2;\n" });
+        const at = wrote({ "a.ts": "const before = 1;\nconst after = 2;\n" });
 
         expect(findComments(at)).toEqual([]);
     });

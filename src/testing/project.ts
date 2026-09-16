@@ -7,6 +7,7 @@ import { findComments, findMissingDocs, findOversizedDocs, findUnexplainedPlugin
 import { findLiterals, findUnknownClasses, findUnknownTokens, findUnmeasured } from "./styling";
 import { findDanglingPaths, findUnusedFields, findUnwatched } from "./wiring";
 
+/** One thing a run found wrong, tagged with the check that found it and phrased for a reader. */
 export type ProjectProblem = {
     check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed";
     message: string;
@@ -32,7 +33,7 @@ export type ProjectCheckOptions = {
     required?: readonly string[];
 
     /** The size a document may reach before it has outgrown its point. */
-    limit?: number;
+    maxCharacters?: number;
 
     /** Where style lives outside a stylesheet, as paths under `src`. */
     styleIn?: readonly string[];
@@ -40,17 +41,14 @@ export type ProjectCheckOptions = {
     /** Signatures two plugins may each keep, because they answer different questions. */
     sharing?: readonly string[];
 
-    /**
-     * Components a plugin writes for itself although one it depends on
-     * exports the same name, and means to.
-     */
+    /** Components a plugin writes for itself although one it depends on exports the same name. */
     shadowing?: readonly string[];
 
     /** Enum names two plugins may each declare, where the two are not one idea. */
-    apart?: readonly string[];
+    separateEnums?: readonly string[];
 
     /** Where the other half of this application lives, when it has one. */
-    across?: readonly string[];
+    otherStacks?: readonly string[];
 
     /** Built files that must stay under a size, gzipped, as bytes. */
     budgets?: Readonly<Record<string, number>>;
@@ -102,17 +100,17 @@ export const Project = {
             })),
 
             ...findSplitVocabulary(plugins)
-                .filter((split) => split.apart.length > 0 && !(checking.apart ?? []).includes(split.name))
+                .filter((split) => split.disagreed.length > 0 && !(checking.separateEnums ?? []).includes(split.name))
                 .map((split) => ({
                     check: "split" as const,
-                    message: `${split.plugins.join(" and ")} each declare an enum named "${split.name}", and the two no longer agree on what it may be: both hold ${split.shared.join(", ")}, and ${split.apart.join(", ")} sits in one alone. ${split.files.join(", ")}. One of them refuses a payload the other sends. Let one declare it and the other reach for it, or name them apart. If they are genuinely two ideas, name it in "apart".`,
+                    message: `${split.plugins.join(" and ")} each declare an enum named "${split.name}", and the two no longer agree on what it may be: both hold ${split.shared.join(", ")}, and ${split.disagreed.join(", ")} sits in one alone. ${split.files.join(", ")}. One of them refuses a payload the other sends. Let one declare it and the other reach for it, or name them apart. If they are genuinely two ideas, name it in "separateEnums".`,
                 })),
 
             ...findSharedNames(plugins)
                 .filter((shared) => !(checking.sharing ?? []).includes(shared.signature))
                 .map((shared) => ({
                     check: "twice" as const,
-                    message: `${String(shared.plugins.length)} plugins each write "${shared.signature}": ${shared.files.join(", ")}. A util a second plugin asks for belongs in src/utils, where one answer serves both. If the two answer different questions, say so in the signature, or name it in "sharing".`,
+                    message: `${String(shared.plugins.length)} plugins each write "${shared.signature}": ${shared.files.join(", ")}. A util a second plugin asks for belongs in src/utils, where one answer serves both. If the two answer different questions, log so in the signature, or name it in "sharing".`,
                 })),
 
             ...findSharedVocabulary(plugins)
@@ -151,12 +149,12 @@ export const Project = {
         return [
             ...(existsSync(docsFolder) ? [] : [{
                 check: "documents",
-                message: `${docsFolder.replace(`${root}/`, "")} is not on disk, so no size was measured and no required document was looked for. Unpack them, or say where they are.`,
+                message: `${docsFolder.replace(`${root}/`, "")} is not on disk, so no size was measured and no required document was looked for. Unpack them, or log where they are.`,
             }]),
 
             ...unmeasured(source, checking.styleIn),
             ...unwatched(source),
-            ...unreachable(root, checking.across ?? []),
+            ...unreachable(root, checking.otherStacks ?? []),
             ...unbuilt(root, checking.budgets ?? {}),
         ];
     },
@@ -173,7 +171,7 @@ function documents(root: string, checking: ProjectCheckOptions): ProjectProblem[
     }
 
     return [
-        ...findOversizedDocs(docsFolder, checking.limit).map((doc) => ({
+        ...findOversizedDocs(docsFolder, checking.maxCharacters).map((doc) => ({
             check: "oversized" as const,
             message: `${doc.path.replace(`${root}/`, "")} is ${String(doc.size)} characters, past the size a document keeps its point at.`,
         })),
@@ -195,12 +193,12 @@ function overBudget(root: string, budgets: Readonly<Record<string, number>>): Pr
 {
     return Object.entries(budgets)
         .map(([path, allowed]) => ({ path, allowed, at: join(root, path) }))
-        .filter((one) => existsSync(one.at))
-        .map((one) => ({ ...one, carried: weighs(one.at) }))
-        .filter((one) => one.carried > one.allowed)
-        .map((one) => ({
+        .filter((budget) => existsSync(budget.at))
+        .map((budget) => ({ ...budget, gzipped: weighs(budget.at) }))
+        .filter((budget) => budget.gzipped > budget.allowed)
+        .map((budget) => ({
             check: "budget" as const,
-            message: `${one.path} is ${String(one.carried)} bytes gzipped, over the ${String(one.allowed)} this project promises. Move work out of it rather than raising the number: whoever quoted it is quoting what a visitor downloads.`,
+            message: `${budget.path} is ${String(budget.gzipped)} bytes gzipped, over the ${String(budget.allowed)} this project promises. Move work out of it rather than raising the number: whoever quoted it is quoting what a visitor downloads.`,
         }));
 }
 
@@ -258,9 +256,9 @@ function unwatched(source: string): ProjectSkipped[]
     }];
 }
 
-function unreachable(root: string, across: readonly string[]): ProjectSkipped[]
+function unreachable(root: string, otherStacks: readonly string[]): ProjectSkipped[]
 {
-    const missing = across.filter((at) => !existsSync(join(root, at)));
+    const missing = otherStacks.filter((at) => !existsSync(join(root, at)));
 
     if (missing.length === 0)
     {

@@ -18,26 +18,26 @@ type Owned = {
     permissions: Map<string, string>;
 };
 
-export function validate(plugins: readonly Plugin[], config: Readonly<Record<string, unknown>>, granted = false): ContractProblem[]
+export function validate(plugins: readonly Plugin[], config: Readonly<Record<string, unknown>>, granted = false, grantedBy?: string): ContractProblem[]
 {
     const problems: ContractProblem[] = [];
-    const say = (code: KernelFault["code"], plugin: string, message: string): void =>
+    const report = (code: KernelFault["code"], plugin: string, message: string): void =>
     {
         problems.push({ code, plugin, message });
     };
 
-    const by = new Map<string, Plugin>();
+    const byName = new Map<string, Plugin>();
 
     for (const plugin of plugins)
     {
-        if (by.has(plugin.name))
+        if (byName.has(plugin.name))
         {
-            say("DUPLICATE_PLUGIN", plugin.name, `Two plugins are named "${plugin.name}". A name is what everything else refers to, so it must be unique.`);
+            report("DUPLICATE_PLUGIN", plugin.name, `Two plugins are named "${plugin.name}". A name is what everything else refers to, so it must be unique.`);
 
             continue;
         }
 
-        by.set(plugin.name, plugin);
+        byName.set(plugin.name, plugin);
     }
 
     const owned: Owned = {
@@ -49,24 +49,24 @@ export function validate(plugins: readonly Plugin[], config: Readonly<Record<str
         permissions: new Map(),
     };
 
-    for (const [name, plugin] of by)
+    for (const [name, plugin] of byName)
     {
-        checkOwn(name, plugin, owned, say);
+        checkOwn(name, plugin, owned, report);
     }
 
-    for (const [name, plugin] of by)
+    for (const [name, plugin] of byName)
     {
-        checkReferences(name, plugin, by, owned, say);
-        checkConfig(name, plugin, config, say);
+        checkReferences(name, plugin, byName, owned, report);
+        checkConfig(name, plugin, config, report);
     }
 
-    checkCycles(by, say);
-    checkGrants(by, say, granted);
+    checkCycles(byName, report);
+    checkGrants(byName, report, granted, grantedBy);
 
     return problems;
 }
 
-function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
+function checkOwn(name: string, plugin: Plugin, owned: Owned, report: (code: KernelFault["code"], plugin: string, message: string) => void): void
 {
     const claim = (
         kind: keyof Owned,
@@ -75,11 +75,11 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
         label: string,
     ): void =>
     {
-        const first = owned[kind].get(key);
+        const owner = owned[kind].get(key);
 
-        if (first !== undefined)
+        if (owner !== undefined)
         {
-            say(code, name, `${label} "${key}" is already declared by "${first}". Two plugins cannot own one name.`);
+            report(code, name, `${label} "${key}" is already declared by "${owner}". Two plugins cannot own one name.`);
 
             return;
         }
@@ -89,7 +89,7 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     for (const [key, one] of Object.entries(plugin.definition.permissions ?? {}))
     {
-        if (checkNamespaced(name, key, "permission", say))
+        if (checkNamespaced(name, key, "permission", report))
         {
             claim("permissions", key, "DUPLICATE_PERMISSION", "Permission");
         }
@@ -99,7 +99,7 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     for (const [key] of Object.entries(plugin.definition.emits ?? {}))
     {
-        if (checkNamespaced(name, key, "event", say))
+        if (checkNamespaced(name, key, "event", report))
         {
             claim("events", key, "DUPLICATE_EVENT", "Event");
         }
@@ -107,25 +107,45 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     for (const [key] of Object.entries(plugin.definition.hooks ?? {}))
     {
-        if (checkNamespaced(name, key, "hook", say))
+        if (checkNamespaced(name, key, "hook", report))
         {
             claim("hooks", key, "DUPLICATE_HOOK", "Hook");
         }
     }
 
-    for (const [key] of Object.entries(plugin.definition.slots ?? {}))
+    for (const [key, slot] of Object.entries(plugin.definition.slots ?? {}))
     {
-        if (checkNamespaced(name, key, "slot", say))
+        if (checkNamespaced(name, key, "slot", report))
         {
             claim("slots", key, "DUPLICATE_SLOT", "Slot");
         }
+
+        // The shape, not only the name: a declaration missing the field that
+        // does the work started clean and died on the first use, as a
+        // TypeError naming no plugin.
+        if (typeof (slot as { schema?: { safeParse?: unknown } } | undefined)?.schema?.safeParse !== "function")
+        {
+            report("UNDECLARED_SLOT", name, `Slot "${key}" declares no schema, so nothing checks what is passed to it. Add schema: z.object({ ... }).`);
+        }
     }
 
-    for (const [key] of Object.entries(plugin.definition.commands ?? {}))
+    for (const [key, command] of Object.entries(plugin.definition.commands ?? {}))
     {
-        if (checkNamespaced(name, key, "command", say))
+        if (checkNamespaced(name, key, "command", report))
         {
             claim("commands", key, "DUPLICATE_COMMAND", "Command");
+        }
+
+        const declared = command as { schema?: { safeParse?: unknown }; run?: unknown } | undefined;
+
+        if (typeof declared?.schema?.safeParse !== "function")
+        {
+            report("UNDECLARED_COMMAND", name, `Command "${key}" declares no schema, so nothing checks what it is asked to do. Add schema: z.object({ ... }).`);
+        }
+
+        if (typeof declared?.run !== "function")
+        {
+            report("UNDECLARED_COMMAND", name, `Command "${key}" declares no run, so asking for it does nothing. Add run: (input, ctx) => ....`);
         }
     }
 
@@ -133,23 +153,23 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
     {
         if (!route.path.startsWith("/"))
         {
-            say("INVALID_ROUTE", name, `Route path "${route.path}" must start with "/". A path in another syntax renders a 404 with nothing to explain it.`);
+            report("INVALID_ROUTE", name, `Route path "${route.path}" must start with "/". A path in another syntax renders a 404 with nothing to explain it.`);
 
             continue;
         }
 
         if (/\s/.test(route.path))
         {
-            say("INVALID_ROUTE", name, `Route path "${route.path}" contains whitespace.`);
+            report("INVALID_ROUTE", name, `Route path "${route.path}" contains whitespace.`);
 
             continue;
         }
 
-        const first = owned.routes.get(route.path);
+        const owner = owned.routes.get(route.path);
 
-        if (first !== undefined)
+        if (owner !== undefined)
         {
-            say("DUPLICATE_ROUTE", name, `Route "${route.path}" is already declared by "${first}". Which one renders would depend on order.`);
+            report("DUPLICATE_ROUTE", name, `Route "${route.path}" is already declared by "${owner}". Which one renders would depend on order.`);
 
             continue;
         }
@@ -159,16 +179,19 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, say: (code: Kernel
 
     if (!/^\d+\.\d+\.\d+/.test(plugin.definition.version))
     {
-        say("INVALID_NAME", name, `Version "${plugin.definition.version}" is not a version. Use major.minor.patch.`);
+        report("INVALID_NAME", name, `Version "${plugin.definition.version}" is not a version. Use major.minor.patch.`);
     }
 
-    if (plugin.definition.describe.trim() === "")
+    // typeof first: describe is required by the type and absent in plain JS or
+    // past a cast, and reading .trim() off undefined killed the validator whose
+    // whole job is answering with a refusal the caller can act on.
+    if (typeof plugin.definition.describe !== "string" || plugin.definition.describe.trim() === "")
     {
-        say("INVALID_NAME", name, "A plugin describes itself in one sentence. An empty description tells the next reader nothing.");
+        report("INVALID_NAME", name, "A plugin describes itself in one sentence. An empty description tells the next reader nothing.");
     }
 }
 
-function checkNamespaced(owner: string, key: string, kind: string, say: (code: KernelFault["code"], plugin: string, message: string) => void): boolean
+function checkNamespaced(owner: string, key: string, kind: string, report: (code: KernelFault["code"], plugin: string, message: string) => void): boolean
 {
     try
     {
@@ -178,7 +201,7 @@ function checkNamespaced(owner: string, key: string, kind: string, say: (code: K
     }
     catch (cause)
     {
-        say("INVALID_NAME", owner, cause instanceof Error ? cause.message : String(cause));
+        report("INVALID_NAME", owner, cause instanceof Error ? cause.message : String(cause));
 
         return false;
     }
@@ -187,18 +210,18 @@ function checkNamespaced(owner: string, key: string, kind: string, say: (code: K
 function checkReferences(
     name: string,
     plugin: Plugin,
-    by: ReadonlyMap<string, Plugin>,
+    byName: ReadonlyMap<string, Plugin>,
     owned: Owned,
-    say: (code: KernelFault["code"], plugin: string, message: string) => void,
+    report: (code: KernelFault["code"], plugin: string, message: string) => void,
 ): void
 {
     const declared = new Set(plugin.definition.dependsOn ?? []);
 
     for (const need of declared)
     {
-        if (!by.has(need))
+        if (!byName.has(need))
         {
-            say("UNKNOWN_DEPENDENCY", name, `"${name}" depends on "${need}", which no plugin provides. Pass it to createKernel, or remove it from dependsOn.`);
+            report("UNKNOWN_DEPENDENCY", name, `"${name}" depends on "${need}", which no plugin provides. Pass it to createKernel, or remove it from dependsOn.`);
         }
     }
 
@@ -211,7 +234,7 @@ function checkReferences(
     {
         if (owned[kind].get(key) === undefined)
         {
-            say(code, name, `${label} "${key}" is not declared by any plugin. Declare it, or correct the name.`);
+            report(code, name, `${label} "${key}" is not declared by any plugin. Declare it, or correct the name.`);
         }
     };
 
@@ -226,20 +249,27 @@ function checkReferences(
 
         if (from === undefined)
         {
-            say(code, name, `${label} "${key}" is not declared by any plugin. Declare it, or correct the name.`);
+            report(code, name, `${label} "${key}" is not declared by any plugin. Declare it, or correct the name.`);
 
             return;
         }
 
         if (from !== name && !declared.has(from))
         {
-            say("UNDECLARED_DEPENDENCY", name, `${label} "${key}" belongs to "${from}", which "${name}" does not depend on. Add "${from}" to dependsOn.`);
+            report("UNDECLARED_DEPENDENCY", name, `${label} "${key}" belongs to "${from}", which "${name}" does not depend on. Add "${from}" to dependsOn.`);
         }
     };
 
-    for (const key of Object.keys(plugin.definition.listens ?? {}))
+    for (const [key, listener] of Object.entries(plugin.definition.listens ?? {}))
     {
         reach("events", key, "UNDECLARED_EVENT", "Event");
+
+        // A listener with no handle registered quietly and swallowed every
+        // delivery into events.failures(), where nothing reads it.
+        if (typeof (listener as { handle?: unknown } | undefined)?.handle !== "function")
+        {
+            report("UNDECLARED_EVENT", name, `Listening to "${key}" declares no handle, so the event arrives and nothing runs. Add handle: (payload, ctx) => ....`);
+        }
     }
 
     for (const key of Object.keys(plugin.definition.participates ?? {}))
@@ -249,7 +279,10 @@ function checkReferences(
 
     for (const contribution of plugin.definition.contributes ?? [])
     {
-        declaredSomewhere("slots", contribution.slot, "UNDECLARED_SLOT", "Slot");
+        // reach, not declaredSomewhere: a contribution reads the payload the
+        // slot's owner passes it, which is a shape that owner may change. The
+        // dependency runs filler -> owner, so a shell still names no plugin.
+        reach("slots", contribution.slot, "UNDECLARED_SLOT", "Slot");
 
         for (const permission of contribution.requires ?? [])
         {
@@ -278,7 +311,7 @@ function checkConfig(
     name: string,
     plugin: Plugin,
     config: Readonly<Record<string, unknown>>,
-    say: (code: KernelFault["code"], plugin: string, message: string) => void,
+    report: (code: KernelFault["code"], plugin: string, message: string) => void,
 ): void
 {
     const schema = plugin.definition.config;
@@ -292,50 +325,117 @@ function checkConfig(
 
     if (!answer.success)
     {
-        const first = answer.error.issues[0];
-        const where = first === undefined || first.path.length === 0 ? "" : ` at "${first.path.join(".")}"`;
+        const issue = answer.error.issues[0];
+        const atPath = issue === undefined || issue.path.length === 0 ? "" : ` at "${issue.path.join(".")}"`;
 
-        say("INVALID_CONFIG", name, `Config for "${name}" is invalid${where}: ${first?.message ?? "it does not match the schema"}.`);
+        report("INVALID_CONFIG", name, `Config for "${name}" is invalid${atPath}: ${issue?.message ?? "it does not match the schema"}.`);
     }
 }
 
-function checkGrants(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void, granted: boolean): void
+function checkGrants(byName: ReadonlyMap<string, Plugin>, report: (code: KernelFault["code"], plugin: string, message: string) => void, granted: boolean, grantedBy?: string): void
 {
     const alone = (
         code: KernelFault["code"],
         what: string,
-        plugin: (one: Plugin) => boolean,
+        plugin: (candidate: Plugin) => boolean,
     ): void =>
     {
-        const sources = [...by.values()].filter(plugin).map((each) => each.name);
+        const sources = [...byName.values()].filter(plugin).map((each) => each.name);
 
         for (const name of sources.slice(1))
         {
-            say(code, name, `"${name}" and "${sources[0] ?? ""}" both declare ${what}. One plugin owns it, or which one answers depends on the order they booted.`);
+            report(code, name, `"${name}" and "${sources[0] ?? ""}" both declare ${what}. One plugin owns it, or which one answers depends on the order they booted.`);
         }
     };
 
     alone("DUPLICATE_GRANTS", "grants", (plugin) => plugin.definition.grants !== undefined);
+
+    // grants answers what the viewer holds, so any plugin declaring it decided
+    // the whole authorization model. The application names the one that may,
+    // and a plugin granting itself the permissions it declares is the case
+    // worth refusing whether or not anybody was named.
+    for (const [name, plugin] of byName)
+    {
+        if (plugin.definition.grants === undefined)
+        {
+            continue;
+        }
+
+        if (grantedBy !== undefined && name !== grantedBy)
+        {
+            report("UNNOMINATED_GRANTS", name, `"${name}" declares grants, and this application named "${grantedBy}" as the one that may. A plugin granting itself permissions decides what every guard allows.`);
+
+            continue;
+        }
+
+        // One plugin holding the whole app is its own author's business. The
+        // case worth refusing is a plugin among others answering what the
+        // viewer holds while owning permissions those others guard on.
+        if (grantedBy === undefined && byName.size > 1 && plugin.definition.permissions !== undefined)
+        {
+            report("UNNOMINATED_GRANTS", name, `"${name}" answers what the viewer holds and owns permissions of its own, with no grantedBy naming who may. Name the granting plugin in grantedBy, or move these permissions to the plugins that guard on them.`);
+        }
+    }
     alone("DUPLICATE_FRAME", "a frame", (plugin) => plugin.definition.frame !== undefined);
     alone("DUPLICATE_PAGE", "a 403 page", (plugin) => plugin.definition.pages?.forbidden !== undefined);
     alone("DUPLICATE_PAGE", "a 404 page", (plugin) => plugin.definition.pages?.missing !== undefined);
 
-    if (!granted && [...by.values()].every((plugin) => plugin.definition.grants === undefined))
+    // The granter named a closed set, so a guard outside it never lifts: the
+    // page renders 403 forever and nothing says which permission was wrong.
+    const granter = [...byName.values()].find((plugin) => plugin.definition.grants !== undefined);
+    const supported = granter?.definition.grantsSupported;
+
+    if (supported !== undefined)
     {
-        for (const [name, plugin] of by)
+        if (supported.length === 0)
+        {
+            report("UNGRANTABLE_PERMISSION", granter?.name ?? "", `"${granter?.name ?? ""}" declares grantsSupported as an empty list, so it grants nothing and every guarded route and contribution is unreachable. Name the permissions it answers, or leave grantsSupported out.`);
+        }
+        else
+        {
+            const answerable = new Set(supported);
+
+            for (const [name, plugin] of byName)
+            {
+                // Every guarded site, not only routes: a contribution that can
+                // never render and a command that always refuses are the same
+                // mistake, and were both starting clean.
+                const guarded: [string, readonly string[]][] = [
+                    ...(plugin.definition.routes ?? []).map((route) => [`Route "${route.path}"`, route.requires ?? []] as [string, readonly string[]]),
+                    ...(plugin.definition.contributes ?? []).map((contribution) => [`The contribution to "${contribution.slot}"`, contribution.requires ?? []] as [string, readonly string[]]),
+                    ...Object.entries(plugin.definition.commands ?? {}).map(([key, command]) => [`Command "${key}"`, command.requires ?? []] as [string, readonly string[]]),
+                ];
+
+                for (const [what, requires] of guarded)
+                {
+                    for (const permission of requires)
+                    {
+                        if (!answerable.has(permission))
+                        {
+                            report("UNGRANTABLE_PERMISSION", name, `${what} requires "${permission}", which "${granter?.name ?? ""}" never answers. Add it to grantsSupported, or nothing can reach it.`);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (!granted && [...byName.values()].every((plugin) => plugin.definition.grants === undefined))
+    {
+        for (const [name, plugin] of byName)
         {
             for (const route of plugin.definition.routes ?? [])
             {
                 for (const permission of route.requires ?? [])
                 {
-                    say("UNGRANTABLE_PERMISSION", name, `Route "${route.path}" requires "${permission}", and no plugin grants anything. Declare grants, or drop the guard.`);
+                    report("UNGRANTABLE_PERMISSION", name, `Route "${route.path}" requires "${permission}", and no plugin grants anything. Declare grants, or drop the guard.`);
                 }
             }
         }
     }
 }
 
-function checkCycles(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["code"], plugin: string, message: string) => void): void
+function checkCycles(byName: ReadonlyMap<string, Plugin>, report: (code: KernelFault["code"], plugin: string, message: string) => void): void
 {
     const state = new Map<string, "open" | "done">();
     const walking: string[] = [];
@@ -357,7 +457,7 @@ function checkCycles(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["c
             if (!reported.has(key))
             {
                 reported.add(key);
-                say("DEPENDENCY_CYCLE", name, `Plugins depend on each other in a loop: ${loop.join(" -> ")}. One of them has to stop.`);
+                report("DEPENDENCY_CYCLE", name, `Plugins depend on each other in a loop: ${loop.join(" -> ")}. One of them has to stop.`);
             }
 
             return;
@@ -366,9 +466,9 @@ function checkCycles(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["c
         state.set(name, "open");
         walking.push(name);
 
-        for (const need of [...(by.get(name)?.definition.dependsOn ?? [])].sort())
+        for (const need of [...(byName.get(name)?.definition.dependsOn ?? [])].sort())
         {
-            if (by.has(need))
+            if (byName.has(need))
             {
                 walk(need);
             }
@@ -378,7 +478,7 @@ function checkCycles(by: ReadonlyMap<string, Plugin>, say: (code: KernelFault["c
         state.set(name, "done");
     }
 
-    for (const name of [...by.keys()].sort())
+    for (const name of [...byName.keys()].sort())
     {
         walk(name);
     }

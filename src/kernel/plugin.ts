@@ -5,7 +5,7 @@ export type HostPlugin = {
     /** The folder, the module and the key other plugins take it by. */
     name: string;
 
-    /** HostPlugin names whose api this one calls. Boot order follows. */
+    /** Plugin names whose api this one calls. Boot order follows. */
     needs?: readonly string[];
 
     /** Wiring: read config, offer an api, subscribe, claim a hook point. */

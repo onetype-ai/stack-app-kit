@@ -36,13 +36,13 @@ describe("boot order", () =>
 
     test("breaks ties by name, so one set is always one order", () =>
     {
-        const first: string[] = [];
-        const second: string[] = [];
+        const firstOrder: string[] = [];
+        const secondOrder: string[] = [];
 
-        boot(quiet, [createPlugin("b", [], first), createPlugin("a", [], first), createPlugin("c", [], first)]);
-        boot(quiet, [createPlugin("c", [], second), createPlugin("b", [], second), createPlugin("a", [], second)]);
+        boot(quiet, [createPlugin("b", [], firstOrder), createPlugin("a", [], firstOrder), createPlugin("c", [], firstOrder)]);
+        boot(quiet, [createPlugin("c", [], secondOrder), createPlugin("b", [], secondOrder), createPlugin("a", [], secondOrder)]);
 
-        expect(first).toEqual(second);
+        expect(firstOrder).toEqual(secondOrder);
     });
 
     test("refuses a cycle, naming both plugins", () =>
@@ -235,8 +235,8 @@ describe("events", () =>
     test("a listener that throws reaches neither the emitter nor the others", () =>
     {
         const heard: string[] = [];
-        const said: string[] = [];
-        const app = boot((line) => said.push(line), [
+        const lines: string[] = [];
+        const app = boot((line) => lines.push(line), [
             {
                 name: "a",
                 boot: (host: Host) =>
@@ -258,6 +258,6 @@ describe("events", () =>
         expect(() => app.host.emit("thing.happened", {})).not.toThrow();
 
         expect(heard).toEqual(["b"]);
-        expect(said.some((line) => line.includes("threw"))).toBe(true);
+        expect(lines.some((line) => line.includes("threw"))).toBe(true);
     });
 });

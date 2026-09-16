@@ -138,7 +138,7 @@ describe("what a fake records", () =>
 
         await fake.ctx.http.post("/parts", { query: { kind: "seal" }, body: { name: "One" } });
 
-        expect(fake.asked).toEqual([{
+        expect(fake.requests).toEqual([{
             method: "POST",
             path: "/parts",
             query: { kind: "seal" },
@@ -208,7 +208,7 @@ describe("a request that carried a header", () =>
 
         await fake.ctx.http.get("/notes", { headers: { "x-key": "secret" } });
 
-        expect(fake.asked[0]).toMatchObject({ headers: { "x-key": "secret" } });
+        expect(fake.requests[0]).toMatchObject({ headers: { "x-key": "secret" } });
     });
 
     test("and a request that carried none records none, so nothing reads as signed", async () =>
@@ -217,7 +217,7 @@ describe("a request that carried a header", () =>
 
         await fake.ctx.http.get("/pulse");
 
-        expect(fake.asked[0]).not.toHaveProperty("headers");
+        expect(fake.requests[0]).not.toHaveProperty("headers");
     });
 });
 

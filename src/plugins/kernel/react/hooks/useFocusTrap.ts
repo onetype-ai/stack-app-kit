@@ -10,6 +10,7 @@ const focusable = [
     "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
+/** Holds Tab focus inside the element while active, and restores the previous focus on exit. */
 export const useFocusTrap = (active: boolean, ref: RefObject<HTMLElement | null>): void =>
 {
     useEffect(() =>
@@ -22,9 +23,9 @@ export const useFocusTrap = (active: boolean, ref: RefObject<HTMLElement | null>
         }
 
         const restore = document.activeElement as HTMLElement | null;
-        const first = container.querySelector<HTMLElement>(focusable);
+        const firstFocusable = container.querySelector<HTMLElement>(focusable);
 
-        (first ?? container).focus();
+        (firstFocusable ?? container).focus();
 
         const cycle = (event: KeyboardEvent): void =>
         {

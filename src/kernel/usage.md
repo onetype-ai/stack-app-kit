@@ -14,7 +14,7 @@ them apart means `transport` can be replaced without the application noticing.
 ## Usage
 
 ```ts
-const booted = boot(say, [kernelPlugin(), transportPlugin(settings)]);
+const booted = boot(log, [kernelPlugin(), transportPlugin(settings)]);
 
 await booted.start();
 

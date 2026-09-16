@@ -59,5 +59,12 @@ export function hooks<Context>()
 
             return undefined;
         },
+
+        // a stopped kernel that starts again must not run a participant twice
+        reset: (): void =>
+        {
+            declaredBy.clear();
+            participants.clear();
+        },
     };
 }

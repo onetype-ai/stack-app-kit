@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
+/** A `var(--name)` a stylesheet reads that nothing gives a value. */
 export type UnknownToken = {
     file: string;
     token: string;
@@ -15,11 +16,13 @@ export type Literal = {
     holds: string;
 };
 
+/** A file outside the stylesheets holding raw colours, lengths or durations, and how many lines do. */
 export type Unmeasured = {
     file: string;
     holds: number;
 };
 
+/** A `styles.name` a component reads that its own CSS module never declares. */
 export type UnknownClass = {
     file: string;
     name: string;
@@ -154,14 +157,7 @@ const NOTHING_OR_HAIRLINE = /^(0|1px)$/;
 
 const INSTANT = /^(0|0m?s|1ms)$/;
 
-/**
- * Every raw colour, length and duration written outside the sheets that
- * declare them.
- *
- * A value written twice drifts: one rule says 12px and the next says 0.75rem,
- * and nothing renders wrongly enough for anyone to look. A token names the
- * decision once, so changing it changes every rule that took it.
- * */
+/** Every raw colour, length and duration written outside the sheets that declare them. */
 export function findLiterals(root: string, alsoIn: readonly string[] = []): Literal[]
 {
     const literals: Literal[] = [];
@@ -186,25 +182,25 @@ export function findLiterals(root: string, alsoIn: readonly string[] = []): Lite
                 continue;
             }
 
-            const where = { file: relative(root, file), line: line + 1, holds: raw.trim() };
+            const site = { file: relative(root, file), line: line + 1, holds: raw.trim() };
 
             if (COLOUR.test(raw))
             {
-                literals.push({ ...where, kind: "colour" });
+                literals.push({ ...site, kind: "colour" });
             }
 
             const measured = LENGTH.exec(raw);
 
             if (measured !== null && !NOTHING_OR_HAIRLINE.test(measured[0]))
             {
-                literals.push({ ...where, kind: "length" });
+                literals.push({ ...site, kind: "length" });
             }
 
             const waited = DURATION.exec(raw);
 
             if (waited !== null && !INSTANT.test(waited[0]))
             {
-                literals.push({ ...where, kind: "duration" });
+                literals.push({ ...site, kind: "duration" });
             }
         }
     }
@@ -212,6 +208,7 @@ export function findLiterals(root: string, alsoIn: readonly string[] = []): Lite
     return literals;
 }
 
+/** Counts style-carrying lines per non-CSS file under `root`; paths starting with an `alsoIn` prefix are skipped, the opposite of how `findLiterals` reads it. */
 export function findUnmeasured(root: string, alsoIn: readonly string[] = []): Unmeasured[]
 {
     const unmeasured: Unmeasured[] = [];

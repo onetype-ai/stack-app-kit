@@ -14,7 +14,7 @@ describe("a viewer who signs in while the page is open", () =>
 {
     test("sees the page they were refused a moment ago, without a reload", async () =>
     {
-        let held: readonly string[] = [];
+        let granted: readonly string[] = [];
 
         const shop = definePlugin("shop", {
             version: "1.0.0",
@@ -24,7 +24,7 @@ describe("a viewer who signs in while the page is open", () =>
 
         const kernel = createKernel({
             plugins: [shop],
-            permissions: { granted: () => held },
+            permissions: { granted: () => granted },
         });
 
         await kernel.start();
@@ -42,7 +42,7 @@ describe("a viewer who signs in while the page is open", () =>
 
         expect(screen.queryByText("the page")).toBeNull();
 
-        held = ["shop.buy"];
+        granted = ["shop.buy"];
         kernel.permissions.changed();
 
         expect(await screen.findByText("the page")).toBeDefined();
@@ -60,8 +60,7 @@ describe("a viewer who signs in while the page is open", () =>
             grants: () => (confirmed ? ["shop.buy"] : []),
             setup: async () =>
             {
-                // A round trip: the plugin holding identity asks the server
-                // who is here before it can answer grants at all.
+                // grants needs a server round trip before it can answer.
                 await new Promise<void>((go) => { release = go; });
 
                 confirmed = true;
@@ -87,15 +86,13 @@ describe("a viewer who signs in while the page is open", () =>
         release();
         await starting;
 
-        // Nothing called changed(): a reader who reloaded a page they may see
-        // should not have to be told by a plugin that the boot they waited
-        // for finished.
+        // Observed: changed() is NOT called on boot, so a reload does not re-notify.
         expect(await screen.findByText("the page")).toBeDefined();
     });
 
     test("loses it again when the plugin holding identity says the session ended", async () =>
     {
-        let held: readonly string[] = ["shop.buy"];
+        let granted: readonly string[] = ["shop.buy"];
 
         const shop = definePlugin("shop", {
             version: "1.0.0",
@@ -105,7 +102,7 @@ describe("a viewer who signs in while the page is open", () =>
 
         const kernel = createKernel({
             plugins: [shop],
-            permissions: { granted: () => held },
+            permissions: { granted: () => granted },
         });
 
         await kernel.start();
@@ -123,9 +120,8 @@ describe("a viewer who signs in while the page is open", () =>
 
         expect(await screen.findByText("the page")).toBeDefined();
 
-        // Through ctx, which is all a plugin holds: the one that hears a
-        // session end is a plugin, not the application that built the kernel.
-        held = [];
+        // The session-end hearer is a plugin, not the composition root.
+        granted = [];
         kernel.context("shop").permissions.changed();
 
         await waitFor(() => { expect(screen.queryByText("the page")).toBeNull(); });

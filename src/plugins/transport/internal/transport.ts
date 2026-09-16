@@ -6,29 +6,29 @@ import { methods } from "./method";
 import { retry } from "./retry";
 import { socket } from "./socket";
 
-type Said = (line: string, about?: Readonly<Record<string, unknown>>) => void;
+type HostLog = (line: string, about?: Readonly<Record<string, unknown>>) => void;
 
-export function transport(settings: TransportOptions, say: Said): Transport
+export function transport(settings: TransportOptions, log: HostLog): Transport
 {
-    const timeout = settings.timeout ?? 15_000;
+    const timeoutMs = settings.timeoutMs ?? 15_000;
     const retries = settings.retries ?? 2;
-    const retryBase = settings.retryBase ?? 200;
+    const retryBaseMs = settings.retryBaseMs ?? 200;
     const rest = settings.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)));
 
     const overHttp = http({
         baseUrl: settings.baseUrl,
-        timeout,
+        timeoutMs,
         headers: settings.headers,
     });
 
     const socketChannel = settings.wsUrl !== undefined && settings.openSocket !== undefined
         ? socket({
             wsUrl: settings.wsUrl,
-            timeout,
-            connectTimeout: settings.connectTimeout ?? 3_000,
-            reconnectBase: settings.reconnectBase ?? 1_000,
+            timeoutMs,
+            connectTimeoutMs: settings.connectTimeoutMs ?? 3_000,
+            reconnectBaseMs: settings.reconnectBaseMs ?? 1_000,
             open: settings.openSocket,
-            say,
+            log,
         })
         : undefined;
 
@@ -46,7 +46,7 @@ export function transport(settings: TransportOptions, say: Said): Transport
 
             if (socketDropped && methods.idempotent(request.method))
             {
-                say("socket request failed; http is carrying it", { path: request.path });
+                log("socket request failed; http is carrying it", { path: request.path });
 
                 return overHttp.send(request);
             }
@@ -112,9 +112,9 @@ export function transport(settings: TransportOptions, say: Said): Transport
                         throw cause;
                     }
 
-                    const wait = retry.delay(attempt, retryBase);
+                    const wait = retry.delayMs(attempt, retryBaseMs);
 
-                    say("retrying", { path: request.path, attempt: attempt + 1, wait });
+                    log("retrying", { path: request.path, attempt: attempt + 1, wait });
 
                     await rest(wait);
                 }
@@ -123,16 +123,16 @@ export function transport(settings: TransportOptions, say: Said): Transport
             throw refusal;
         },
 
-        subscribe: (channel: string, receive: (message: unknown) => void): Subscription =>
+        subscribe: (topic: string, receive: (message: unknown) => void): Subscription =>
         {
             if (socketChannel === undefined)
             {
-                say("subscribe was called with no socket configured", { channel });
+                log("subscribe was called with no socket configured", { topic });
 
                 return { close: () => {} };
             }
 
-            return socketChannel.subscribe(channel, receive);
+            return socketChannel.subscribe(topic, receive);
         },
 
         close: (): void =>

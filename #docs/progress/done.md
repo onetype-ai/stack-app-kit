@@ -1,6 +1,6 @@
 # done
 
-Five plugins, 325 tests, each watched to fail before it was trusted.
+Five plugins, 336 tests, each watched to fail before it was trusted.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events
 - `kernel` plugin: `definePlugin`, `createKernel`, contract validation, events,
@@ -65,5 +65,5 @@ Five plugins, 325 tests, each watched to fail before it was trusted.
 - **Eight documents said things the code did not**, including an example whose
   `dependsOn` would refuse the boot it was teaching.
 
-Five builds, five domains, 325 tests. Every one read the source for the same
+Five builds, five domains, 336 tests. Every one read the source for the same
 five things, all now in `reference.md`.

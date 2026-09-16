@@ -144,7 +144,7 @@ describe("a raw value written where the values are not declared", () =>
             "card.module.css": ".root { color: #ff0000; padding: 12px; transition: all 200ms; }",
         });
 
-        expect(findLiterals(at).map((one) => one.kind)).toEqual(["colour", "length", "duration"]);
+        expect(findLiterals(at).map((literal) => literal.kind)).toEqual(["colour", "length", "duration"]);
     });
 
     test("but not in the sheet that declares them", () =>
@@ -168,7 +168,7 @@ describe("a raw value written where the values are not declared", () =>
     {
         const at = folderWith({ "reduced.module.css": ".a { animation-duration: 2ms; }" });
 
-        expect(findLiterals(at).map((one) => one.kind)).toEqual(["duration"]);
+        expect(findLiterals(at).map((literal) => literal.kind)).toEqual(["duration"]);
     });
 
     test("nor in the one that only takes browser defaults away", () =>

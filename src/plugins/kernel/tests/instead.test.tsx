@@ -202,3 +202,51 @@ describe("a route that is both forbidden and early", () =>
         await started.kernel.stop();
     });
 });
+
+describe("where instead may send a viewer", () =>
+{
+    const sendingTo = async (answer: string): Promise<() => void> =>
+    {
+        const plugin = definePlugin("board", {
+            version: "1.0.0",
+            describe: "Sends the viewer elsewhere.",
+            routes: [{ path: "/board", title: "Board", component: () => <p>the page</p>, instead: () => answer }],
+        });
+
+        const kernel = createKernel({ plugins: [plugin] });
+
+        await kernel.start();
+
+        const route = kernel.routes().find((each) => each.path === "/board") as RegisteredRoute;
+
+        return () => render(
+            <KernelProvider kernel={kernel}>
+                <RouteGuard route={route} send={(to) => <i>{to}</i>} />
+            </KernelProvider>,
+        );
+    };
+
+    test("a path inside the app is where the viewer goes", async () =>
+    {
+        (await sendingTo("/sign-in"))();
+
+        expect(screen.getByText("/sign-in")).toBeDefined();
+    });
+
+    // `instead` usually reads a `?next=` parameter, so what it answers carries
+    // whatever a caller put there. An absolute URL walks the viewer off the
+    // app; "javascript:" runs in the page that trusted it.
+    test.each([
+        ["an absolute url", "https://elsewhere.test/harvest"],
+        ["a javascript uri", "javascript:alert(1)"],
+        ["a data uri", "data:text/html,<b>hi</b>"],
+        ["a protocol-relative url", "//elsewhere.test/harvest"],
+        ["a backslash past the slash", "/\\elsewhere.test/harvest"],
+    ])("%s is refused, naming the plugin that answered it", async (_label, answer) =>
+    {
+        const paint = await sendingTo(answer);
+
+        expect(paint).toThrow(/only a path inside this app/);
+    });
+});
+

@@ -53,7 +53,7 @@ export type Fake<Config = unknown, Services = unknown> = {
     ctx: Context<Config, Services>;
 
     /** Every request, in order. */
-    asked: readonly FakeRequest[];
+    requests: readonly FakeRequest[];
 
     /** Every event announced. */
     announced: readonly EmittedEvent[];
@@ -74,7 +74,7 @@ export type Fake<Config = unknown, Services = unknown> = {
     refusal: string | undefined;
 
     /** Sends a message on a channel, as a server would. */
-    push: (channel: string, message: unknown) => void;
+    push: (topic: string, message: unknown) => void;
 };
 
 const isAnswered = (answer: unknown): answer is FakeResponse =>
@@ -91,7 +91,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
     faking: Faking<Config> = {},
 ): Fake<Config, Services>
 {
-    const asked: FakeRequest[] = [];
+    const requests: FakeRequest[] = [];
     const announced: EmittedEvent[] = [];
     const invalidated: (readonly unknown[])[] = [];
     const commanded: RanCommand[] = [];
@@ -100,7 +100,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
     const watching = new Set<() => void>();
 
     const fake: Fake<Config, Services> = {
-        asked,
+        requests,
         announced,
         invalidated,
         commanded,
@@ -108,9 +108,9 @@ export function fakeContext<Config = unknown, Services = unknown>(
         regranted: 0,
         refusal: faking.refusal,
 
-        push: (channel: string, message: unknown): void =>
+        push: (topic: string, message: unknown): void =>
         {
-            for (const receive of listeners.get(channel) ?? [])
+            for (const receive of listeners.get(topic) ?? [])
             {
                 receive(message);
             }
@@ -123,7 +123,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
     {
         return (path: string, request: CallOptions = {}): Promise<unknown> =>
         {
-            asked.push({
+            requests.push({
                 method,
                 path,
                 ...(request.query !== undefined && { query: request.query }),
@@ -180,12 +180,12 @@ export function fakeContext<Config = unknown, Services = unknown>(
     const realtime: Realtime = {
         channel: () => "http",
 
-        subscribe: (channel, receive) =>
+        subscribe: (topic, receive) =>
         {
-            const receivers = listeners.get(channel) ?? new Set<(message: unknown) => void>();
+            const receivers = listeners.get(topic) ?? new Set<(message: unknown) => void>();
 
             receivers.add(receive);
-            listeners.set(channel, receivers);
+            listeners.set(topic, receivers);
 
             return { close: () => receivers.delete(receive) };
         },
@@ -236,7 +236,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
             all: (permissions) =>
             {
                 return faking.permissions === undefined
-                    || permissions.every((one) => faking.permissions?.includes(one));
+                    || permissions.every((permission) => faking.permissions?.includes(permission));
             },
 
             changed: () =>

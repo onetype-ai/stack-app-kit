@@ -16,7 +16,7 @@ attempts over three became nine requests and a twenty-second wait.
 ## Usage
 
 ```ts
-const booted = boot(say, [transportPlugin({ baseUrl: "/api", wsUrl })]);
+const booted = boot(log, [transportPlugin({ baseUrl: "/api", wsUrl })]);
 
 await booted.start();
 

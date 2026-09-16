@@ -7,16 +7,24 @@ export type ListenerFailure = {
     event: string;
     plugin: string;
     error: unknown;
-    at: number;
+    atMs: number;
 };
 
 type Subscriber<Context> = { plugin: string; listener: Listener<Context> };
 
-export function events<Context>(now: () => number = Date.now)
+export function events<Context>(now: () => number = Date.now, report?: (failure: ListenerFailure) => void)
 {
     const declaredBy = new Map<string, { owner: string; event: Event }>();
     const listeners = new Map<string, Subscriber<Context>[]>();
     const failures: ListenerFailure[] = [];
+
+    // held for failures() to read, and reported: a listener that threw was
+    // invisible unless the application happened to poll
+    const record = (failure: ListenerFailure): void =>
+    {
+        failures.push(failure);
+        report?.(failure);
+    };
 
     return {
         declare: (owner: string, name: string, event: Event): void =>
@@ -24,8 +32,22 @@ export function events<Context>(now: () => number = Date.now)
             declaredBy.set(name, { owner, event });
         },
 
-        listen: (plugin: string, name: string, listener: Listener<Context>): (() => void) =>
+        listen: (plugin: string, name: string, listener: Listener<Context>, reaches?: (owner: string) => boolean): (() => void) =>
         {
+            // listens{} is checked at start; ctx.events.on was not, so a typo
+            // made a listener that never fired and never said why
+            const owned = declaredBy.get(name);
+
+            if (owned === undefined)
+            {
+                throw new KernelFault("UNDECLARED_EVENT", `"${plugin}" listened for "${name}", which no plugin declares. Check the name, or declare it in emits.`, { plugin });
+            }
+
+            if (reaches !== undefined && !reaches(owned.owner))
+            {
+                throw new KernelFault("UNDECLARED_DEPENDENCY", `"${plugin}" listened for "${name}", which "${owned.owner}" owns. Name "${owned.owner}" in dependsOn.`, { plugin });
+            }
+
             const subscriber: Subscriber<Context> = { plugin, listener };
 
             listeners.set(name, [...(listeners.get(name) ?? []), subscriber]);
@@ -70,12 +92,12 @@ export function events<Context>(now: () => number = Date.now)
 
                     void Promise.resolve(running).catch((error: unknown) =>
                     {
-                        failures.push({ event: name, plugin: to.plugin, error, at: now() });
+                        record({ event: name, plugin: to.plugin, error, atMs: now() });
                     });
                 }
                 catch (error)
                 {
-                    failures.push({ event: name, plugin: to.plugin, error, at: now() });
+                    record({ event: name, plugin: to.plugin, error, atMs: now() });
                 }
             }
         },
@@ -88,6 +110,14 @@ export function events<Context>(now: () => number = Date.now)
         owner: (name: string): string | undefined =>
         {
             return declaredBy.get(name)?.owner ?? names.owner(name);
+        },
+
+        // a stopped kernel that starts again must not deliver twice
+        reset: (): void =>
+        {
+            declaredBy.clear();
+            listeners.clear();
+            failures.length = 0;
         },
     };
 }

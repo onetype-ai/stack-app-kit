@@ -6,7 +6,7 @@ import { permissions, type PermissionSource } from "./permissions";
 import { slots, type MountedContribution } from "./slots";
 import { validate } from "./validate";
 
-import type { ComponentType, FunctionComponent } from "react";
+import type { ComponentType, FunctionComponent, ReactNode } from "react";
 
 /** Where a line goes. The application decides; a plugin never writes directly. */
 export type LogFn = (
@@ -24,6 +24,9 @@ export type KernelOptions = {
     cache?: Cache;
     realtime?: Realtime;
     permissions?: PermissionSource;
+
+    /** Which plugin may answer what the viewer holds; any other declaring `grants` is refused. */
+    grantedBy?: string;
     log?: LogFn;
 };
 
@@ -40,10 +43,13 @@ export type Kernel = {
     started: () => boolean;
 
     routes: () => readonly RegisteredRoute[];
-    frame: () => FunctionComponent | undefined;
+
+    /** The plugins this kernel started, for a caller reading what they declare. */
+    plugins: () => readonly Plugin[];
+    frame: () => FunctionComponent<{ children?: ReactNode }> | undefined;
     pages: () => Pages;
     slot: (name: string, payload: unknown) => { contributions: readonly MountedContribution[]; payload: unknown; problem?: string };
-    knownSlot: (name: string) => boolean;
+    hasSlot: (name: string) => boolean;
     fallbackFor: (plugin: string) => ComponentType<FallbackProps> | undefined;
 
     context: (plugin: string) => Context;
@@ -107,7 +113,11 @@ const noRealtime: Realtime = {
         return "http";
     },
 
-    subscribe: () => ({ close: () => {} }),
+    // a subscription that returns quietly looks live and delivers nothing
+    subscribe: () =>
+    {
+        return missing("realtime", "realtime");
+    },
 };
 
 /** Builds a kernel from what the application declared. */
@@ -120,15 +130,24 @@ export function createKernel(options: KernelOptions): Kernel
     const realtime = options.realtime ?? noRealtime;
 
     const registry = new Map(options.plugins.map((plugin) => [plugin.name, plugin]));
-    const bus = events<Context>();
+    const bus = events<Context>(Date.now, (failure) =>
+    {
+        log("error", failure.plugin, `listening to "${failure.event}" failed`, { cause: failure.error instanceof Error ? failure.error.message : String(failure.error) });
+    });
     const points = hooks<Context>();
     const places = slots();
-    let granting: (() => readonly string[]) | undefined;
+    let readGranted: (() => readonly string[]) | undefined;
 
-    const may = permissions({
+    const permits = permissions({
         granted: () =>
         {
-            return granting?.() ?? options.permissions?.granted() ?? [];
+            // the granting plugin holds the session, so it answers rather than
+            // merging: a merge would keep a permission alive after sign-out
+            const held = readGranted?.() ?? options.permissions?.granted() ?? [];
+
+            // A string here is iterated by character, so "notes.read" grants
+            // "n", "o", "t" and nothing else. Only an array of strings counts.
+            return Array.isArray(held) ? held.filter((each) => typeof each === "string") : [];
         },
     });
     const services = new Map<string, unknown>();
@@ -140,6 +159,22 @@ export function createKernel(options: KernelOptions): Kernel
     }>();
 
     let running = false;
+    let stopped = false;
+
+    // start() fills these; leaving them means a restart registers twice and a
+    // listener keeps firing against state its teardown released.
+    const clear = (): void =>
+    {
+        bus.reset();
+        points.reset();
+        places.reset();
+        services.clear();
+        commands.clear();
+        parsed.clear();
+        order = [];
+        readGranted = undefined;
+        running = false;
+    };
     let order: Plugin[] = [];
 
     const parsed = new Map<string, unknown>();
@@ -177,6 +212,16 @@ export function createKernel(options: KernelOptions): Kernel
             events: {
                 emit: (event, payload) =>
                 {
+                    // stop() clears the registries, so without this the refusal
+                    // would name a missing declaration rather than the real cause
+                    if (!running)
+                    {
+                        throw new KernelFault(
+                            "NOT_STARTED",
+                            `"${plugin}" emitted "${event}" while the kernel was not running.`,
+                        );
+                    }
+
                     bus.emit(plugin, event, payload, context);
                 },
 
@@ -188,7 +233,7 @@ export function createKernel(options: KernelOptions): Kernel
                         {
                             handle(payload);
                         },
-                    });
+                    }, (owner) => owner === plugin || (registry.get(plugin)?.definition.dependsOn ?? []).includes(owner));
                 },
             },
 
@@ -199,7 +244,7 @@ export function createKernel(options: KernelOptions): Kernel
                 },
             },
 
-            permissions: may,
+            permissions: permits,
 
             commands: {
                 run: (command, input) =>
@@ -243,13 +288,13 @@ export function createKernel(options: KernelOptions): Kernel
             throw new KernelFault("UNDECLARED_COMMAND", `Command "${command}" is not declared by any plugin.`);
         }
 
-        const lacking = declared.requires.filter((permission) => !may.has(permission));
+        const lacking = declared.requires.filter((permission) => !permits.has(permission));
 
         if (lacking.length > 0)
         {
             throw new KernelFault(
                 "PERMISSION_DENIED",
-                `Command "${command}" needs ${lacking.map((permission) => `"${permission}"`).join(", ")}, which the viewer does not have.`,
+                `Command "${command}" needs ${lacking.map((permission) => `"${permission}"`).join(", ")}, which the viewer does not have. This is a UI guard, not authorization: the server must refuse it too.`,
                 { plugin: declared.plugin, detail: { lacking } },
             );
         }
@@ -281,7 +326,7 @@ export function createKernel(options: KernelOptions): Kernel
                 return;
             }
 
-            const problems = validate(options.plugins, config, options.permissions !== undefined);
+            const problems = validate(options.plugins, config, options.permissions !== undefined, options.grantedBy);
 
             if (problems.length > 0)
             {
@@ -358,20 +403,137 @@ export function createKernel(options: KernelOptions): Kernel
 
             if (source !== undefined)
             {
-                granting = () =>
+                const declaredPermissions = new Set(
+                    order.flatMap((plugin) => Object.keys(plugin.definition.permissions ?? {})),
+                );
+                const warnedAbout = new Set<string>();
+
+                // Replacement, not a merge, is deliberate: the granting plugin
+                // holds the session, and merging would keep a permission alive
+                // after sign-out. Saying so is what was missing -- an
+                // application that passed both read its own permissions as
+                // false with nothing anywhere to explain why.
+                if (options.permissions !== undefined)
                 {
-                    return source.definition.grants?.(context(source.name)) ?? [];
+                    log(
+                        "warn",
+                        source.name,
+                        `"${source.name}" declares grants, so it answers what the viewer holds and the \`permissions\` passed to createKernel is never read. Pass one or the other.`,
+                    );
+                }
+
+                readGranted = () =>
+                {
+                    const answered = source.definition.grants?.(context(source.name)) ?? [];
+
+                    // grants is read on every check, so its answer cannot be
+                    // validated at startup the way a declaration is. A name no
+                    // plugin declares guards nothing, so it is dropped rather
+                    // than answered: has() saying yes to a permission nothing
+                    // checks is the shape a misspelling hides in.
+                    const held: string[] = [];
+
+                    for (const permission of answered)
+                    {
+                        if (declaredPermissions.has(permission))
+                        {
+                            held.push(permission);
+
+                            continue;
+                        }
+
+                        if (!warnedAbout.has(permission))
+                        {
+                            warnedAbout.add(permission);
+
+                            log(
+                                "warn",
+                                source.name,
+                                `"${source.name}" granted "${permission}", which no plugin declares, so it was dropped. Declare it under the owning plugin's \`permissions\`, or correct the name.`,
+                            );
+                        }
+                    }
+
+                    return held;
                 };
             }
 
-            for (const plugin of order)
+            // "Nothing partially starts" is the promise; a setup that threw
+            // used to leave every earlier plugin holding its sockets and timers
+            const ready: Plugin[] = [];
+
+            try
             {
-                await plugin.definition.setup?.(context(plugin.name));
+                for (const plugin of order)
+                {
+                    await plugin.definition.setup?.(context(plugin.name));
+                    ready.push(plugin);
+                }
+            }
+            catch (cause)
+            {
+                for (const plugin of [...ready].reverse())
+                {
+                    try
+                    {
+                        await plugin.definition.teardown?.(context(plugin.name));
+                    }
+                    catch (failed)
+                    {
+                        log("error", plugin.name, "teardown threw while unwinding a failed start", { cause: failed instanceof Error ? failed.message : String(failed) });
+                    }
+                }
+
+                clear();
+
+                throw cause;
             }
 
             running = true;
+            stopped = false;
 
-            may.changed();
+            // A command naming no permission runs for anyone holding an
+            // account. Routes get UNGRANTABLE_PERMISSION and a 403 page;
+            // commands had neither, and an omission carries no signal.
+            const ungated = order
+                .flatMap((plugin) => Object.entries(plugin.definition.commands ?? {}).map(([command, declared]) => ({ plugin: plugin.name, command, declared })))
+                .filter(({ declared }) => (declared.requires ?? []).length === 0)
+                .map(({ plugin, command }) => `${plugin}: ${command}`);
+
+            // sends reads ctx.services, so it cannot run before setup — but it
+            // can run here, where a clash costs a boot rather than the first
+            // request that happened to need a header.
+            const wroteHeader = new Map<string, string>();
+
+            for (const plugin of order)
+            {
+                for (const name of Object.keys(plugin.definition.sends?.(context(plugin.name)) ?? {}))
+                {
+                    const wrote = wroteHeader.get(name.toLowerCase());
+
+                    if (wrote !== undefined)
+                    {
+                        throw new KernelFault(
+                            "DUPLICATE_HEADER",
+                            `"${plugin.name}" and "${wrote}" both send "${name}". One plugin owns a header, or which one answers depends on the order they booted.`,
+                            { plugin: plugin.name },
+                        );
+                    }
+
+                    wroteHeader.set(name.toLowerCase(), plugin.name);
+                }
+            }
+
+            if (ungated.length > 0)
+            {
+                log("warn", "kernel", "COMMANDS ANY VIEWER MAY RUN", {
+                    meaning: "these name no permission, so every viewer may run them",
+                    commands: ungated,
+                    turnOn: "declare requires: [...] on each, or leave it if anyone really may",
+                });
+            }
+
+            permits.changed();
         },
 
         async stop(): Promise<void>
@@ -388,7 +550,16 @@ export function createKernel(options: KernelOptions): Kernel
                 }
             }
 
-            running = false;
+            stopped = true;
+
+            clear();
+        },
+
+        // the definitions themselves, so declarationsOf can read them without
+        // the kernel having to know what a declaration looks like
+        plugins: (): readonly Plugin[] =>
+        {
+            return [...order];
         },
 
         routes: (): readonly RegisteredRoute[] =>
@@ -422,10 +593,18 @@ export function createKernel(options: KernelOptions): Kernel
 
         slot: (name, payload) =>
         {
-            return places.contentsOf(name, payload);
+            const contents = places.contentsOf(name, payload);
+
+            // Filtered here rather than only in <Slot>: a server-rendered page
+            // or any non-React reader asked the kernel and was handed back
+            // contributions the viewer may not see.
+            return {
+                ...contents,
+                contributions: contents.contributions.filter((contribution) => permits.all(contribution.requires ?? [])),
+            };
         },
 
-        knownSlot: (name) =>
+        hasSlot: (name) =>
         {
             return places.known(name);
         },
@@ -437,7 +616,7 @@ export function createKernel(options: KernelOptions): Kernel
 
         context,
 
-        permissions: may,
+        permissions: permits,
 
         events: { failures: bus.failures },
 
@@ -445,6 +624,13 @@ export function createKernel(options: KernelOptions): Kernel
 
         sent: () =>
         {
+            // a stopped kernel kept handing back the session header, so a
+            // request in flight during sign-out still carried the old token
+            if (stopped)
+            {
+                return {};
+            }
+
             const headers: Record<string, string> = {};
             const author = new Map<string, string>();
 
@@ -475,7 +661,7 @@ export function createKernel(options: KernelOptions): Kernel
 
 function inDependencyOrder(registry: ReadonlyMap<string, Plugin>): Plugin[]
 {
-    const out: Plugin[] = [];
+    const ordered: Plugin[] = [];
     const state = new Map<string, "open" | "done">();
 
     function walk(name: string): void
@@ -501,7 +687,7 @@ function inDependencyOrder(registry: ReadonlyMap<string, Plugin>): Plugin[]
 
         if (plugin !== undefined)
         {
-            out.push(plugin);
+            ordered.push(plugin);
         }
     }
 
@@ -510,5 +696,5 @@ function inDependencyOrder(registry: ReadonlyMap<string, Plugin>): Plugin[]
         walk(name);
     }
 
-    return out;
+    return ordered;
 }

@@ -1,12 +1,14 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
+/** One import that crossed from one plugin into another, as the specifier wrote it. */
 export type ImportEdge = {
     from: string;
     to: string;
     specifier: string;
 };
 
+/** A crossing the rules refuse, already phrased as the sentence a failing test prints. */
 export type ImportViolation = {
     rule: "undeclared" | "deep" | "cycle" | "contract" | "twice";
     message: string;
@@ -18,6 +20,7 @@ type PluginImports = {
     crossings: ImportEdge[];
 };
 
+/** Every crossing under `root` that was undeclared, reached past `@plugins/<name>`, looped, or sat in a folder with no plugin.ts. */
 export function findImportViolations(root: string): ImportViolation[]
 {
     const names = readdirSync(root, { withFileTypes: true })
@@ -178,6 +181,7 @@ function findCycles(plugins: readonly PluginImports[]): ImportViolation[]
     return wrong;
 }
 
+/** One signature found in more than one plugin, with every plugin and file that wrote it. */
 export type DuplicateSignature = {
     signature: string;
     plugins: readonly string[];
@@ -210,28 +214,30 @@ export function findSharedNames(root: string): DuplicateSignature[]
             for (const method of readFileSync(path, "utf8").matchAll(/^ {4}(?:readonly )?([a-zA-Z][a-zA-Z0-9]*)(\([^)]*\)\s*:\s*[^\n{]+)/gm))
             {
                 const signature = `${method[1]!}${method[2]!.replace(/\s+/g, " ").trim()}`;
-                const held = owners.get(signature) ?? { plugins: new Set<string>(), files: [] };
+                const owner = owners.get(signature) ?? { plugins: new Set<string>(), files: [] };
 
-                held.plugins.add(plugin.name);
-                held.files.push(relative(root, path));
-                owners.set(signature, held);
+                owner.plugins.add(plugin.name);
+                owner.files.push(relative(root, path));
+                owners.set(signature, owner);
             }
         }
     }
 
     return [...owners]
-        .filter(([, held]) => held.plugins.size > 1)
-        .map(([signature, held]) => ({ signature, plugins: [...held.plugins].sort(), files: held.files }));
+        .filter(([, owner]) => owner.plugins.size > 1)
+        .map(([signature, owner]) => ({ signature, plugins: [...owner.plugins].sort(), files: owner.files }));
 }
 
+/** Two plugins' same-named enums that overlap but disagree: `shared` is in both, `disagreed` in only one. */
 export type SplitVocabulary = {
     name: string;
     plugins: readonly string[];
     files: readonly string[];
     shared: readonly string[];
-    apart: readonly string[];
+    disagreed: readonly string[];
 };
 
+/** Same-named `z.enum` declarations in two plugins that share members yet differ, reported only when one plugin reaches the other. */
 export function findSplitVocabulary(root: string): SplitVocabulary[]
 {
     const byName = new Map<string, { plugin: string; file: string; values: string[] }[]>();
@@ -250,50 +256,50 @@ export function findSplitVocabulary(root: string): SplitVocabulary[]
             for (const match of readFileSync(path, "utf8").matchAll(/(?:export )?const (\w+) = z\.enum\(\[([^\]]*)\]/g))
             {
                 const values = [...(match[2] ?? "").matchAll(/"([^"]+)"/g)].map((one) => one[1] ?? "").sort();
-                const held = byName.get(match[1] ?? "") ?? [];
+                const declarations = byName.get(match[1] ?? "") ?? [];
 
-                held.push({ plugin: plugin.name, file: relative(root, path), values });
-                byName.set(match[1] ?? "", held);
+                declarations.push({ plugin: plugin.name, file: relative(root, path), values });
+                byName.set(match[1] ?? "", declarations);
             }
         }
     }
 
-    return [...byName].flatMap(([name, held]) => compare(root, name, held));
+    return [...byName].flatMap(([name, declarations]) => compare(root, name, declarations));
 }
 
-function compare(root: string, name: string, held: { plugin: string; file: string; values: string[] }[]): SplitVocabulary[]
+function compare(root: string, name: string, declarations: { plugin: string; file: string; values: string[] }[]): SplitVocabulary[]
 {
     const split: SplitVocabulary[] = [];
 
-    for (let index = 0; index < held.length; index += 1)
+    for (let index = 0; index < declarations.length; index += 1)
     {
-        for (let two = index + 1; two < held.length; two += 1)
+        for (let otherIndex = index + 1; otherIndex < declarations.length; otherIndex += 1)
         {
-            const first = held[index]!;
-            const second = held[two]!;
+            const declaration = declarations[index]!;
+            const other = declarations[otherIndex]!;
 
-            if (first.plugin === second.plugin)
+            if (declaration.plugin === other.plugin)
             {
                 continue;
             }
 
-            const inBoth = first.values.filter((value) => second.values.includes(value));
-            const apart = [
-                ...first.values.filter((value) => !second.values.includes(value)),
-                ...second.values.filter((value) => !first.values.includes(value)),
+            const inBoth = declaration.values.filter((value) => other.values.includes(value));
+            const onlyOne = [
+                ...declaration.values.filter((value) => !other.values.includes(value)),
+                ...other.values.filter((value) => !declaration.values.includes(value)),
             ];
 
-            if (inBoth.length === 0 || (apart.length > 0 && !reaches(root, first.plugin, second.plugin)))
+            if (inBoth.length === 0 || (onlyOne.length > 0 && !reaches(root, declaration.plugin, other.plugin)))
             {
                 continue;
             }
 
             split.push({
                 name,
-                plugins: [first.plugin, second.plugin],
-                files: [first.file, second.file],
+                plugins: [declaration.plugin, other.plugin],
+                files: [declaration.file, other.file],
                 shared: inBoth,
-                apart,
+                disagreed: onlyOne,
             });
         }
     }
@@ -329,20 +335,21 @@ export function findSharedVocabulary(root: string): DuplicateSignature[]
                 }
 
                 const signature = `${declared[1]!} = [${members.join(", ")}]`;
-                const held = owners.get(signature) ?? { plugins: new Set<string>(), files: [] };
+                const owner = owners.get(signature) ?? { plugins: new Set<string>(), files: [] };
 
-                held.plugins.add(plugin.name);
-                held.files.push(relative(root, path));
-                owners.set(signature, held);
+                owner.plugins.add(plugin.name);
+                owner.files.push(relative(root, path));
+                owners.set(signature, owner);
             }
         }
     }
 
     return [...owners]
-        .filter(([, held]) => held.plugins.size > 1)
-        .map(([signature, held]) => ({ signature, plugins: [...held.plugins].sort(), files: held.files }));
+        .filter(([, owner]) => owner.plugins.size > 1)
+        .map(([signature, owner]) => ({ signature, plugins: [...owner.plugins].sort(), files: owner.files }));
 }
 
+/** A component folder whose name a plugin's own dependency already exports. */
 export type ShadowedExport = {
     plugin: string;
     component: string;
@@ -365,7 +372,7 @@ export function findShadowedExports(root: string): ShadowedExport[]
             continue;
         }
 
-        const held = new Set<string>();
+        const leaves = new Set<string>();
 
         for (const block of readFileSync(index, "utf8").matchAll(/export\s*\{([^}]*)\}/g))
         {
@@ -375,12 +382,12 @@ export function findShadowedExports(root: string): ShadowedExport[]
 
                 if (leaving !== "" && !leaving.startsWith("type "))
                 {
-                    held.add(leaving);
+                    leaves.add(leaving);
                 }
             }
         }
 
-        exported.set(name, held);
+        exported.set(name, leaves);
     }
 
     const shadowed: ShadowedExport[] = [];
@@ -420,9 +427,9 @@ export function findShadowedExports(root: string): ShadowedExport[]
     return shadowed;
 }
 
-function reaches(root: string, one: string, two: string): boolean
+function reaches(root: string, plugin: string, other: string): boolean
 {
-    return dependsOn(root, one, two) || dependsOn(root, two, one);
+    return dependsOn(root, plugin, other) || dependsOn(root, other, plugin);
 }
 
 function dependsOn(root: string, from: string, on: string): boolean

@@ -10,26 +10,26 @@ describe("what the contract accepts from a caller who has undefined", () =>
         const maybeGuard: readonly string[] | undefined = undefined;
         const maybeTitle: string | undefined = undefined;
 
-        const one: Route = {
+        const route: Route = {
             path: "/probe",
             component: () => null,
             title: maybeTitle ?? "Probe",
             requires: maybeGuard,
         };
 
-        expect(one.path).toBe("/probe");
+        expect(route.path).toBe("/probe");
     });
 
     test("so does a definition whose optional keys came from somewhere optional", () =>
     {
         const depends: readonly string[] | undefined = undefined;
 
-        const one = definePlugin("probe", {
+        const plugin = definePlugin("probe", {
             version: "1.0.0",
             describe: "Built from values a caller may not have.",
             dependsOn: depends,
         });
 
-        expect(one.name).toBe("probe");
+        expect(plugin.name).toBe("probe");
     });
 });

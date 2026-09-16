@@ -1,8 +1,8 @@
-export type Answer = { id: string; status: number; body: unknown };
+export type FrameReply = { id: string; status: number; body: unknown };
 
 export type Push = { channel: string; message: unknown };
 
-export function frame(text: unknown): Answer | Push | undefined
+export function frame(text: unknown): FrameReply | Push | undefined
 {
     if (typeof text !== "string")
     {

@@ -1,3 +1,6 @@
+import { TransportFault } from "./faults";
+
+/** Joins `baseUrl`, `path` and `query` into one URL, dropping null and undefined values; a relative `baseUrl` stays relative. */
 export function address(
     baseUrl: string,
     path: string,
@@ -11,6 +14,14 @@ export function address(
     if (absolute)
     {
         const target = new URL(rest, base);
+
+        // `new URL` lets an absolute or backslash-led path replace the base
+        // outright, which sent the headers `sends` contributes — a session
+        // token among them — to whatever host the path named.
+        if (target.origin !== new URL(base).origin)
+        {
+            throw new TransportFault("OFF_BASE", `"${path}" leaves ${new URL(base).origin}, and a request carrying this app's headers may not.`, { method: "", path });
+        }
 
         fill(target.searchParams, query);
 

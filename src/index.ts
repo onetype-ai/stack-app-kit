@@ -1,12 +1,12 @@
 
-export { boot, RunningApp } from "./kernel/boot";
+export { boot, BootedKernel } from "./kernel/boot";
 export { BootFault } from "./kernel/errors";
 export type { BootFaultCode } from "./kernel/errors";
 export { Host } from "./kernel/host";
-export type { LogLine } from "./kernel/host";
+export type { HostLog } from "./kernel/host";
 export type { HostPlugin } from "./kernel/plugin";
 
-export { createKernel, definePlugin, KernelFault } from "./plugins/kernel/api";
+export { createKernel, declarationsOf, definePlugin, KernelFault } from "./plugins/kernel/api";
 export { kernelPlugin } from "./plugins/kernel/plugin";
 export type {
     Cache,
@@ -27,6 +27,12 @@ export type {
     LogFn,
     Logger,
     KernelOptions,
+    Declaration,
+    DeclaredCommand,
+    DeclaredContribution,
+    DeclaredEntry,
+    DeclaredRoute,
+    Pages,
     Participant,
     Permission,
     Plugin,

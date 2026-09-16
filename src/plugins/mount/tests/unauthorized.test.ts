@@ -33,7 +33,7 @@ describe("a 401 from the server", () =>
         await app.stop();
     });
 
-    test("and the event it announces is declared, so emitter it is not a fault", async () =>
+    test("and the event it announces is declared, so emitting it is not a fault", async () =>
     {
         const app = await start({ plugins: [], transport: { baseUrl: "/api" } });
 

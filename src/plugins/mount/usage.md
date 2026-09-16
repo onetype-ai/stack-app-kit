@@ -18,7 +18,7 @@ import { discover, start } from "@onetype/stack-app-kit";
 const app = await start({
     plugins: discover(import.meta.glob("./plugins/*/plugin.ts", { eager: true })),
     transport: { baseUrl: "/api", wsUrl },
-    permissions: { granted: () => user.permissions },
+    grantedBy: "auth",
     cache: cache.fromQueries(queryClient),
 });
 
@@ -36,6 +36,10 @@ await app.stop();
 - A 401 that lands before the kernel exists is held and replayed once a plugin
   can hear it. Dropping it would sign a user out with nothing on screen.
 - `stop` unwinds the plugins, then the socket.
+- `grantedBy` names the one plugin that may declare `grants`; any other
+  declaring it is refused at startup.
+- A plugin declaring `grants` answers alone. An application with no such
+  plugin passes `permissions` instead; passing both warns, naming the winner.
 
 ## Refuses
 

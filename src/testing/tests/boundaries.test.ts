@@ -381,8 +381,7 @@ describe("a component a plugin wrote for itself", () =>
 
     test("is left alone when nothing it depends on exports that name", () =>
     {
-        // Two plugins may hold the same word without either reaching the
-        // other: the check is about a copy of something already in hand.
+        // The check is about a copy of something already in hand, not a shared word.
         const shadowed = findShadowedExports(
             tree({
                 admin: {

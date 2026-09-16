@@ -65,18 +65,18 @@ describe("hearing an event while a view is on screen", () =>
 
         await kernel.start();
 
-        const first: unknown[] = [];
-        const second: unknown[] = [];
+        const stopped: unknown[] = [];
+        const remaining: unknown[] = [];
         const ctx = kernel.context("badge");
 
-        const stop = ctx.events.on("mail.happened", (payload) => first.push(payload));
-        ctx.events.on("mail.happened", (payload) => second.push(payload));
+        const stop = ctx.events.on("mail.happened", (payload) => stopped.push(payload));
+        ctx.events.on("mail.happened", (payload) => remaining.push(payload));
 
         stop();
         kernel.context("mail").events.emit("mail.happened", { id: "one" });
 
-        expect(first).toEqual([]);
-        expect(second).toEqual([{ id: "one" }]);
+        expect(stopped).toEqual([]);
+        expect(remaining).toEqual([{ id: "one" }]);
 
         await kernel.stop();
     });

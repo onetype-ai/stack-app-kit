@@ -1,12 +1,14 @@
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
+/** A field an exported shape declares that nothing anywhere reads. */
 export type UnusedField = {
     file: string;
     shape: string;
     field: string;
 };
 
+/** Fields of exported types and interfaces under `root` that no file reads, matched by name and so blind to a field two shapes share. */
 export function findUnusedFields(root: string): UnusedField[]
 {
     const sources = walk(root).map((file): [string, string] => [file, readFileSync(file, "utf8")]);
@@ -157,6 +159,7 @@ function withoutShapes(source: string): string
     return body + source.slice(cursor);
 }
 
+/** A shape declared without `export`, which no field check ever looks inside. */
 export type Unwatched = {
     file: string;
     shape: string;
@@ -233,7 +236,7 @@ function readPaths(source: string): Map<string, string[]>
 
     for (const entry of block.matchAll(/"([^"]+)"\s*:\s*\[([^\]]*)\]/g))
     {
-        const targets = [...(entry[2] ?? "").matchAll(/"([^"]+)"/g)].map((one) => one[1] ?? "");
+        const targets = [...(entry[2] ?? "").matchAll(/"([^"]+)"/g)].map((match) => match[1] ?? "");
 
         byAlias.set(entry[1] ?? "", targets);
     }
@@ -266,6 +269,7 @@ function closingOf(source: string, from: string | number): number
     return source.length;
 }
 
+/** Every non-exported type or interface under `root`; exported ones are left to `findUnusedFields` so neither counts twice. */
 export function findUnwatched(root: string): Unwatched[]
 {
     const unwatched: Unwatched[] = [];
@@ -274,9 +278,15 @@ export function findUnwatched(root: string): Unwatched[]
     {
         const source = readFileSync(file, "utf8");
 
-        for (const shape of source.matchAll(/^(?:type\s+(\w+)\s*=\s*\{|interface\s+(\w+)[^{]*\{)/gm))
+        // Non-exported shapes only: findUnusedFields reads exported ones, so this would double-count.
+        for (const shape of source.matchAll(/^(?:(export\s+)?type\s+(\w+)\s*=\s*\{|(export\s+)?interface\s+(\w+)[^{]*\{)/gm))
         {
-            unwatched.push({ file: relative(root, file), shape: shape[1] ?? shape[2] ?? "" });
+            if (shape[1] !== undefined || shape[3] !== undefined)
+            {
+                continue;
+            }
+
+            unwatched.push({ file: relative(root, file), shape: shape[2] ?? shape[4] ?? "" });
         }
     }
 

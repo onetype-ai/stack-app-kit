@@ -193,7 +193,7 @@ describe("without a socket", () =>
 
 describe("with a socket", () =>
 {
-    function startSocket(answers: Answering[] = [{ body: {} }], reconnectBase?: number)
+    function startSocket(answers: Answering[] = [{ body: {} }], reconnectBaseMs?: number)
     {
         const fetches = fakeFetch(answers);
 
@@ -204,7 +204,7 @@ describe("with a socket", () =>
             transportPlugin({
                 baseUrl: "https://example.test/api",
                 wsUrl: "wss://example.test/ws",
-                ...(reconnectBase === undefined ? {} : { reconnectBase }),
+                ...(reconnectBaseMs === undefined ? {} : { reconnectBaseMs }),
                 openSocket: () =>
                 {
                     const socket = fakeSocket();
@@ -238,12 +238,12 @@ describe("with a socket", () =>
     {
         const { transport, sockets } = startSocket();
 
-        const first = transport.connect();
-        const second = transport.connect();
+        const connecting = transport.connect();
+        const alsoConnecting = transport.connect();
 
         sockets[0]?.opened();
 
-        await Promise.all([first, second]);
+        await Promise.all([connecting, alsoConnecting]);
         await transport.connect();
 
         expect(sockets).toHaveLength(1);
@@ -284,14 +284,14 @@ describe("with a socket", () =>
         sockets[0]?.opened();
         await connecting;
 
-        const first = transport.subscribe("items", () => undefined);
-        const second = transport.subscribe("items", () => undefined);
+        const subscription = transport.subscribe("items", () => undefined);
+        const lastSubscription = transport.subscribe("items", () => undefined);
 
-        first.close();
+        subscription.close();
 
         expect(sockets[0]?.sent()).toHaveLength(1);
 
-        second.close();
+        lastSubscription.close();
 
         expect(sockets[0]?.sent()).toEqual([
             JSON.stringify({ subscribe: "items" }),

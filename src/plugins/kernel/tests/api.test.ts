@@ -597,16 +597,147 @@ describe("grants", () =>
     {
         const kernel = createKernel({
             plugins: [
-                createPlugin("auth", { grants: () => ["from.plugin"] }),
-                createPlugin("x", { permissions: { "x.read": { describe: "reads" } } }),
+                createPlugin("auth", { grants: () => ["x.read"] }),
+                createPlugin("x", { permissions: { "x.read": { describe: "reads" }, "x.write": { describe: "writes" } } }),
             ],
-            permissions: { granted: () => ["from.application"] },
+            permissions: { granted: () => ["x.write"] },
         });
 
         await kernel.start();
 
-        expect(kernel.permissions.has("from.plugin")).toBe(true);
-        expect(kernel.permissions.has("from.application")).toBe(false);
+        expect(kernel.permissions.has("x.read")).toBe(true);
+        expect(kernel.permissions.has("x.write")).toBe(false);
+    });
+
+    // Winning is deliberate; winning in silence is not. An application that
+    // passed both read its own permissions as false with nothing to explain it.
+    test("says at startup which of the two sources it is reading", async () =>
+    {
+        const warnings: string[] = [];
+        const kernel = createKernel({
+            plugins: [
+                createPlugin("auth", { grants: () => ["from.plugin"] }),
+                createPlugin("x", { permissions: { "x.read": { describe: "reads" } } }),
+            ],
+            permissions: { granted: () => ["from.application"] },
+            log: (level, plugin, line) =>
+            {
+                if (level === "warn")
+                {
+                    warnings.push(`${plugin}: ${line}`);
+                }
+            },
+        });
+
+        await kernel.start();
+
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toMatch(/^auth: /);
+        expect(warnings[0]).toMatch(/declares grants/);
+        expect(warnings[0]).toMatch(/is never read/);
+    });
+
+    test("stays quiet when the application left the deciding to the plugin", async () =>
+    {
+        const warnings: string[] = [];
+        const kernel = createKernel({
+            plugins: [
+                createPlugin("auth", { grants: () => ["x.read"] }),
+                createPlugin("x", { permissions: { "x.read": { describe: "reads" } } }),
+            ],
+            log: (level, plugin, line) =>
+            {
+                if (level === "warn")
+                {
+                    warnings.push(`${plugin}: ${line}`);
+                }
+            },
+        });
+
+        await kernel.start();
+
+        expect(kernel.permissions.has("x.read")).toBe(true);
+        expect(warnings).toEqual([]);
+    });
+
+    // grants is read on every check, so its answer cannot be validated at
+    // startup the way a declaration is. A name no plugin declares guards
+    // nothing, and used to pass for a permission the viewer holds.
+    test("drops a granted permission no plugin declares, and says so on the check that read it", async () =>
+    {
+        const warnings: string[] = [];
+        const kernel = createKernel({
+            plugins: [createPlugin("auth", { grants: () => ["totally.invented"] })],
+            log: (level, plugin, line) =>
+            {
+                if (level === "warn")
+                {
+                    warnings.push(`${plugin}: ${line}`);
+                }
+            },
+        });
+
+        await kernel.start();
+
+        expect(warnings).toEqual([]);
+
+        // nothing declares it, so nothing guards on it: answering yes would
+        // hide a misspelling behind a permission that checks nothing
+        expect(kernel.permissions.has("totally.invented")).toBe(false);
+
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toMatch(/^auth: /);
+        expect(warnings[0]).toMatch(/granted "totally.invented", which no plugin declares/);
+    });
+
+    // Every guard re-reads grants, so reporting each read would bury the line
+    // it came from under thousands of copies of itself.
+    test("reports one such name once, however many checks read it", async () =>
+    {
+        const warnings: string[] = [];
+        const kernel = createKernel({
+            plugins: [createPlugin("auth", { grants: () => ["totally.invented", "also.invented"] })],
+            log: (level, _plugin, line) =>
+            {
+                if (level === "warn")
+                {
+                    warnings.push(line);
+                }
+            },
+        });
+
+        await kernel.start();
+
+        kernel.permissions.has("anything");
+        kernel.permissions.has("anything");
+        kernel.permissions.all(["anything"]);
+
+        expect(warnings).toHaveLength(2);
+        expect(warnings.filter((line) => line.includes("totally.invented"))).toHaveLength(1);
+        expect(warnings.filter((line) => line.includes("also.invented"))).toHaveLength(1);
+    });
+
+    test("stays quiet over a granted permission a plugin does declare", async () =>
+    {
+        const warnings: string[] = [];
+        const kernel = createKernel({
+            plugins: [
+                createPlugin("auth", { grants: () => ["demo.read"] }),
+                createPlugin("demo", { permissions: { "demo.read": { describe: "sees demo" } } }),
+            ],
+            log: (level, _plugin, line) =>
+            {
+                if (level === "warn")
+                {
+                    warnings.push(line);
+                }
+            },
+        });
+
+        await kernel.start();
+
+        expect(kernel.permissions.has("demo.read")).toBe(true);
+        expect(warnings).toEqual([]);
     });
 });
 
@@ -668,10 +799,11 @@ describe("config defaults", () =>
             ],
         });
 
-        await kernel.start();
+        // at boot, not at the first request that happened to need a header
+        const refused = await kernel.start().then(() => undefined, (cause: unknown) => cause);
 
-        expect(() => kernel.sent()).toThrow(KernelFault);
-        expect(() => kernel.sent()).toThrow(/both send "X-Key"/);
+        expect(refused).toBeInstanceOf(KernelFault);
+        expect((refused as Error).message).toMatch(/both send "X-Key"/);
     });
 
     test("a plugin that sends nothing leaves the headers alone", async () =>

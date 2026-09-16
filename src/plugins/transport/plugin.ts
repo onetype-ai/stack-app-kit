@@ -13,7 +13,7 @@ export function transportPlugin(settings: TransportOptions): HostPlugin
         {
             host.offer(NAME, transport(settings, (line, about) =>
             {
-                host.say(line, about);
+                host.log(line, about);
             }));
         },
 
@@ -28,7 +28,7 @@ export function transportPlugin(settings: TransportOptions): HostPlugin
 
             const channel = await live.connect();
 
-            host.say("transport ready", { channel });
+            host.log("transport ready", { channel });
         },
 
         stop: (host: Host) =>

@@ -32,11 +32,11 @@ export type TransportOptions = {
     openSocket?: ((url: string) => Socket) | undefined;
     headers?: (() => Readonly<Record<string, string>>) | undefined;
     onUnauthorized?: ((path: string) => void) | undefined;
-    timeout?: number;
+    timeoutMs?: number;
     retries?: number;
-    retryBase?: number;
-    connectTimeout?: number;
-    reconnectBase?: number;
+    retryBaseMs?: number;
+    connectTimeoutMs?: number;
+    reconnectBaseMs?: number;
     sleep?: ((ms: number) => Promise<void>) | undefined;
 };
 
@@ -55,17 +55,11 @@ export type Transport = {
     /** Which channel is carrying now. */
     channel: () => Channel;
 
-    /**
-     * One request. The body comes back as unknown: this plugin does not own
-     * the caller's shapes, so the caller validates.
-     */
+    /** One request. The body comes back as unknown, so the caller validates. */
     request: (request: HttpRequest) => Promise<unknown>;
 
-    /**
-     * Server-pushed messages. With no socket this succeeds and delivers
-     * nothing, so a caller needs no branch.
-     */
-    subscribe: (channel: string, receive: (message: unknown) => void) => Subscription;
+    /** Server-pushed messages. With no socket this succeeds and delivers nothing. */
+    subscribe: (topic: string, receive: (message: unknown) => void) => Subscription;
 
     /** Stops the socket for good. */
     close: () => void;

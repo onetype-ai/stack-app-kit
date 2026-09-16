@@ -20,6 +20,9 @@ export type StartOptions = {
     permissions?: PermissionSource | undefined;
     log?: Logger | undefined;
 
+    /** Which plugin may answer what the viewer holds; any other declaring `grants` is refused. */
+    grantedBy?: string | undefined;
+
     /** Dropping what a view holds. Omit and `ctx.cache` refuses, naming itself. */
     cache?: Cache | undefined;
 };

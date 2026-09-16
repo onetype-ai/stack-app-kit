@@ -16,12 +16,13 @@ const shell = definePlugin("shell", {
 const billing = definePlugin("billing", {
     version: "1.0.0",
     describe: "Puts itself in the sidebar.",
+    dependsOn: ["shell"],
     contributes: [{ slot: "shell.nav", render: () => <p>billing</p> }],
 });
 
 describe("a plugin that fills another's slot", () =>
 {
-    test("needs no dependency on it: a contribution hands over a component, never reaches for one", async () =>
+    test("names the plugin whose slot it fills, while that plugin names nobody", async () =>
     {
         const kernel = createKernel({ plugins: [shell, billing] });
 
@@ -35,6 +36,7 @@ describe("a plugin that fills another's slot", () =>
         const twice = definePlugin("twice", {
             version: "1.0.0",
             describe: "Fills one slot twice.",
+            dependsOn: ["shell"],
             contributes: [
                 { slot: "shell.nav", render: () => <p>first</p> },
                 { slot: "shell.nav", render: () => <p>second</p> },
@@ -45,24 +47,23 @@ describe("a plugin that fills another's slot", () =>
 
         await kernel.start();
 
-        const said: string[] = [];
-        const watching = vi.spyOn(console, "error").mockImplementation((...given: unknown[]) => said.push(String(given[0])));
+        const messages: string[] = [];
+        const watching = vi.spyOn(console, "error").mockImplementation((...given: unknown[]) => messages.push(String(given[0])));
 
         render(<KernelProvider kernel={kernel}><Slot name="shell.nav" payload={{}} /></KernelProvider>);
 
         watching.mockRestore();
 
-        expect(said.filter((one) => one.includes("same key"))).toEqual([]);
+        expect(messages.filter((message) => message.includes("same key"))).toEqual([]);
         expect(screen.getByText("first")).toBeTruthy();
         expect(screen.getByText("second")).toBeTruthy();
     });
 
-    test("so a shell may frame the plugins that fill it, which is the whole point of a slot", async () =>
+    test("so a shell may frame the plugins that fill it, naming none of them", async () =>
     {
         const framing = definePlugin("shell", {
             version: "1.0.0",
-            describe: "The frame, reaching billing for something of its own.",
-            dependsOn: ["billing"],
+            describe: "The frame, which learns no filler's name.",
             slots: { "shell.nav": { describe: "A place.", schema: z.object({}) } },
         });
 
@@ -190,6 +191,7 @@ describe("hearing and joining, which are not the same as filling", () =>
         const giver = definePlugin("giver", {
             version: "1.0.0",
             describe: "Reads the payload it is given.",
+            dependsOn: ["opener"],
             contributes: [{
                 slot: "opener.side",
                 render: ({ payload }) => <p>{JSON.stringify(payload)}</p>,

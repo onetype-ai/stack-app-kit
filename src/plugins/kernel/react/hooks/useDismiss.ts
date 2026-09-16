@@ -3,8 +3,9 @@ import type { RefObject } from "react";
 
 import { useEventCallback } from "./useEventCallback";
 
+/** Calls `onDismiss` on Escape, or on a pointer press outside both the element and its anchor. */
 export const useDismiss = (
-    open: boolean,
+    isOpen: boolean,
     inside: RefObject<HTMLElement | null>,
     anchor: RefObject<HTMLElement | null> | undefined,
     onDismiss: () => void,
@@ -14,7 +15,7 @@ export const useDismiss = (
 
     useEffect(() =>
     {
-        if (!open)
+        if (!isOpen)
         {
             return;
         }
@@ -49,5 +50,5 @@ export const useDismiss = (
             document.removeEventListener("pointerdown", outside, true);
             document.removeEventListener("keydown", escaped);
         };
-    }, [open, inside, anchor, dismiss]);
+    }, [isOpen, inside, anchor, dismiss]);
 };

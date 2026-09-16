@@ -1,5 +1,6 @@
 import { Component, createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ComponentType, type FunctionComponent, type ReactNode } from "react";
 
+import { KernelFault } from "../api";
 import type { Context, FallbackProps, RegisteredRoute } from "../api";
 import type { Kernel } from "../internal/kernel";
 
@@ -15,7 +16,7 @@ const KernelContext = createContext<Kernel | undefined>(undefined);
 /** The pages shown when a viewer may not see something, or nothing matched. */
 export type StatusPages = {
     forbidden: ComponentType<{ permission?: string | undefined }>;
-    missing: ComponentType<{ path?: string | undefined }>;
+    missing: ComponentType;
 };
 
 const fallbackPages: StatusPages = {
@@ -80,8 +81,8 @@ export function usePlugin<Config = unknown, Services = unknown>(name: string): P
     return useKernel().context(name) as PluginHandle<Config, Services>;
 }
 
-/** Hears an event for as long as this component is on screen. */
-export function useEvent(plugin: string, event: string, handle: (payload: unknown) => void): void
+/** Hears an event for as long as this component is on screen; `listener` is the plugin doing the listening, which must depend on the one that owns the event. */
+export function useEvent(listener: string, event: string, handle: (payload: unknown) => void): void
 {
     const kernel = useKernel();
     const latest = useRef(handle);
@@ -90,11 +91,11 @@ export function useEvent(plugin: string, event: string, handle: (payload: unknow
 
     useEffect(() =>
     {
-        return kernel.context(plugin).events.on(event, (payload) =>
+        return kernel.context(listener).events.on(event, (payload) =>
         {
             latest.current(payload);
         });
-    }, [kernel, plugin, event]);
+    }, [kernel, listener, event]);
 }
 
 /** Reads a value a service keeps, and re-renders when it changes. */
@@ -155,7 +156,6 @@ export function Slot({ name, payload }: { name: string; payload?: unknown }): Re
         <>
             {contributions
                 .map((contribution, at) => ({ contribution, at }))
-                .filter(({ contribution }) => kernel.permissions.all(contribution.requires ?? []))
                 .map(({ contribution, at }) => (
                     <Boundary
                         key={`${contribution.plugin}:${contribution.slot}:${String(at)}`}
@@ -192,7 +192,7 @@ function useGranting(): void
     }), read, read);
 }
 
-function useAllowed(route: RegisteredRoute): readonly string[]
+function useMissingPermissions(route: RegisteredRoute): readonly string[]
 {
     const kernel = useKernel();
 
@@ -214,12 +214,26 @@ export function RouteGuard({ route, send }: { route: RegisteredRoute; send?: (to
 {
     const kernel = useKernel();
     const pages = usePages();
-    const lacking = useAllowed(route);
+    const lacking = useMissingPermissions(route);
 
     const elsewhere = route.instead?.(kernel.context(route.plugin));
 
     if (elsewhere !== undefined)
     {
+        // A `?next=` parameter is where `instead` usually reads from, so what
+        // it answers is attacker-shaped: an absolute URL sends the viewer off
+        // the app, and "javascript:" runs in the page. Only a path travels.
+        const inside = elsewhere.startsWith("/") && !elsewhere.startsWith("//") && !elsewhere.startsWith("/\\");
+
+        if (!inside)
+        {
+            throw new KernelFault(
+                "INVALID_ROUTE",
+                `"${route.plugin}" answered "${elsewhere}" for where the viewer belongs instead, and only a path inside this app may be answered. Return one starting with "/".`,
+                { plugin: route.plugin },
+            );
+        }
+
         return send === undefined ? null : send(elsewhere);
     }
 
@@ -249,7 +263,7 @@ export function NotFound(): ReactNode
 }
 
 /** The frame every page renders inside, from whichever plugin owns it. */
-export function useFrame(): FunctionComponent
+export function useFrame(): FunctionComponent<{ children?: ReactNode }>
 {
     return useKernel().frame() ?? Bare;
 }

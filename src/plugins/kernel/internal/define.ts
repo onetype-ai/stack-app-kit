@@ -4,9 +4,9 @@ import type { Definition, Plugin } from "./contract";
 import * as names from "./names";
 
 /** Declares a plugin. */
-export function definePlugin<Schema extends z.ZodType, Made = unknown>(
+export function definePlugin<Schema extends z.ZodType, Services = unknown>(
     name: string,
-    definition: Definition<Schema, Made>,
+    definition: Definition<Schema, Services>,
 ): Plugin
 {
     names.plugin(name);

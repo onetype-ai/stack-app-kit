@@ -4,32 +4,11 @@
 
 What every service, listener, participant and command is handed.
 
-```ts
-type Context<Config = unknown, Services = unknown> = {
-    name: string; config: Config; services: Services;
-    log: Logger; http: HttpClient; cache: Cache; realtime: Realtime;
-    events: {
-        emit: (event: string, payload: unknown) => void;
-        on: (event: string, handle: (payload: unknown) => void) => () => void;
-    };
-    hooks: { run: (hook: string, payload: unknown) => Promise<string | undefined> };
-    permissions: { has; all; changed: () => void; watch: (notify) => () => void };
-    commands: { run: (command: string, input: unknown) => Promise<void> };
-    use: <Api>(plugin: string) => Api;
-};
-```
+`schema.md` carries every field, generated from the code. What it cannot say:
 
-```ts
-type HttpClient = { get; post; put; patch; delete: (path: string, request?: CallOptions) => Promise<unknown> };
-type Cache = { invalidate: (key: readonly unknown[]) => void };
-type Realtime = {
-    channel: () => "ws" | "http";
-    subscribe: (channel: string, receive: (message: unknown) => void) => { close: () => void };
-};
-```
-
-These three arrive without being declared. With no socket, `channel()` answers
-`"http"` and `subscribe` delivers nothing, so a caller needs no branch.
+`http`, `cache` and `realtime` arrive without being declared. With no socket, `channel()` answers
+`"http"` so a caller can branch, and `subscribe` refuses rather than handing
+back a subscription that would deliver nothing.
 
 **`http` answers the body, never an envelope.** A 204 is `undefined`, anything
 but a 2xx throws. A fake answering `{ status, body }` describes the channel
@@ -77,10 +56,23 @@ command not starting with its own name is refused.
 ```ts
 start(): Promise<void>          stop(): Promise<void>       started(): boolean
 routes(): readonly RegisteredRoute[] frame(): FunctionComponent | undefined
-slot(name, payload): { contributions: readonly PlacedContribution[]; problem?: string }
+slot(name, payload): { contributions: readonly MountedContribution[]; problem?: string }
 context(plugin): Context        pages(): Pages
+plugins(): readonly Plugin[]    // what started, for declarationsOf
 sent(): Record<string, string>  // what `sends` adds to every request
 ```
+
+## What a plugin declares
+
+```ts
+declarationsOf(plugins): Declaration[]    // pure, before start
+declarationsOf(plugins, "dashboard")      // one, or [] if absent
+declarationsOf(kernel.plugins())          // what actually started
+```
+
+A `Declaration` names every surface with its sentence, and flags the parts
+that are components rather than data. Schemas are left out. From a terminal:
+`node tools/declared.mjs ./src/kernel/plugins.js [name] [--json]`
 
 ## Imports
 
@@ -99,7 +91,7 @@ import { transport, cache } from "@onetype/stack-app-kit";
 useKernel(): Kernel
 usePlugin<Config, Services>(name): Context          // the context itself, not a wrapper
 useFrame(): FunctionComponent
-useEvent(plugin, event, handle): void               // stops when the component leaves
+useEvent(listener, event, handle): void             // listener is the plugin hearing, not the owner
 useStore(watch, read): Value                         // a value a service keeps
 ```
 
@@ -128,7 +120,7 @@ assembled without it throw.
 
 ## Faults
 
-`Fault` while booting, `KernelFault` from a contract, `TransportFault` from a
+`BootFault` while booting, `KernelFault` from a contract, `TransportFault` from a
 request. Each carries a `code` and sets `name`.
 
 ```ts
@@ -155,5 +147,5 @@ enum is refused; a copy that cannot import names itself in `sharing`.
 `budgets: { "public/x.js": 2048 }`
 weighs a built file gzipped.
 Each `find*` is exported too.
-`across: ["../api/src/plugins"]` names the other half of a two-stack
+`otherStacks: ["../api/src/plugins"]` names the other half of a two-stack
 application; a guard that cannot reach it is `skipped`, never a pass.

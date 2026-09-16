@@ -21,8 +21,10 @@ export type RouterOptions = {
     createRouter: (options: { routeTree: Root }) => unknown;
 };
 
+/** The route-tree root your router library returned, which takes the pages plugins declared. */
 export type Root = { addChildren: (children: Child[]) => Root };
 
+/** A child route, deliberately `unknown`: it constrains nothing, and whatever your router library returns passes. */
 export type Child = unknown;
 
 /** What the frame around every page needs. */

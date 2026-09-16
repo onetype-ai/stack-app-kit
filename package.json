@@ -9,9 +9,11 @@
         "typecheck": "tsc --noEmit",
         "boundaries": "node tools/boundaries.mjs",
         "docs": "node tools/docs.mjs",
-        "build": "tsup",
+        "build": "tsup && node tools/schema.mjs",
         "prepublishOnly": "tools/check.sh && tsup",
-        "prepack": "tsup"
+        "prepack": "tsup",
+        "schema": "node tools/schema.mjs",
+        "declared": "node tools/declared.mjs"
     },
     "dependencies": {
         "zod": "^4.5.4"
@@ -58,6 +60,7 @@
     },
     "files": [
         "dist",
+        "schema.md",
         "README.md",
         "#docs",
         "!#docs/progress"

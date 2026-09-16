@@ -10,7 +10,8 @@ export type TransportFaultCode =
     | "RATE_LIMITED"
     | "SERVER"
     | "CLIENT"
-    | "MALFORMED";
+    | "MALFORMED"
+    | "OFF_BASE";
 
 type FaultDetail = {
     method: string;
@@ -57,7 +58,7 @@ export class TransportFault extends Error
             403: { code: "FORBIDDEN", message: "The request was rejected as not permitted." },
             404: { code: "NOT_FOUND", message: "The requested resource does not exist." },
             409: { code: "CONFLICT", message: "The request conflicts with the current state." },
-            429: { code: "RATE_LIMITED", message: "Too many requests were about." },
+            429: { code: "RATE_LIMITED", message: "Too many requests were made." },
         };
 
         const match = known[status];

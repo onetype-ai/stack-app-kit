@@ -6,7 +6,7 @@ export type Answer = {
     channel: "ws" | "http";
 };
 
-export type Channel = {
+export type Wire = {
     name: "ws" | "http";
     open: () => boolean;
     send: (request: HttpRequest) => Promise<Answer>;

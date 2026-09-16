@@ -1,18 +1,21 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
+/** A markdown file past the character limit, with the size it reached. */
 export type OversizedDoc = {
     path: string;
     size: number;
 };
 
+/** A `Definition` key the written procedure never mentions. */
 export type UndocumentedKey = {
     key: string;
 };
 
 const LIMIT = 1800;
 
-export function findOversizedDocs(root: string, limit: number = LIMIT): OversizedDoc[]
+/** Every `.md` under `root` longer than `maxCharacters` (1800 by default), skipping any path holding "progress". */
+export function findOversizedDocs(root: string, maxCharacters: number = LIMIT): OversizedDoc[]
 {
     if (!existsSync(root))
     {
@@ -32,10 +35,11 @@ export function findOversizedDocs(root: string, limit: number = LIMIT): Oversize
         })
         .filter((doc) =>
         {
-            return doc.size > limit;
+            return doc.size > maxCharacters;
         });
 }
 
+/** Which of `required` are absent under `root` or present but blank; unreadable counts as missing. */
 export function findMissingDocs(root: string, required: readonly string[]): string[]
 {
     return required.filter((path) =>
@@ -51,6 +55,7 @@ export function findMissingDocs(root: string, required: readonly string[]): stri
     });
 }
 
+/** Keys of `type Definition` in `contract` that `procedure` never names in backticks; throws when no Definition parses. */
 export function findUndocumentedKeys(contract: string, procedure: string): string[]
 {
     const shape = /(?:export )?type Definition[\s\S]*?\n\};/.exec(contract)?.[0] ?? "";
@@ -100,12 +105,14 @@ export function findUnexplainedPlugins(plugins: string): string[]
         });
 }
 
+/** A TSDoc sentence in source that no built `.d.ts` carries, so no consumer ever reads it. */
 export type PrivateComment = {
     file: string;
     line: number;
     sentence: string;
 };
 
+/** TSDoc in `source` whose opening sentence is absent from the built types in `dist`; throws when `dist` holds no build, so build first. */
 export function findPrivateComments(source: string, dist: string): PrivateComment[]
 {
     if (!existsSync(source))
@@ -119,8 +126,8 @@ export function findPrivateComments(source: string, dist: string): PrivateCommen
     }
 
     const published = readdirSync(dist)
-        .filter((one) => one.endsWith(".d.ts"))
-        .map((one) => readFileSync(join(dist, one), "utf8"))
+        .filter((name) => name.endsWith(".d.ts"))
+        .map((name) => readFileSync(join(dist, name), "utf8"))
         .join("\n");
 
     const comments: PrivateComment[] = [];
@@ -163,7 +170,7 @@ export function findPrivateComments(source: string, dist: string): PrivateCommen
                 }
 
                 const sentence = lines.slice(lineNumber, end + 1)
-                    .map((one) => one.replace(/^\s*\/?\*+\/?\s?/, "").trim())
+                    .map((line) => line.replace(/^\s*\/?\*+\/?\s?/, "").trim())
                     .filter(Boolean)[0] ?? "";
 
                 if (sentence !== "" && !published.includes(sentence.slice(0, 45)))
@@ -181,6 +188,7 @@ export function findPrivateComments(source: string, dist: string): PrivateCommen
     return comments;
 }
 
+/** Where a comment sits: the file, and the line it was written on. */
 export type Commented = {
     file: string;
     line: number;
@@ -188,7 +196,7 @@ export type Commented = {
 
 function withoutLiterals(source: string): string
 {
-    const blank = (held: string): string => " ".repeat(held.length);
+    const blank = (literal: string): string => " ".repeat(literal.length);
 
     return source
         .replace(/url\((?![")'])[^)\n]*\)/g, blank)
@@ -198,6 +206,7 @@ function withoutLiterals(source: string): string
         .replace(/(?<=[=(,:[]\s*)\/(?:[^/\\\n[]|\\.|\[(?:[^\]\\]|\\.)*\])+\/[gimsuy]*/g, blank);
 }
 
+/** Every comment line in `.ts`, `.tsx` and `.css` under `source`, counting a block once per line and ignoring anything inside a string, template or regex. */
 export function findComments(source: string): Commented[]
 {
     if (!existsSync(source))

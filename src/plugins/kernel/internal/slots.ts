@@ -61,5 +61,12 @@ export function slots()
 
             return opened.slot.schema.parse(payload ?? {});
         },
+
+        // a stopped kernel that starts again must not mount a contribution twice
+        reset: (): void =>
+        {
+            openedBy.clear();
+            placed.clear();
+        },
     };
 }

@@ -1,15 +1,15 @@
 import type { HttpRequest } from "../api";
 import { address } from "./address";
-import type { Answer, Channel } from "./channel";
+import type { Answer, Wire } from "./channel";
 import { TransportFault } from "./faults";
 
-type TransportOptions = {
+type HttpOptions = {
     baseUrl: string;
-    timeout: number;
+    timeoutMs: number;
     headers?: (() => Readonly<Record<string, string>>) | undefined;
 };
 
-export function http(settings: TransportOptions): Channel
+export function http(settings: HttpOptions): Wire
 {
     return {
         name: "http",
@@ -22,7 +22,7 @@ export function http(settings: TransportOptions): Channel
         send: async (request: HttpRequest): Promise<Answer> =>
         {
             const aborter = new AbortController();
-            const timer = setTimeout(() => aborter.abort(), settings.timeout);
+            const timer = setTimeout(() => aborter.abort(), settings.timeoutMs);
             const cancel = (): void =>
             {
                 aborter.abort();
@@ -86,7 +86,7 @@ export function http(settings: TransportOptions): Channel
             }
             catch (cause)
             {
-                throw shape(cause, request, aborter, settings.timeout);
+                throw shape(cause, request, aborter, settings.timeoutMs);
             }
             finally
             {
@@ -97,7 +97,7 @@ export function http(settings: TransportOptions): Channel
     };
 }
 
-function shape(cause: unknown, request: HttpRequest, aborter: AbortController, timeout: number): unknown
+function shape(cause: unknown, request: HttpRequest, aborter: AbortController, timeoutMs: number): unknown
 {
     if (cause instanceof TransportFault)
     {
@@ -115,7 +115,7 @@ function shape(cause: unknown, request: HttpRequest, aborter: AbortController, t
 
     if (aborter.signal.aborted)
     {
-        return new TransportFault("TIMEOUT", `The request did not complete within ${timeout}ms.`, {
+        return new TransportFault("TIMEOUT", `The request did not complete within ${timeoutMs}ms.`, {
             method: request.method,
             path: request.path,
             retryable: true,

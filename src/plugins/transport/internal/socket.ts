@@ -1,15 +1,15 @@
 import type { HttpRequest, Socket, Subscription } from "../api";
-import type { Answer, Channel } from "./channel";
+import type { Answer, Wire } from "./channel";
 import { TransportFault } from "./faults";
 import { frame } from "./frame";
 
-type TransportOptions = {
+type SocketOptions = {
     wsUrl: string;
-    timeout: number;
-    connectTimeout: number;
-    reconnectBase: number;
+    timeoutMs: number;
+    connectTimeoutMs: number;
+    reconnectBaseMs: number;
     open: (url: string) => Socket;
-    say: (line: string, about?: Readonly<Record<string, unknown>>) => void;
+    log: (line: string, about?: Readonly<Record<string, unknown>>) => void;
     now?: (() => number) | undefined;
 };
 
@@ -19,13 +19,13 @@ type InFlight = {
     timer: ReturnType<typeof setTimeout>;
 };
 
-export function socket(settings: TransportOptions)
+export function socket(settings: SocketOptions)
 {
     const waiting = new Map<string, InFlight>();
     const subscribers = new Map<string, Set<(message: unknown) => void>>();
 
     let wire: Socket | undefined;
-    let open = false;
+    let isOpen = false;
     let tries = 0;
     let closedByUs = false;
     let later: ReturnType<typeof setTimeout> | undefined;
@@ -48,7 +48,7 @@ export function socket(settings: TransportOptions)
 
         if (read === undefined)
         {
-            settings.say("transport received a frame it could not read");
+            settings.log("transport received a frame it could not read");
 
             return;
         }
@@ -85,7 +85,7 @@ export function socket(settings: TransportOptions)
 
     function tell(what: "subscribe" | "unsubscribe", topic: string): void
     {
-        if (open && wire !== undefined)
+        if (isOpen && wire !== undefined)
         {
             wire.send(JSON.stringify({ [what]: topic }));
         }
@@ -97,7 +97,7 @@ export function socket(settings: TransportOptions)
         {
             let settled = false;
 
-            const settle = (value: boolean): void =>
+            const resolveOnce = (value: boolean): void =>
             {
                 if (!settled)
                 {
@@ -108,9 +108,9 @@ export function socket(settings: TransportOptions)
 
             const timer = setTimeout(() =>
             {
-                settings.say("transport could not open a socket in time; using http");
-                settle(false);
-            }, settings.connectTimeout);
+                settings.log("transport could not open a socket in time; using http");
+                resolveOnce(false);
+            }, settings.connectTimeoutMs);
 
             let next: Socket;
 
@@ -121,8 +121,8 @@ export function socket(settings: TransportOptions)
             catch (cause)
             {
                 clearTimeout(timer);
-                settings.say("transport could not open a socket; using http", { cause });
-                settle(false);
+                settings.log("transport could not open a socket; using http", { cause });
+                resolveOnce(false);
 
                 return;
             }
@@ -131,15 +131,15 @@ export function socket(settings: TransportOptions)
             {
                 clearTimeout(timer);
                 wire = next;
-                open = true;
+                isOpen = true;
                 tries = 0;
                 for (const topic of subscribers.keys())
                 {
                     tell("subscribe", topic);
                 }
 
-                settings.say("transport connected over websocket");
-                settle(true);
+                settings.log("transport connected over websocket");
+                resolveOnce(true);
             });
 
             next.addEventListener("message", (event: unknown) =>
@@ -150,13 +150,13 @@ export function socket(settings: TransportOptions)
             next.addEventListener("error", () =>
             {
                 clearTimeout(timer);
-                settle(false);
+                resolveOnce(false);
             });
 
             next.addEventListener("close", () =>
             {
                 clearTimeout(timer);
-                open = false;
+                isOpen = false;
                 wire = undefined;
 
                 failAll(new TransportFault("NETWORK", "The socket closed before the response arrived.", {
@@ -165,7 +165,7 @@ export function socket(settings: TransportOptions)
                     retryable: true,
                 }));
 
-                settle(false);
+                resolveOnce(false);
 
                 if (closedByUs)
                 {
@@ -174,28 +174,28 @@ export function socket(settings: TransportOptions)
 
                 tries += 1;
 
-                const wait = Math.min(settings.reconnectBase * 2 ** (tries - 1), 30_000);
+                const wait = Math.min(settings.reconnectBaseMs * 2 ** (tries - 1), 30_000);
 
-                settings.say("transport lost its socket; http carries requests while it retries", { tries, wait });
+                settings.log("transport lost its socket; http carries requests while it retries", { tries, wait });
 
                 later = setTimeout(() => void connect(), wait);
             });
         });
     }
 
-    const channel: Channel = {
+    const channel: Wire = {
         name: "ws",
 
         open: () =>
         {
-            return open;
+            return isOpen;
         },
 
         send: async (request: HttpRequest): Promise<Answer> =>
         {
             const live = wire;
 
-            if (!open || live === undefined)
+            if (!isOpen || live === undefined)
             {
                 throw new TransportFault("NETWORK", "No socket is open.", {
                     method: request.method,
@@ -213,12 +213,12 @@ export function socket(settings: TransportOptions)
                 const timer = setTimeout(() =>
                 {
                     waiting.delete(id);
-                    fail(new TransportFault("TIMEOUT", `The request did not complete within ${settings.timeout}ms.`, {
+                    fail(new TransportFault("TIMEOUT", `The request did not complete within ${settings.timeoutMs}ms.`, {
                         method: request.method,
                         path: request.path,
                         retryable: true,
                     }));
-                }, settings.timeout);
+                }, settings.timeoutMs);
 
                 waiting.set(id, { resolve, fail, timer });
 
@@ -295,7 +295,7 @@ export function socket(settings: TransportOptions)
 
             wire?.close();
             wire = undefined;
-            open = false;
+            isOpen = false;
         },
     };
 }

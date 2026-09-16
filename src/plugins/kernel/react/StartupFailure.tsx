@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
+/** The one message `StartupFailure` shows: the reason the kernel refused to boot. */
 export type StartupFailureProps = {
     message: string;
 };

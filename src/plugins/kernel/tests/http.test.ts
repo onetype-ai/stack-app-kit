@@ -15,17 +15,17 @@ function createPlugin(name: string, definition: Partial<Definition> = {}): Plugi
 
 function recordClient(answer: unknown = { ok: true })
 {
-    const asked: { method: string; path: string; request?: unknown }[] = [];
+    const calls: { method: string; path: string; request?: unknown }[] = [];
 
     const of = (method: string) => (path: string, request?: unknown) =>
     {
-        asked.push({ method, path, ...(request === undefined ? {} : { request }) });
+        calls.push({ method, path, ...(request === undefined ? {} : { request }) });
 
         return Promise.resolve(answer);
     };
 
     return {
-        asked,
+        calls,
         client: {
             get: of("get"),
             post: of("post"),
@@ -38,7 +38,7 @@ function recordClient(answer: unknown = { ok: true })
 
 describe("ctx.http", () =>
 {
-    test("is the client the application passed, reaching the path a plugin asked for", async () =>
+    test("is the client the application passed, reaching the path a plugin calls for", async () =>
     {
         const spy = recordClient({ items: [] });
         const kernel = createKernel({ plugins: [createPlugin("demo")], http: spy.client });
@@ -46,7 +46,7 @@ describe("ctx.http", () =>
         await kernel.start();
 
         expect(await kernel.context("demo").http.get("/items")).toEqual({ items: [] });
-        expect(spy.asked).toEqual([{ method: "get", path: "/items" }]);
+        expect(spy.calls).toEqual([{ method: "get", path: "/items" }]);
 
         await kernel.stop();
     });
@@ -59,7 +59,7 @@ describe("ctx.http", () =>
         await kernel.start();
         await kernel.context("demo").http.post("/items", { body: { title: "one" } });
 
-        expect(spy.asked[0]).toEqual({ method: "post", path: "/items", request: { body: { title: "one" } } });
+        expect(spy.calls[0]).toEqual({ method: "post", path: "/items", request: { body: { title: "one" } } });
 
         await kernel.stop();
     });
@@ -75,7 +75,7 @@ describe("ctx.http", () =>
 
         await Promise.all([http.get("/a"), http.post("/b"), http.put("/c"), http.patch("/d"), http.delete("/e")]);
 
-        expect(spy.asked.map((call) => call.method).sort())
+        expect(spy.calls.map((call) => call.method).sort())
             .toEqual(["delete", "get", "patch", "post", "put"]);
 
         await kernel.stop();
@@ -170,7 +170,7 @@ describe("ctx.realtime", () =>
         await kernel.stop();
     });
 
-    test("delivers what the server pushed to the plugin that asked", async () =>
+    test("delivers what the server pushed to the plugin that calls", async () =>
     {
         let tell: ((message: unknown) => void) | undefined;
 
@@ -199,7 +199,7 @@ describe("ctx.realtime", () =>
         await kernel.stop();
     });
 
-    test("but says http rather than refusing when the application gave none", async () =>
+    test("says http, and refuses to subscribe, when the application gave none", async () =>
     {
         const kernel = createKernel({ plugins: [createPlugin("demo")] });
 
@@ -208,7 +208,9 @@ describe("ctx.realtime", () =>
         const spy = kernel.context("demo").realtime;
 
         expect(spy.channel()).toBe("http");
-        expect(() => spy.subscribe("x", () => {}).close()).not.toThrow();
+
+        // a subscription that returned quietly looked live and delivered nothing
+        expect(() => spy.subscribe("x", () => {})).toThrow(/no realtime was given/);
 
         await kernel.stop();
     });

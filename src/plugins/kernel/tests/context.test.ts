@@ -32,7 +32,7 @@ describe("realtime reaches a plugin", () =>
         expect(subscribe).toHaveBeenCalledOnce();
     });
 
-    it("falls back to an offline client when none is given", async () =>
+    it("names http as the channel, and refuses to subscribe, when none is given", async () =>
     {
         const kernel = createKernel({ plugins: [probe], http: answering });
 
@@ -41,7 +41,9 @@ describe("realtime reaches a plugin", () =>
         const ctx = kernel.context("probe");
 
         expect(ctx.realtime.channel()).toBe("http");
-        expect(() => ctx.realtime.subscribe("x", () => {}).close()).not.toThrow();
+
+        // a subscription that returned quietly looked live and delivered nothing
+        expect(() => ctx.realtime.subscribe("x", () => {})).toThrow(/no realtime was given/);
     });
 });
 

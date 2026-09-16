@@ -25,23 +25,23 @@ export function plugin(value: string): string
     return value;
 }
 
-export function namespaced(value: string, kind: string, ownedBy: string): string
+export function namespaced(value: string, kind: string, owner: string): string
 {
     if (!NAMESPACED.test(value))
     {
         throw new KernelFault(
             "INVALID_NAME",
-            `A ${kind} name is dot-separated lowercase segments, such as "${ownedBy}.thing". Received ${describe(value)}.`,
-            { plugin: ownedBy, detail: { received: value, kind } },
+            `A ${kind} name is dot-separated lowercase segments, such as "${owner}.thing". Received ${describe(value)}.`,
+            { plugin: owner, detail: { received: value, kind } },
         );
     }
 
-    if (!value.startsWith(`${ownedBy}.`))
+    if (!value.startsWith(`${owner}.`))
     {
         throw new KernelFault(
             "INVALID_NAME",
-            `A ${kind} is named inside its own ownedBy: "${value}" belongs to "${value.split(".")[0] ?? ""}", not to "${ownedBy}". Rename it to "${ownedBy}.${value.split(".").slice(1).join(".")}".`,
-            { plugin: ownedBy, detail: { received: value, kind, ownedBy } },
+            `A ${kind} is named inside its own plugin: "${value}" belongs to "${value.split(".")[0] ?? ""}", not to "${owner}". Rename it to "${owner}.${value.split(".").slice(1).join(".")}".`,
+            { plugin: owner, detail: { received: value, kind, owner } },
         );
     }
 

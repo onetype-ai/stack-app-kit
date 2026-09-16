@@ -23,6 +23,7 @@ export type {
     Hook,
     Listener,
     Logger,
+    Pages,
     Participant,
     Permission,
     Plugin,
@@ -32,6 +33,15 @@ export type {
     DescribableWithSchema,
     Slot,
 } from "./internal/contract";
+
+export { declarationsOf } from "./internal/declared";
+export type {
+    Declaration,
+    DeclaredCommand,
+    DeclaredContribution,
+    DeclaredEntry,
+    DeclaredRoute,
+} from "./internal/declared";
 
 export type { ListenerFailure } from "./internal/events";
 export type { MountedContribution } from "./internal/slots";

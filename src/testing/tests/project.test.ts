@@ -40,7 +40,7 @@ describe("what a project refuses", () =>
         const at = createProject();
 
         mkdirSync(join(at, "src", "plugins", "ghost"), { recursive: true });
-        writeFileSync(join(at, "src", "plugins", "ghost", "thing.ts"), "export const thing = 1;\n");
+        writeFileSync(join(at, "src", "plugins", "ghost", "stray.ts"), "export const stray = 1;\n");
 
         expect(Project.findAll({ root: at }).map((problem) => problem.check)).toContain("unexplained");
     });
@@ -50,7 +50,7 @@ describe("what a project refuses", () =>
         const at = createProject();
 
         expect(Project.findAll({ root: at })).toEqual([]);
-        expect(Project.findSkipped({ root: at }).map((one) => one.check)).toEqual(["documents"]);
+        expect(Project.findSkipped({ root: at }).map((report) => report.check)).toEqual(["documents"]);
         expect(Project.findSkipped({ root: at })[0]?.message).toContain("not on disk");
     });
 
@@ -102,10 +102,10 @@ describe("what a project refuses", () =>
 
         expect(Project.findAll({ root: at })).toEqual([]);
 
-        const said = Project.findSkipped({ root: at }).filter((one) => one.check === "literal");
+        const skipped = Project.findSkipped({ root: at }).filter((report) => report.check === "literal");
 
-        expect(said.length).toBe(1);
-        expect(said[0]?.message).toContain("embed");
+        expect(skipped.length).toBe(1);
+        expect(skipped[0]?.message).toContain("embed");
     });
 
     test("and measuring that same folder once the project says style lives there", () =>
@@ -118,7 +118,7 @@ describe("what a project refuses", () =>
         const found = Project.findAll({ root: at, styleIn: ["embed"] });
 
         expect(found.map((problem) => problem.check)).toContain("literal");
-        expect(Project.findSkipped({ root: at, styleIn: ["embed"] }).filter((one) => one.check === "literal")).toEqual([]);
+        expect(Project.findSkipped({ root: at, styleIn: ["embed"] }).filter((report) => report.check === "literal")).toEqual([]);
     });
 
     test("naming an alias whose file is not there, which nothing says until the first import", () =>
@@ -168,14 +168,14 @@ describe("what a project refuses", () =>
     {
         const at = createProject();
 
-        writeFileSync(join(at, "src", "plugins", "demo", "Held.ts"), "type Held = {\n    kept: string;\n};\n\nexport const held: Held = { kept: \"x\" };\n");
+        writeFileSync(join(at, "src", "plugins", "demo", "Private.ts"), "type Private = {\n    label: string;\n};\n\nexport const shape: Private = { label: \"x\" };\n");
 
         expect(Project.findAll({ root: at }).filter((problem) => problem.check === "wiring")).toEqual([]);
 
-        const said = Project.findSkipped({ root: at }).filter((one) => one.check === "wiring");
+        const skipped = Project.findSkipped({ root: at }).filter((report) => report.check === "wiring");
 
-        expect(said.length).toBe(1);
-        expect(said[0]?.message).toContain("not exported");
+        expect(skipped.length).toBe(1);
+        expect(skipped[0]?.message).toContain("not exported");
     });
 
     test("and saying nothing about shapes when every one of them is exported", () =>
@@ -184,7 +184,7 @@ describe("what a project refuses", () =>
 
         writeFileSync(join(at, "src", "plugins", "demo", "Open.ts"), "export type Open = {\n    kept: string;\n};\n\nexport const open: Open = { kept: \"x\" };\n");
 
-        expect(Project.findSkipped({ root: at }).filter((one) => one.check === "wiring")).toEqual([]);
+        expect(Project.findSkipped({ root: at }).filter((report) => report.check === "wiring")).toEqual([]);
     });
 
     test("naming a word two plugins no longer agree on, since one refuses what the other sends", () =>
@@ -296,8 +296,7 @@ describe("a size a project promised about a file it serves", () =>
     {
         const at = createProject();
 
-        // Random rather than repeated: gzip would answer a few bytes for a
-        // string that compresses, and the point is the weight on the wire.
+        // Measured: gzip returns a few bytes for a compressible string, so the fixture must be random.
         built(at, "public/widget.js", [...Array(8192)].map(() => Math.random().toString(36)).join(""));
 
         const [problem] = Project.findAll({ root: at, budgets: { "public/widget.js": 1024 } });
@@ -310,12 +309,11 @@ describe("a size a project promised about a file it serves", () =>
     {
         const at = createProject();
 
-        // The whole reason this is not a pass: a budget nobody measured reads
-        // exactly like one that held.
+        // A skip, not a pass: a budget nobody measured reads exactly like one that held.
         expect(Project.findAll({ root: at, budgets: { "public/widget.js": 1024 } })).toEqual([]);
 
         const [skipped] = Project.findSkipped({ root: at, budgets: { "public/widget.js": 1024 } })
-            .filter((one) => one.check === "budget");
+            .filter((report) => report.check === "budget");
 
         expect(skipped?.message).toMatch(/public\/widget\.js is not built/);
     });
@@ -328,8 +326,8 @@ describe("a size a project promised about a file it serves", () =>
         built(at, "public/large.js", [...Array(8192)].map(() => Math.random().toString(36)).join(""));
 
         const named = Project.findAll({ root: at, budgets: { "public/small.js": 4096, "public/large.js": 1024 } })
-            .filter((one) => one.check === "budget")
-            .map((one) => one.message.split(" ")[0]);
+            .filter((problem) => problem.check === "budget")
+            .map((problem) => problem.message.split(" ")[0]);
 
         expect(named).toEqual(["public/large.js"]);
     });
@@ -341,12 +339,12 @@ describe("the other half of an application split across two stacks", () =>
     {
         const at = createProject();
 
-        const said = Project.findSkipped({ root: at, across: ["../api/src/plugins"] })
-            .filter((one) => one.check === "across");
+        const skipped = Project.findSkipped({ root: at, otherStacks: ["../api/src/plugins"] })
+            .filter((report) => report.check === "across");
 
-        expect(said).toHaveLength(1);
-        expect(said[0]?.message).toContain("../api/src/plugins");
-        expect(said[0]?.message).toContain("compared nothing and still passed");
+        expect(skipped).toHaveLength(1);
+        expect(skipped[0]?.message).toContain("../api/src/plugins");
+        expect(skipped[0]?.message).toContain("compared nothing and still passed");
     });
 
     test("is silent once it is there, so the guard reading it is trusted", () =>
@@ -355,18 +353,18 @@ describe("the other half of an application split across two stacks", () =>
 
         mkdirSync(join(at, "..", "api", "src", "plugins"), { recursive: true });
 
-        const said = Project.findSkipped({ root: at, across: ["../api/src/plugins"] })
-            .filter((one) => one.check === "across");
+        const skipped = Project.findSkipped({ root: at, otherStacks: ["../api/src/plugins"] })
+            .filter((report) => report.check === "across");
 
         rmSync(join(at, "..", "api"), { recursive: true, force: true });
 
-        expect(said).toEqual([]);
+        expect(skipped).toEqual([]);
     });
 
     test("is silent when no application named one, because most hold only one half", () =>
     {
         const at = createProject();
 
-        expect(Project.findSkipped({ root: at }).filter((one) => one.check === "across")).toEqual([]);
+        expect(Project.findSkipped({ root: at }).filter((report) => report.check === "across")).toEqual([]);
     });
 });

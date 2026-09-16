@@ -3,33 +3,30 @@ import { BootFault } from "./errors";
 type Phase = "booting" | "running" | "stopped";
 
 /** Where a line goes. The application decides; a plugin never writes directly. */
-export type LogLine = (line: string, about?: Readonly<Record<string, unknown>>) => void;
+export type HostLog = (line: string, about?: Readonly<Record<string, unknown>>) => void;
 
 type Listener = { who: string; run: (payload: unknown) => void };
 
 type Wiring = {
     at: Phase;
-    say: LogLine;
+    log: HostLog;
     offers: Map<string, unknown>;
     owners: Map<string, string>;
     listeners: Map<string, Listener[]>;
 };
 
-/**
- * What every plugin receives. Carries the wiring, and nothing about any
- * particular plugin: the kernel names none.
- */
+/** What every plugin receives: the wiring, and nothing about any particular plugin. */
 export class Host
 {
     readonly #shared: Wiring;
 
     readonly #who: string;
 
-    constructor(say: LogLine, shared?: Wiring, who = "")
+    constructor(log: HostLog, shared?: Wiring, who = "")
     {
         this.#shared = shared ?? {
             at: "booting",
-            say,
+            log,
             offers: new Map(),
             owners: new Map(),
             listeners: new Map(),
@@ -45,7 +42,7 @@ export class Host
 
     as(who: string): Host
     {
-        return new Host(this.#shared.say, this.#shared, who);
+        return new Host(this.#shared.log, this.#shared, who);
     }
 
     enter(phase: Phase): void
@@ -53,9 +50,9 @@ export class Host
         this.#shared.at = phase;
     }
 
-    say(line: string, about?: Readonly<Record<string, unknown>>): void
+    log(line: string, about?: Readonly<Record<string, unknown>>): void
     {
-        this.#shared.say(line, about);
+        this.#shared.log(line, about);
     }
 
     offer(name: string, api: unknown): void
@@ -126,7 +123,7 @@ export class Host
             }
             catch (cause)
             {
-                this.say(`listener "${listener.who}" threw on "${name}"`, { cause });
+                this.log(`listener "${listener.who}" threw on "${name}"`, { cause });
             }
         }
     }

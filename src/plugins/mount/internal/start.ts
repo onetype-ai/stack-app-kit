@@ -1,5 +1,5 @@
 import { boot } from "../../../kernel/boot";
-import type { LogLine } from "../../../kernel/host";
+import type { HostLog } from "../../../kernel/host";
 import { z } from "zod";
 
 import { createKernel, definePlugin } from "../../kernel/api";
@@ -12,10 +12,10 @@ import { client } from "./client";
 /** Brings an application up: transport, then kernel, then plugins. */
 export async function start(starting: StartOptions): Promise<StartedApp>
 {
-    const log = starting.log;
-    const say: LogLine = (line, about) =>
+    const logger = starting.log;
+    const log: HostLog = (line, about) =>
     {
-        log?.info(line, about);
+        logger?.info(line, about);
     };
 
     const beforeKernel: string[] = [];
@@ -26,7 +26,7 @@ export async function start(starting: StartOptions): Promise<StartedApp>
 
     let contributed = (): Readonly<Record<string, string>> => ({});
 
-    const app = boot(say, [
+    const app = boot(log, [
         transportPlugin({
             ...starting.transport,
             headers: () => ({ ...starting.transport.headers?.(), ...contributed() }),
@@ -47,7 +47,7 @@ export async function start(starting: StartOptions): Promise<StartedApp>
 
     const channel = await carrier.connect();
 
-    log?.info("transport ready", { channel });
+    logger?.info("transport ready", { channel });
 
     const realtime: Realtime = {
         channel: () =>
@@ -78,13 +78,18 @@ export async function start(starting: StartOptions): Promise<StartedApp>
         ...(starting.cache !== undefined && { cache: starting.cache }),
         ...(starting.config !== undefined && { config: starting.config }),
         ...(starting.permissions !== undefined && { permissions: starting.permissions }),
-        ...(log !== undefined && {
+        ...(starting.grantedBy !== undefined && { grantedBy: starting.grantedBy }),
+        ...(logger !== undefined && {
             log: (level, plugin, line, extra) =>
             {
-                log[level](`${plugin}: ${line}`, extra);
+                logger[level](`${plugin}: ${line}`, extra);
             },
         }),
     });
+
+    // before start, so a request made inside a plugin's setup carries the
+    // headers every later request carries; it went out unauthenticated
+    contributed = () => kernel.sent();
 
     await kernel.start();
 
@@ -92,8 +97,6 @@ export async function start(starting: StartOptions): Promise<StartedApp>
     {
         kernel.context("transport").events.emit("transport.unauthorized", { path });
     };
-
-    contributed = () => kernel.sent();
 
     for (const path of beforeKernel.splice(0))
     {

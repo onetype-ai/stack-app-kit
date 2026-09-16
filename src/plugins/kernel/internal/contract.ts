@@ -1,4 +1,4 @@
-import type { ComponentType, FunctionComponent } from "react";
+import type { ComponentType, FunctionComponent, ReactNode } from "react";
 import type { z } from "zod";
 
 /** Anything declared carries a sentence saying what it is for. */
@@ -22,14 +22,7 @@ export type Event = {
     schema: z.ZodType;
 };
 
-/**
- * What a listener does when an event arrives.
- *
- * `payload` is `unknown`, never `never`: a handler typed `(payload: never)`
- * accepts any annotation its author writes, because of contravariance, so the
- * compiler endorses a claim about a completely different schema. `unknown`
- * forces the parse that should happen anyway.
- */
+/** What a listener does when an event arrives: `payload` is `unknown`, never `never`, because contravariance lets a `never` annotation endorse a wrong schema. */
 export type Listener<Context> = Describable & {
     handle: (payload: unknown, ctx: Context) => void | Promise<void>;
 };
@@ -47,6 +40,7 @@ export type Participant<Context> = Describable & {
 
 /** Something a plugin can be asked to do, behind the permissions it names. */
 export type Command<Context> = DescribableWithSchema & {
+    /** What the viewer must hold. This decides what renders, never what is allowed: the browser holds these strings, so the server must refuse the same request independently. */
     requires?: readonly string[] | undefined;
     run: (input: unknown, ctx: Context) => void | Promise<void>;
 };
@@ -58,6 +52,7 @@ export type Slot = DescribableWithSchema;
 export type SlotContribution = {
     slot: string;
     order?: number | undefined;
+    /** What the viewer must hold. This decides what renders, never what is allowed: the browser holds these strings, so the server must refuse the same request independently. */
     requires?: readonly string[] | undefined;
     render: ComponentType<{ payload: unknown }>;
 };
@@ -67,37 +62,16 @@ export type Route<Config = unknown, Services = unknown> = {
     path: string;
     component: ComponentType;
 
-    /**
-     * What the tab says while this page is open.
-     *
-     * Required, because a route without one leaves whatever the last page
-     * wrote: a reader who lands here from a search result reads the name of
-     * somewhere they have never been.
-     */
+    /** What the tab says while this page is open. */
     title: string;
 
+    /** What the viewer must hold. This decides what renders, never what is allowed: the browser holds these strings, so the server must refuse the same request independently. */
     requires?: readonly string[] | undefined;
 
-    /**
-     * What this route reads from the query string.
-     *
-     * Declared, like everything else: a parameter no route names is one no
-     * page may read, and a value that fails this never reaches a component.
-     */
+    /** What this route reads from the query string. */
     search?: z.ZodType | undefined;
 
-    /**
-     * Where the viewer belongs instead, when this page is not it.
-     *
-     * `requires` answers whether they may see it. This answers a page they
-     * may see but should not be on yet: a checkout with an empty cart is not
-     * forbidden, it is early. Answering a path sends them there before
-     * anything renders, so the wrong screen never flashes.
-     *
-     * Asked before `requires`. A route naming both is the ordinary
-     * signed-out case, where "not yours to open" is no use to somebody
-     * nobody has asked to sign in yet.
-     */
+    /** Where the viewer belongs instead, when this page is not it: asked before `requires`. */
     instead?: ((ctx: Context<Config, Services>) => string | undefined) | undefined;
 
 };
@@ -131,17 +105,7 @@ export type CallOptions = {
     signal?: AbortSignal | undefined;
 };
 
-/**
- * What the kernel needs to reach a server.
- *
- * A shape, not our transport: anything matching it satisfies the kernel, and
- * the two never import each other.
- *
- * Every method answers the body the server sent and nothing wrapped around
- * it: a 2xx is the parsed body, a 204 is `undefined`, and anything else
- * throws. A fake answering `{ status, body }` describes the channel
- * underneath rather than this, and every call written against it is wrong.
- */
+/** What the kernel needs to reach a server: every method answers the bare body, a 2xx parsed, a 204 `undefined`, anything else thrown. */
 export type HttpClient = {
     get: (path: string, request?: CallOptions) => Promise<unknown>;
     post: (path: string, request?: CallOptions) => Promise<unknown>;
@@ -158,7 +122,7 @@ export type Cache = {
 /** What the kernel needs to hear a server push. */
 export type Realtime = {
     channel: () => "ws" | "http";
-    subscribe: (channel: string, receive: (message: unknown) => void) => { close: () => void };
+    subscribe: (topic: string, receive: (message: unknown) => void) => { close: () => void };
 };
 
 /** What every plugin function receives. */
@@ -175,14 +139,7 @@ export type Context<Config = unknown, Services = unknown> = {
     events: {
         emit: (event: string, payload: unknown) => void;
 
-        /**
-         * Hears an event for as long as the caller wants, and answers what
-         * stops it.
-         *
-         * A contract's `listens` is for a plugin: it starts with the kernel
-         * and never stops. This is for a view, which arrives and leaves, and
-         * must take its ear with it.
-         */
+        /** Hears an event for as long as the caller wants, and answers what stops it. */
         on: (event: string, handle: (payload: unknown) => void) => () => void;
     };
 
@@ -195,15 +152,7 @@ export type Context<Config = unknown, Services = unknown> = {
         has: (permission: string) => boolean;
         all: (permissions: readonly string[]) => boolean;
 
-        /**
-         * Says the answer moved, so every guard asks again.
-         *
-         * What a viewer may do is the one declaration that is not static: it
-         * depends on who is looking, and that changes while the page is open.
-         * The plugin holding identity calls this when a session ends, starts
-         * or takes a different role, and the guards catch up without the
-         * application reloading itself.
-         */
+        /** Says the answer moved, so every guard asks again: permissions are the one declaration that is not static. */
         changed: () => void;
 
         /** Runs `notify` whenever `changed` is called. Returns a stop. */
@@ -214,13 +163,7 @@ export type Context<Config = unknown, Services = unknown> = {
         run: (command: string, input: unknown) => Promise<void>;
     };
 
-    /**
-     * Another plugin's services, by name.
-     *
-     * Reachable outside a component, so a plain function can use it: an API
-     * only a React hook could reach left half an application unable to call
-     * it.
-     */
+    /** Another plugin's services, by name. Reachable outside a component. */
     use: <Api>(plugin: string) => Api;
 };
 
@@ -235,32 +178,26 @@ export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown>
     permissions?: Readonly<Record<string, Permission>> | undefined;
 
     /**
-     * What the viewer may do, read on every check.
+     * What the viewer may do, read on every check. At most one plugin offers this.
      *
-     * At most one plugin offers this: two sources would make an answer depend
-     * on which was asked, and a permission that flickers is worse than one
-     * that is simply absent.
-     *
-     * This decides what a viewer sees, never what they may do. The server
-     * checks again, and is the only place a refusal counts.
+     * Declaring it REPLACES the `permissions` passed to createKernel entirely:
+     * that source is never read again, and is not merged in. The plugin holding
+     * the session answers alone, so a sign-out takes every permission with it.
      */
     grants?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => readonly string[]) | undefined;
+
+    /** The closed set `grants` answers from, so a route or contribution requiring a permission outside it is refused at startup rather than never rendering. */
+    /** Left out, `grants` may answer anything any plugin declares. Named after OIDC's `scopes_supported`, which it is. */
+    grantsSupported?: readonly string[] | undefined;
 
     services?: ((ctx: Context<z.infer<Schema>, never>) => Services) | undefined;
     fallback?: ComponentType<FallbackProps> | undefined;
 
-    /**
-     * The frame every page renders inside.
-     *
-     * At most one plugin offers this. An application that named its own would
-     * be naming a plugin, which is the thing the kernel exists to avoid.
-     */
-    frame?: FunctionComponent | undefined;
+    /** The frame every page renders inside. At most one plugin offers this. */
+    /** The shell every page renders inside; it is handed the page as its children. */
+    frame?: FunctionComponent<{ children?: ReactNode }> | undefined;
 
-    /**
-     * What shows instead of a page: 403 when a permission is missing, 404 when
-     * nothing declared the path. At most one plugin offers each.
-     */
+    /** What shows instead of a page: 403 when a permission is missing, 404 when nothing declared the path. */
     pages?: Pages | undefined;
 
     routes?: readonly Route<z.infer<Schema>, Given<Services>>[] | undefined;
@@ -275,16 +212,7 @@ export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown>
 
     commands?: Readonly<Record<string, Command<Context<z.infer<Schema>, Given<Services>>>>> | undefined;
 
-    /**
-     * What this plugin adds to the headers of every request the kit makes.
-     *
-     * Asked on each request, so a value that changes is read again. Two
-     * plugins naming the same header is refused, because a header with two
-     * authors is one nobody owns.
-     *
-     * Requests never leave `baseUrl`, so what is declared here reaches only
-     * the application's own server.
-     */
+    /** What this plugin adds to the headers of every request the kit makes: asked per request, never sent outside `baseUrl`. */
     sends?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => Readonly<Record<string, string>>) | undefined;
 
     setup?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => void | Promise<void>) | undefined;

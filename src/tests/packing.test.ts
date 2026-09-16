@@ -90,7 +90,7 @@ describe("a document past the limit", () =>
 
         const packing = (): void =>
         {
-            new Packer({ at: "docs", into: "docs.md", name: "document", tool: "docs", limit: 2000 }).pack([]);
+            new Packer({ at: "docs", into: "docs.md", name: "document", tool: "docs", maxCharacters: 2000 }).pack([]);
         };
 
         expect(packing).toThrow(/2001 characters, over the 2000/);
@@ -107,7 +107,7 @@ describe("a document past the limit", () =>
                 into: "docs.md",
                 name: "document",
                 tool: "docs",
-                limit: (path) => (path.endsWith("reference.md") ? 6600 : 2000),
+                maxCharacters: (path) => (path.endsWith("reference.md") ? 6600 : 2000),
             }).pack([]);
         };
 
