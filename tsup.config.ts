@@ -5,7 +5,6 @@ export default defineConfig({
         index: "src/index.ts",
         react: "src/plugins/kernel/react/index.tsx",
         testing: "src/testing.ts",
-        packing: "src/packing.ts",
     },
     format: ["esm"],
     dts: true,

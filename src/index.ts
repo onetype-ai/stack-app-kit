@@ -1,5 +1,7 @@
 
 export { boot, BootedKernel } from "./kernel/boot";
+export { Env } from "./kernel/env";
+export { serving } from "./kernel/vite";
 export { BootFault } from "./kernel/errors";
 export type { BootFaultCode } from "./kernel/errors";
 export { Host } from "./kernel/host";
@@ -58,3 +60,6 @@ export { routerPlugin } from "./plugins/router/plugin";
 export { discover, start } from "./plugins/mount/api";
 export { mountPlugin } from "./plugins/mount/plugin";
 export type { PluginModules, StartedApp, StartOptions } from "./plugins/mount/api";
+export type { Serving, ServingOptions } from "./kernel/vite";
+export type { Frame, Router, RouterOptions } from "./plugins/router/api";
+export type { RouterBuilding } from "./plugins/mount/api";

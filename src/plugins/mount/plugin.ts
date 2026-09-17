@@ -9,7 +9,7 @@ export function mountPlugin(): HostPlugin
 {
     return {
         name: NAME,
-        needs: ["kernel", "transport"],
+        needs: ["kernel", "transport", "router"],
 
         boot: (host: Host) =>
         {

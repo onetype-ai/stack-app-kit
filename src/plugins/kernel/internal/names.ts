@@ -25,23 +25,23 @@ export function plugin(value: string): string
     return value;
 }
 
-export function namespaced(value: string, kind: string, owner: string): string
+export function namespaced(value: string, kind: string, within: string): string
 {
     if (!NAMESPACED.test(value))
     {
         throw new KernelFault(
             "INVALID_NAME",
-            `A ${kind} name is dot-separated lowercase segments, such as "${owner}.thing". Received ${describe(value)}.`,
-            { plugin: owner, detail: { received: value, kind } },
+            `A ${kind} name is dot-separated lowercase segments, such as "${within}.thing". Received ${describe(value)}.`,
+            { plugin: within, detail: { received: value, kind } },
         );
     }
 
-    if (!value.startsWith(`${owner}.`))
+    if (!value.startsWith(`${within}.`))
     {
         throw new KernelFault(
             "INVALID_NAME",
-            `A ${kind} is named inside its own plugin: "${value}" belongs to "${value.split(".")[0] ?? ""}", not to "${owner}". Rename it to "${owner}.${value.split(".").slice(1).join(".")}".`,
-            { plugin: owner, detail: { received: value, kind, owner } },
+            `A ${kind} is named inside its own plugin: "${value}" belongs to "${value.split(".")[0] ?? ""}", not to "${within}". Rename it to "${within}.${value.split(".").slice(1).join(".")}".`,
+            { plugin: within, detail: { received: value, kind, owner: within } },
         );
     }
 

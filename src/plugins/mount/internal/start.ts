@@ -6,6 +6,7 @@ import { createKernel, definePlugin } from "../../kernel/api";
 import type { Realtime } from "../../kernel/api";
 import { from as transportFrom } from "../../transport/api";
 import { transportPlugin } from "../../transport/plugin";
+import { tree } from "../../router/api";
 import type { StartOptions, StartedApp } from "../api";
 import { client } from "./client";
 
@@ -103,11 +104,21 @@ export async function start(starting: StartOptions): Promise<StartedApp>
         announce(path);
     }
 
+    const building = starting.router;
+
     return {
         kernel,
         http: client(carrier),
         realtime,
         channel,
+
+        router: building === undefined
+            ? undefined
+            : tree(kernel, building.building, {
+                shell: building.wrap(kernel.frame(), building.outlet),
+                missing: building.missing,
+                landing: building.landing,
+            }, building.guard),
 
         stop: async (): Promise<void> =>
         {

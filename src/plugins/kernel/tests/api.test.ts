@@ -800,10 +800,10 @@ describe("config defaults", () =>
         });
 
         // at boot, not at the first request that happened to need a header
-        const refused = await kernel.start().then(() => undefined, (cause: unknown) => cause);
+        const fault = await kernel.start().then(() => undefined, (cause: unknown) => cause);
 
-        expect(refused).toBeInstanceOf(KernelFault);
-        expect((refused as Error).message).toMatch(/both send "X-Key"/);
+        expect(fault).toBeInstanceOf(KernelFault);
+        expect((fault as Error).message).toMatch(/both send "X-Key"/);
     });
 
     test("a plugin that sends nothing leaves the headers alone", async () =>

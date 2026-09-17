@@ -201,11 +201,6 @@ export function findDanglingPaths(root: string, files: readonly string[] = ["tsc
                     continue;
                 }
 
-                if (packedAway(root, target.replace(/^\.?\//, "")))
-                {
-                    continue;
-                }
-
                 dangling.push({ alias, target, file: name });
             }
         }
@@ -293,20 +288,49 @@ export function findUnwatched(root: string): Unwatched[]
     return unwatched;
 }
 
-function packedAway(root: string, target: string): boolean
+export type EntryReach = {
+    file: string;
+
+    /** The alias it reached through, which belongs to a plugin rather than to the root. */
+    alias: string;
+};
+
+/**
+ * Where the composition root, or anything beside it, imports through a plugin alias.
+ *
+ * A root reaching into `@plugins/` names one plugin and stops being a root:
+ * removing that plugin then breaks the boot rather than removing a capability.
+ */
+export function findEntryReach(root: string, entries: readonly string[] = ["src/main.tsx", "src/main.ts"]): EntryReach[]
 {
-    for (const entry of readdirSync(root, { withFileTypes: true, recursive: true }))
+    const reaching: EntryReach[] = [];
+    const aliases = ["@plugins/", "@utils/", "@ui/"];
+
+    const beside = existsSync(join(root, "src", "kernel"))
+        ? readdirSync(join(root, "src", "kernel"), { withFileTypes: true })
+            .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+            .map((entry) => join("src", "kernel", entry.name))
+        : [];
+
+    for (const file of [...entries, ...beside])
     {
-        if (!entry.isFile() || entry.name !== "example.txt")
+        const path = join(root, file);
+
+        if (!existsSync(path))
         {
             continue;
         }
 
-        if (readFileSync(join(entry.parentPath, entry.name), "utf8").includes(`==> ${target}`))
+        const source = readFileSync(path, "utf8");
+
+        for (const alias of aliases)
         {
-            return true;
+            if (new RegExp(`from "${alias}|import "${alias}`).test(source))
+            {
+                reaching.push({ file, alias });
+            }
         }
     }
 
-    return false;
+    return reaching;
 }

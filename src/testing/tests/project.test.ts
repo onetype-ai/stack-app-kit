@@ -144,17 +144,6 @@ describe("what a project refuses", () =>
         expect(Project.findAll({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
     });
 
-    test("and leaving one alone whose file is folded into an example, which is how a scaffold ships", () =>
-    {
-        const at = createProject();
-
-        mkdirSync(join(at, "src", "ui"), { recursive: true });
-        writeFileSync(join(at, "src", "ui", "example.txt"), "==> src/ui/index.ts\nexport const nothing = 1;\n");
-        writeFileSync(join(at, "tsconfig.json"), '{ "compilerOptions": { "paths": { "@ui": ["./src/ui/index.ts"] } } }\n');
-
-        expect(Project.findAll({ root: at }).filter((problem) => problem.check === "dangling")).toEqual([]);
-    });
-
     test("and leaving a folder pattern alone, since it names no single file", () =>
     {
         const at = createProject();
@@ -366,5 +355,88 @@ describe("the other half of an application split across two stacks", () =>
         const at = createProject();
 
         expect(Project.findSkipped({ root: at }).filter((report) => report.check === "across")).toEqual([]);
+    });
+});
+
+describe("a document a worked example fills", () =>
+{
+    test("is left alone where it is named, since an example runs longer than a procedure", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "#docs"), { recursive: true });
+        writeFileSync(join(at, "#docs", "example.md"), "x".repeat(2000));
+
+        const found = Project.findAll({ root: at, worked: ["example.md"] })
+            .filter((problem) => problem.check === "oversized");
+
+        expect(found).toEqual([]);
+    });
+
+    test("and still refused once it runs past even a worked example's ceiling", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "#docs"), { recursive: true });
+        writeFileSync(join(at, "#docs", "example.md"), "x".repeat(4000));
+
+        const found = Project.findAll({ root: at, worked: ["example.md"] })
+            .filter((problem) => problem.check === "oversized");
+
+        expect(found).toHaveLength(1);
+        expect(found[0]?.message).toContain("run past even that");
+    });
+
+    test("while one nobody named is held to the ordinary limit", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "#docs"), { recursive: true });
+        writeFileSync(join(at, "#docs", "ordinary.md"), "x".repeat(2000));
+
+        const found = Project.findAll({ root: at, worked: ["example.md"] })
+            .filter((problem) => problem.check === "oversized");
+
+        expect(found).toHaveLength(1);
+        expect(found[0]?.message).toContain("keeps its point at");
+    });
+});
+
+describe("a key the contract accepts", () =>
+{
+    const contract = "type Definition = {\n    version: string;\n    slots?: unknown;\n};";
+
+    test("is refused where no document writes it, since an author never learns it exists", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "#docs"), { recursive: true });
+        writeFileSync(join(at, "#docs", "a.md"), "`version` is required.\n");
+
+        const found = Project.findAll({ root: at, contract })
+            .filter((problem) => problem.check === "undocumented");
+
+        expect(found).toHaveLength(1);
+        expect(found[0]?.message).toContain("slots");
+    });
+
+    test("and left alone once a document writes it in backticks, which is what the check reads", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "#docs"), { recursive: true });
+        writeFileSync(join(at, "#docs", "a.md"), "`version` and `slots` are both keys.\n");
+
+        expect(Project.findAll({ root: at, contract }).filter((problem) => problem.check === "undocumented")).toEqual([]);
+    });
+
+    test("and says nothing at all where no contract was handed over", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "#docs"), { recursive: true });
+        writeFileSync(join(at, "#docs", "a.md"), "nothing in backticks\n");
+
+        expect(Project.findAll({ root: at }).filter((problem) => problem.check === "undocumented")).toEqual([]);
     });
 });

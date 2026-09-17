@@ -15,7 +15,18 @@ export function tree(
         notFoundComponent: frame.missing,
     });
 
-    const children = kernel.routes().map((route) =>
+    const declared = kernel.routes();
+    const landing = declared[0];
+
+    const toLanding = landing === undefined || declared.some((route) => route.path === "/")
+        ? []
+        : [building.createRoute({
+            getParentRoute: () => root,
+            path: "/",
+            component: frame.landing(landing.path),
+        })];
+
+    const children = declared.map((route) =>
         building.createRoute({
             getParentRoute: () => root,
             path: route.path,
@@ -28,5 +39,5 @@ export function tree(
         }),
     );
 
-    return building.createRouter({ routeTree: root.addChildren(children) });
+    return building.createRouter({ routeTree: root.addChildren([...toLanding, ...children]) });
 }

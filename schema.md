@@ -20,6 +20,20 @@
 > The plugins a bundler found, sorted by name.
 ### discover(modules: PluginModules): Plugin[]
 
+> Configuration rules, refused by name rather than repaired.
+> A bundler replaces `import.meta.env.NAME` where it is written, so reading
+> belongs to the application: it reads the value and passes it to a rule.
+> What counts as legal is then the same everywhere.
+### Env: { rules: { text: (name: string, given: unknown, fallback?: string) => string | undefined; required: (name: string, given: unknown) => string; number: (name: string, given: unknown, fallback: number, min?: number, max?: number) => number; flag: (name: string, given: unknown, fallback: boolean) => boolean; list: (given: unknown) => readonly string[]; oneOf: <Allowed extends string>(name: string, given: unknown, allowed: readonly Allowed[], fallback: Allowed) => Allowed } }
+    rules: {
+    text: (name: string, given: unknown, fallback?: string) => string | undefined
+    required: (name: string, given: unknown) => string
+    number: (name: string, given: unknown, fallback: number, min?: number, max?: number) => number
+    flag: (name: string, given: unknown, fallback: boolean) => boolean
+    list: (given: unknown) => readonly string[]
+    oneOf: <Allowed extends string>(name: string, given: unknown, allowed: readonly Allowed[], fallback: Allowed) => Allowed
+    }
+
 > The kernel plugin: what lets an application declare plugins of its own.
 ### kernelPlugin(): HostPlugin
 
@@ -28,6 +42,12 @@
 
 > Turns the routes plugins declared into a router the application renders.
 ### routerPlugin(building: RouterOptions): HostPlugin
+
+> Where an application listens, and which server `/api` reaches.
+> `strictPort` is the point: a port already taken is refused rather than
+> quietly moved to, so two people running their own never share one by
+> accident and wonder whose change they are looking at.
+### serving(options?: ServingOptions): Serving
 
 > Brings an application up: transport, then kernel, then plugins.
 ### start(starting: StartOptions): Promise<StartedApp>
@@ -238,6 +258,13 @@
     plugin: string
     reset: () => void
 
+> What the frame around every page needs.
+### Frame
+    shell: ComponentType
+    missing: ComponentType
+    // What renders at `/` when no plugin declares it: a redirect to the first route there is.
+    landing: (to: string) => ComponentType
+
 > A point where a plugin may refuse what is about to happen.
 ### Hook
     describe: string
@@ -423,6 +450,60 @@
     // Where the viewer belongs instead, when this page is not it: asked before `requires`.
     instead?: ((ctx: Context<Config, Services>) => string | undefined) | undefined
 
+> What the router plugin offers: the tree, built from what plugins declared.
+### Router
+    build: (kernel: Kernel, frame: Frame, guard: (route: RegisteredRoute) => ComponentType) => unknown
+
+> What building a router takes: the library, and what wraps every page.
+> The shell comes from whichever plugin declared `frame`, so an application
+> names neither it nor which plugin holds it.
+### RouterBuilding
+    building: RouterOptions
+    // What renders where no route matched.
+    missing: ComponentType
+    // Where the matched page renders inside the frame; routers hand this over rather than passing children.
+    outlet: ComponentType
+    // Puts the outlet inside the frame a plugin declared, or answers the outlet alone where none did. Written here because `.` renders nothing itself.
+    wrap: (frame: FunctionComponent<{
+    children?: ReactNode
+    }> | undefined, outlet: ComponentType) => ComponentType
+    // What renders at `/` when no plugin declares it: a redirect to the first route there is.
+    landing: (to: string) => ComponentType
+    guard: (route: RegisteredRoute) => ComponentType
+
+> The part of a router library this plugin drives.
+### RouterOptions
+    createRootRoute: (options: {
+    component: ComponentType
+    notFoundComponent: ComponentType
+    }) => Root
+    createRoute: (options: {
+    getParentRoute: () => Root
+    path: string
+    component: ComponentType
+    validateSearch?: (query: Record<string, unknown>) => unknown
+    }) => Child
+    createRouter: (options: {
+    routeTree: Root
+    }) => unknown
+
+> The server half of a Vite config: a port of its own, refused when taken, and `/api` reaching the back.
+### Serving
+    port: number
+    strictPort: true
+    proxy: Record<string, {
+    target: string
+    changeOrigin: true
+    rewrite: (path: string) => string
+    }>
+
+> What a development server needs to know, before any of it is a Vite option.
+### ServingOptions
+    port?: number
+    apiPort?: number
+    // Where each value is read from, so a caller passes what a bundler loaded.
+    set?: Record<string, string | undefined>
+
 > A place other plugins may render into.
 ### Slot = DescribableWithSchema
 
@@ -443,6 +524,8 @@
     realtime: Realtime
     // Which channel carried the first request: "ws" or "http".
     channel: "ws" | "http"
+    // The router built from what plugins declared, where `start` was given one to build with.
+    router: unknown
     // Stops the plugins, then the socket.
     stop: () => Promise<void>
 
@@ -459,6 +542,8 @@
     grantedBy?: string | undefined
     // Dropping what a view holds. Omit and `ctx.cache` refuses, naming itself.
     cache?: Cache | undefined
+    // The router library and the frame around every page. Omit and `router` is undefined, for an application rendering its own.
+    router?: RouterBuilding | undefined
 
 ## cache
 
@@ -494,6 +579,8 @@ Imported whole, then reached through the name: `import { router } from "@onetype
 ### router.Frame
     shell: ComponentType
     missing: ComponentType
+    // What renders at `/` when no plugin declares it: a redirect to the first route there is.
+    landing: (to: string) => ComponentType
 
 > The router, for a plugin that declared "router" in needs.
 ### router.from(host: Host): Router | undefined
@@ -524,6 +611,8 @@ Imported whole, then reached through the name: `import { router } from "@onetype
     createRouter: (options: {
     routeTree: Root
     }) => unknown
+
+### router.tree(kernel: Kernel, building: RouterOptions, frame: Frame, guard: (route: RegisteredRoute) => ComponentType): unknown
 
 ## transport
 
@@ -708,6 +797,11 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 > Aliases whose target is not on disk, in every file that declares one.
 ### findDanglingPaths(root: string, files?: readonly string[]): DanglingPath[]
 
+> Where the composition root, or anything beside it, imports through a plugin alias.
+> A root reaching into `@plugins/` names one plugin and stops being a root:
+> removing that plugin then breaks the boot rather than removing a capability.
+### findEntryReach(root: string, entries?: readonly string[]): EntryReach[]
+
 > Every crossing under `root` that was undeclared, reached past `@plugins/<name>`, looped, or sat in a folder with no plugin.ts.
 ### findImportViolations(root: string): ImportViolation[]
 
@@ -790,6 +884,11 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     event: string
     payload: unknown
 
+### EntryReach
+    file: string
+    // The alias it reached through, which belongs to a plugin rather than to the root.
+    alias: string
+
 > A fake context, and everything that reached it.
 ### Fake<Config = unknown, Services = unknown> =
     ctx: Context<Config, Services>
@@ -871,6 +970,11 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     required?: readonly string[]
     // The size a document may reach before it has outgrown its point.
     maxCharacters?: number
+    // The published type declaring `Definition`, read to list the keys a plugin may declare.
+    contract?: string
+    // Documents a worked example fills, each named, and the ceiling they are still held to.
+    worked?: readonly string[]
+    workedMaxCharacters?: number
     // Where style lives outside a stylesheet, as paths under `src`.
     styleIn?: readonly string[]
     // Signatures two plugins may each keep, because they answer different questions.
@@ -886,7 +990,7 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 
 > One thing a run found wrong, tagged with the check that found it and phrased for a reader.
 ### ProjectProblem
-    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed"
+    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed" | "reach" | "undocumented"
     message: string
 
 > What a run did not look at, and why.
@@ -943,52 +1047,3 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 ### Unwatched
     file: string
     shape: string
-
-# @onetype/stack-app-kit/packing
-
-## Classes
-
-> One folder, folded into one file and back.
-### Packer
-    readonly mark = "==> "
-    readonly ends = "# EXAMPLES END HERE"
-    readonly root: string
-    readonly folder: string
-    readonly file: string
-    readonly whole: boolean
-    readonly demo: readonly string[]
-    readonly name: string
-    readonly at: string
-    readonly tool: string
-    readonly maxCharacters: number | ((path: string) => number)
-    constructor({ at, demo, name, into, tool, maxCharacters }: Packing)
-    pack(requested: readonly string[]): void
-    unpack(): void
-    // What a packed file names, in the order it named them.
-    read(packed: string): [string, string][]
-    pathFor(name: string): string
-    // Removes what was folded away, keeping the file it was folded into.
-    clear(names: readonly string[] | undefined, resolve?: (name: string) => string): void
-    walk(at: string): string[]
-    // What a reader opens first comes first.
-    readingOrder(path: string): number
-    head(names: readonly string[]): string
-    main(argv: readonly string[]): void
-    run(argv: readonly string[]): void
-
-## Types
-
-> What a Packer owns, and what it may fold out of it.
-### Packing
-    // The folder it owns, from the working directory.
-    at: string
-    // What may be packed out of it, when nothing is named.
-    demo?: readonly string[]
-    // What one of them is called, for a message a reader reads.
-    name: string
-    // Where the packed file goes. Left out, `example.txt` beside them.
-    into?: string
-    // The file a project runs, named in the usage line.
-    tool: string
-    // The most characters one packed file may hold, or 0 for no limit.
-    maxCharacters?: number | ((path: string) => number)

@@ -1,6 +1,6 @@
 # done
 
-Five plugins, 336 tests, each watched to fail before it was trusted.
+Five plugins, 389 tests, each watched to fail before it was trusted.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events
 - `kernel` plugin: `definePlugin`, `createKernel`, contract validation, events,
@@ -24,6 +24,41 @@ Five plugins, 336 tests, each watched to fail before it was trusted.
 - `findUnusedFields()` found a declared field nothing read
 - `fakeContext()` in `/testing`: one fake, answering as the transport does
 - `findPrivateComments()` refuses a comment that never reaches `dist`
+
+## Taken from the project that was writing it itself
+
+Every one moved with its tests, and each was broken in its new home before it
+was trusted.
+
+- **The router is built by `start`.** `StartedApp.router` is the tree, made
+  from what plugins declared. An application hands over its library, its 404,
+  its outlet and its guard; the shell comes from whichever plugin declared
+  `frame`, so nothing names which plugin holds it. `routes.tsx` and its tests
+  left the project, and `mount.tsx` is 31 lines.
+- **The root redirects where no plugin claims `/`.** The first route there is
+  answers it. A plugin that does declare `/` keeps it, with nothing added in
+  front.
+- **`Env.rules`.** The same refusals as the api kit's, over a value read
+  elsewhere: a bundler replaces `import.meta.env` where it is written, so
+  reading belongs to the application and only the rules belong here.
+- **`serving`.** A port of its own, refused when taken, and `/api` reaching
+  the back. `strictPort` is the point: two people running their own never
+  share one by accident.
+- **`findEntryReach` and the contract-key check**, both in `Project`. A
+  composition root importing through `@plugins/` stops being a root; a key a
+  contract accepts that no document writes is one an author never learns
+  exists.
+
+## Found while taking it
+
+- **A frame never rendered its page.** The router hands the matched page to an
+  outlet rather than passing children, and nothing here said so, so every
+  frame was a shell around nothing. Found in a browser, not by a test: the
+  shell was in the DOM and empty. `outlet` is part of the contract now.
+- **The first test for that was worthless.** It asserted the frame was the
+  component a plugin declared, which stayed true with the outlet removed.
+  Broken on purpose, it passed. It renders the frame now and reads what is
+  inside it; broken on purpose, it fails.
 
 ## Read back against a project, and ten things fell out
 

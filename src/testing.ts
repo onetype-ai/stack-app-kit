@@ -4,8 +4,8 @@ export type { ImportEdge, ImportViolation, DuplicateSignature, ShadowedExport, S
 export { findComments, findMissingDocs, findOversizedDocs, findPrivateComments, findUndocumentedKeys, findUnexplainedPlugins } from "./testing/docs";
 export type { Commented, OversizedDoc, PrivateComment, UndocumentedKey } from "./testing/docs";
 
-export { findDanglingPaths, findUnusedFields, findUnwatched } from "./testing/wiring";
-export type { DanglingPath, UnusedField, Unwatched } from "./testing/wiring";
+export { findDanglingPaths, findEntryReach, findUnusedFields, findUnwatched } from "./testing/wiring";
+export type { DanglingPath, EntryReach, UnusedField, Unwatched } from "./testing/wiring";
 
 export { findLiterals, findUnmeasured, findUnknownClasses, findUnknownTokens } from "./testing/styling";
 export type { UnknownClass, UnknownToken, Unmeasured } from "./testing/styling";

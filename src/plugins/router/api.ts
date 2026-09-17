@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { tree } from "./internal/tree";
 import type { Host } from "../../kernel/host";
 import type { Kernel, RegisteredRoute } from "../kernel/api";
 
@@ -31,6 +32,9 @@ export type Child = unknown;
 export type Frame = {
     shell: ComponentType;
     missing: ComponentType;
+
+    /** What renders at `/` when no plugin declares it: a redirect to the first route there is. */
+    landing: (to: string) => ComponentType;
 };
 
 /** What the router plugin offers: the tree, built from what plugins declared. */
@@ -43,3 +47,5 @@ export function from(host: Host): Router | undefined
 {
     return host.take<Router>(NAME);
 }
+
+export { tree };

@@ -49,9 +49,13 @@ function recordRouter(routes: readonly RegisteredRoute[])
     };
 
     const kernel = { routes: () => routes } as Kernel;
-    const frame: Frame = { shell: Shell, missing: Missing };
+    const sentTo: string[] = [];
+    const frame: Frame = { shell: Shell, missing: Missing, landing: (to) => { sentTo.push(to); return Page; } };
 
-    return { building, kernel, frame, built, roots, router: () => router };
+    const at = (path: string): Record<string, unknown> | undefined =>
+        built.find((route) => route["path"] === path);
+
+    return { building, kernel, frame, built, roots, sentTo, at, router: () => router };
 }
 
 describe("the route tree", () =>
@@ -62,7 +66,7 @@ describe("the route tree", () =>
 
         tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        expect(spy.built.map((route) => route["path"])).toEqual(["/items", "/items/$id", "/about"]);
+        expect(spy.built.map((route) => route["path"])).toEqual(["/", "/items", "/items/$id", "/about"]);
     });
 
     test("and hangs every one off the root, never off each other", () =>
@@ -83,8 +87,8 @@ describe("the route tree", () =>
 
         tree(spy.kernel, spy.building, spy.frame, () => Guarded);
 
-        expect(spy.built[0]?.["component"]).toBe(Guarded);
-        expect(spy.built[0]?.["component"]).not.toBe(Page);
+        expect(spy.at("/private")?.["component"]).toBe(Guarded);
+        expect(spy.at("/private")?.["component"]).not.toBe(Page);
     });
 
     test("gives the guard the route it is guarding, so it can read `requires`", () =>
@@ -129,7 +133,7 @@ describe("what a route takes from the query", () =>
 
         tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        const validate = spy.built[0]?.["validateSearch"] as (query: Record<string, unknown>) => unknown;
+        const validate = spy.at("/items")?.["validateSearch"] as (query: Record<string, unknown>) => unknown;
 
         expect(validate({ page: "3" })).toEqual({ page: 3 });
         expect(validate({})).toEqual({ page: 1 });
@@ -141,7 +145,7 @@ describe("what a route takes from the query", () =>
 
         tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        const validate = spy.built[0]?.["validateSearch"] as (query: Record<string, unknown>) => unknown;
+        const validate = spy.at("/items")?.["validateSearch"] as (query: Record<string, unknown>) => unknown;
 
         expect(validate({ page: "3", anything: "else" })).toEqual({});
     });
@@ -152,7 +156,7 @@ describe("what a route takes from the query", () =>
 
         tree(spy.kernel, spy.building, spy.frame, () => Page);
 
-        const validate = spy.built[0]?.["validateSearch"] as (query: Record<string, unknown>) => unknown;
+        const validate = spy.at("/items")?.["validateSearch"] as (query: Record<string, unknown>) => unknown;
 
         expect(() => validate({ page: "not a number" })).toThrow();
     });
@@ -175,5 +179,38 @@ describe("reaching the router from another plugin", () =>
         const app = boot(quiet, [kernelPlugin()]);
 
         expect(from(app.host.as("demo"))).toBeUndefined();
+    });
+});
+
+describe("the root of an application", () =>
+{
+    test("is served by the plugin that declares it, with nothing added in front", () =>
+    {
+        const spy = recordRouter([registered("/"), registered("/about")]);
+
+        tree(spy.kernel, spy.building, spy.frame, () => Page);
+
+        expect(spy.built.map((route) => route["path"])).toEqual(["/", "/about"]);
+        expect(spy.sentTo).toEqual([]);
+    });
+
+    test("and is sent to the first route there is where nothing claims it", () =>
+    {
+        const spy = recordRouter([registered("/items"), registered("/about")]);
+
+        tree(spy.kernel, spy.building, spy.frame, () => Page);
+
+        expect(spy.built.map((route) => route["path"])).toEqual(["/", "/items", "/about"]);
+        expect(spy.sentTo).toEqual(["/items"]);
+    });
+
+    test("and carries no root at all where no plugin declares a route", () =>
+    {
+        const spy = recordRouter([]);
+
+        tree(spy.kernel, spy.building, spy.frame, () => Page);
+
+        expect(spy.built).toEqual([]);
+        expect(spy.sentTo).toEqual([]);
     });
 });

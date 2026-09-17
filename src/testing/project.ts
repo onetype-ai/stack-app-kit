@@ -1,15 +1,15 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
 import { findImportViolations, findShadowedExports, findSharedNames, findSharedVocabulary, findSplitVocabulary } from "./boundaries";
-import { findComments, findMissingDocs, findOversizedDocs, findUnexplainedPlugins } from "./docs";
+import { findComments, findMissingDocs, findOversizedDocs, findUndocumentedKeys, findUnexplainedPlugins } from "./docs";
 import { findLiterals, findUnknownClasses, findUnknownTokens, findUnmeasured } from "./styling";
-import { findDanglingPaths, findUnusedFields, findUnwatched } from "./wiring";
+import { findDanglingPaths, findEntryReach, findUnusedFields, findUnwatched } from "./wiring";
 
 /** One thing a run found wrong, tagged with the check that found it and phrased for a reader. */
 export type ProjectProblem = {
-    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed";
+    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed" | "reach" | "undocumented";
     message: string;
 };
 
@@ -34,6 +34,13 @@ export type ProjectCheckOptions = {
 
     /** The size a document may reach before it has outgrown its point. */
     maxCharacters?: number;
+
+    /** The published type declaring `Definition`, read to list the keys a plugin may declare. */
+    contract?: string;
+
+    /** Documents a worked example fills, each named, and the ceiling they are still held to. */
+    worked?: readonly string[];
+    workedMaxCharacters?: number;
 
     /** Where style lives outside a stylesheet, as paths under `src`. */
     styleIn?: readonly string[];
@@ -132,6 +139,11 @@ export const Project = {
                 message: `${one.file} resolves "${one.alias}" to ${one.target}, and nothing is there. Nothing says so until the first import of it, and then it reads as a missing module rather than a path written ahead of its file.`,
             })),
 
+            ...findEntryReach(root).map((one) => ({
+                check: "reach" as const,
+                message: `${one.file} imports through "${one.alias}", which belongs to a plugin. A root that names one stops being a root: removing that plugin then breaks the boot rather than removing a capability.`,
+            })),
+
             ...overBudget(root, checking.budgets ?? {}),
 
             ...documents(root, checking),
@@ -160,6 +172,19 @@ export const Project = {
     },
 };
 
+function everyDocument(folder: string): string
+{
+    if (!existsSync(folder))
+    {
+        return "";
+    }
+
+    return readdirSync(folder, { recursive: true, withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+        .map((entry) => readFileSync(join(entry.parentPath, entry.name), "utf8"))
+        .join("\n");
+}
+
 function documents(root: string, checking: ProjectCheckOptions): ProjectProblem[]
 {
     const docsFolder = checking.docs ?? join(root, "#docs");
@@ -171,15 +196,33 @@ function documents(root: string, checking: ProjectCheckOptions): ProjectProblem[
     }
 
     return [
-        ...findOversizedDocs(docsFolder, checking.maxCharacters).map((doc) => ({
-            check: "oversized" as const,
-            message: `${doc.path.replace(`${root}/`, "")} is ${String(doc.size)} characters, past the size a document keeps its point at.`,
-        })),
+        ...findOversizedDocs(docsFolder, checking.maxCharacters)
+            .filter((doc) => !(checking.worked ?? []).some((name) => doc.path.endsWith(name)))
+            .map((doc) => ({
+                check: "oversized" as const,
+                message: `${doc.path.replace(`${root}/`, "")} is ${String(doc.size)} characters, past the size a document keeps its point at.`,
+            })),
+
+        ...((checking.worked ?? []).length === 0
+            ? []
+            : findOversizedDocs(docsFolder, checking.workedMaxCharacters ?? 3000)
+                .filter((doc) => (checking.worked ?? []).some((name) => doc.path.endsWith(name)))
+                .map((doc) => ({
+                    check: "oversized" as const,
+                    message: `${doc.path.replace(`${root}/`, "")} is ${String(doc.size)} characters. A worked example may run long; this one has run past even that.`,
+                }))),
 
         ...findMissingDocs(root, required).map((path) => ({
             check: "missing" as const,
             message: `${path} is absent or says nothing, and every application is asked for it.`,
         })),
+
+        ...(checking.contract === undefined
+            ? []
+            : findUndocumentedKeys(checking.contract, everyDocument(docsFolder)).map((key: string) => ({
+                check: "undocumented" as const,
+                message: `\`${key}\` is a key a contract accepts, and no document writes it. An author reading these never learns it exists.`,
+            }))),
     ];
 }
 

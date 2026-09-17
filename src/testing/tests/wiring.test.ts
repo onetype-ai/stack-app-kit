@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { findDanglingPaths, findUnusedFields } from "../wiring";
+import { findDanglingPaths, findEntryReach, findUnusedFields } from "../wiring";
 
 let root = "";
 
@@ -166,5 +166,66 @@ describe("an alias resolving to nothing", () =>
         }));
 
         expect(dead).toEqual([]);
+    });
+});
+
+describe("what a composition root reaches through", () =>
+{
+    test("is refused where it imports a plugin alias, since a root naming one stops being a root", () =>
+    {
+        const at = mkdtempSync(join(tmpdir(), "reach-"));
+
+        try
+        {
+            mkdirSync(join(at, "src"), { recursive: true });
+            writeFileSync(join(at, "src", "main.tsx"), 'import { Notes } from "@plugins/notes";\n');
+
+            const found = findEntryReach(at);
+
+            expect(found).toHaveLength(1);
+            expect(found[0]?.alias).toBe("@plugins/");
+        }
+        finally
+        {
+            rmSync(at, { recursive: true, force: true });
+        }
+    });
+
+    test("and left alone where it imports only what the kit and its own kernel offer", () =>
+    {
+        const at = mkdtempSync(join(tmpdir(), "reach-"));
+
+        try
+        {
+            mkdirSync(join(at, "src"), { recursive: true });
+            writeFileSync(join(at, "src", "main.tsx"), 'import { Mount } from "./kernel";\n');
+
+            expect(findEntryReach(at)).toEqual([]);
+        }
+        finally
+        {
+            rmSync(at, { recursive: true, force: true });
+        }
+    });
+
+    test("and reads what sits beside it too, so a kernel file reaching in is caught the same way", () =>
+    {
+        const at = mkdtempSync(join(tmpdir(), "reach-"));
+
+        try
+        {
+            mkdirSync(join(at, "src", "kernel"), { recursive: true });
+            writeFileSync(join(at, "src", "main.tsx"), "");
+            writeFileSync(join(at, "src", "kernel", "mount.ts"), 'import { Notes } from "@utils/notes";\n');
+
+            const found = findEntryReach(at);
+
+            expect(found).toHaveLength(1);
+            expect(found[0]?.file).toContain("mount.ts");
+        }
+        finally
+        {
+            rmSync(at, { recursive: true, force: true });
+        }
     });
 });
