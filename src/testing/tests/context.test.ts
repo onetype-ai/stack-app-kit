@@ -285,3 +285,42 @@ describe("a plugin saying what a viewer may do has moved", () =>
         expect(heard).toEqual([1]);
     });
 });
+
+describe("the key a fake answers on", () =>
+{
+    test("carries the query, because that is the address the transport dials", async () =>
+    {
+        const answered = await fakeContext({ "GET /courts?take=3": { total: 3 } })
+            .ctx.http.get("/courts", { query: { take: 3 } });
+
+        expect(answered).toEqual({ total: 3 });
+    });
+
+    test("and the path alone answers nothing once a call carries one", async () =>
+    {
+        const asking = fakeContext({ "GET /courts": { total: 3 } })
+            .ctx.http.get("/courts", { query: { take: 3 } });
+
+        await expect(asking).rejects.toThrow(/GET \/courts\?take=3/);
+    });
+
+    test("naming what it dialled, so the key to write is in the refusal", async () =>
+    {
+        const asking = fakeContext({}).ctx.http.get("/courts", { query: { take: 3 } });
+
+        await expect(asking).rejects.toThrow(/query and all/);
+    });
+
+    test("and parameters land in the order the object wrote them, never sorted", async () =>
+    {
+        const answered = await fakeContext({ "GET /courts?take=3&from=a": { total: 3 } })
+            .ctx.http.get("/courts", { query: { take: 3, from: "a" } });
+
+        expect(answered).toEqual({ total: 3 });
+
+        const sorted = fakeContext({ "GET /courts?from=a&take=3": { total: 3 } })
+            .ctx.http.get("/courts", { query: { take: 3, from: "a" } });
+
+        await expect(sorted).rejects.toThrow(/take=3&from=a/);
+    });
+});

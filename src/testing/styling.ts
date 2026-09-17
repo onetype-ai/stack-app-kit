@@ -117,6 +117,11 @@ export function findUnknownClasses(root: string): UnknownClass[]
 
 function walk(at: string): string[]
 {
+    if (!existsSync(at))
+    {
+        return [];
+    }
+
     const files: string[] = [];
 
     for (const entry of readdirSync(at))

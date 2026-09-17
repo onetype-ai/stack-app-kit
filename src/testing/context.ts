@@ -29,7 +29,11 @@ export type FakeResponse = {
     body?: unknown;
 };
 
-/** What routes a fake answers, keyed `"GET /parts"`. */
+/**
+ * What routes a fake answers, keyed by the address the transport dials:
+ * `"GET /parts"`, or `"GET /parts?take=3&from=a"` where the call carries a
+ * query. Parameters land in the order the object wrote them, not sorted.
+ */
 export type Answers = Readonly<Record<string, unknown>>;
 
 /** What a fake was given, beyond its answers. */

@@ -859,7 +859,9 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 
 ## Types
 
-> What routes a fake answers, keyed `"GET /parts"`.
+> What routes a fake answers, keyed by the address the transport dials:
+> `"GET /parts"`, or `"GET /parts?take=3&from=a"` where the call carries a
+> query. Parameters land in the order the object wrote them, not sorted.
 ### Answers = Readonly<Record<string, unknown>>
 
 > Where a comment sits: the file, and the line it was written on.

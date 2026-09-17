@@ -1,5 +1,17 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import type { Dirent } from "node:fs";
 import { join, relative, sep } from "node:path";
+
+function entriesOf(folder: string, recursive = false): Dirent[]
+{
+    if (!existsSync(folder))
+    {
+        return [];
+    }
+
+    return readdirSync(folder, { withFileTypes: true, recursive });
+}
+
 
 /** One import that crossed from one plugin into another, as the specifier wrote it. */
 export type ImportEdge = {
@@ -23,7 +35,7 @@ type PluginImports = {
 /** Every crossing under `root` that was undeclared, reached past `@plugins/<name>`, looped, or sat in a folder with no plugin.ts. */
 export function findImportViolations(root: string): ImportViolation[]
 {
-    const names = readdirSync(root, { withFileTypes: true })
+    const names = entriesOf(root)
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name);
 
@@ -58,7 +70,7 @@ function files(root: string, name: string): { path: string; source: string }[]
 {
     const pluginFolder = join(root, name);
 
-    return readdirSync(pluginFolder, { withFileTypes: true, recursive: true })
+    return entriesOf(pluginFolder, true)
         .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
         .filter((entry) => !`${entry.parentPath}/`.includes(`${sep}tests${sep}`))
         .map((entry) =>
@@ -193,7 +205,7 @@ export function findSharedNames(root: string): DuplicateSignature[]
 {
     const owners = new Map<string, { plugins: Set<string>; files: string[] }>();
 
-    for (const plugin of readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()))
+    for (const plugin of entriesOf(root).filter((entry) => entry.isDirectory()))
     {
         const utilsFolder = join(root, plugin.name, "utils");
 
@@ -202,7 +214,7 @@ export function findSharedNames(root: string): DuplicateSignature[]
             continue;
         }
 
-        for (const entry of readdirSync(utilsFolder, { withFileTypes: true, recursive: true }))
+        for (const entry of entriesOf(utilsFolder, true))
         {
             if (!entry.isFile() || !/\.tsx?$/.test(entry.name))
             {
@@ -242,9 +254,9 @@ export function findSplitVocabulary(root: string): SplitVocabulary[]
 {
     const byName = new Map<string, { plugin: string; file: string; values: string[] }[]>();
 
-    for (const plugin of readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()))
+    for (const plugin of entriesOf(root).filter((entry) => entry.isDirectory()))
     {
-        for (const entry of readdirSync(join(root, plugin.name), { withFileTypes: true, recursive: true }))
+        for (const entry of entriesOf(join(root, plugin.name), true))
         {
             if (!entry.isFile() || !/\.tsx?$/.test(entry.name) || entry.parentPath.includes("tests"))
             {
@@ -312,11 +324,11 @@ export function findSharedVocabulary(root: string): DuplicateSignature[]
 {
     const owners = new Map<string, { plugins: Set<string>; files: string[] }>();
 
-    for (const plugin of readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()))
+    for (const plugin of entriesOf(root).filter((entry) => entry.isDirectory()))
     {
         const pluginFolder = join(root, plugin.name);
 
-        for (const entry of readdirSync(pluginFolder, { withFileTypes: true, recursive: true }))
+        for (const entry of entriesOf(pluginFolder, true))
         {
             if (!entry.isFile() || !/\.tsx?$/.test(entry.name))
             {
@@ -360,7 +372,7 @@ export type ShadowedExport = {
 /** A component a plugin wrote for itself, where one it depends on exports the same name. */
 export function findShadowedExports(root: string): ShadowedExport[]
 {
-    const names = readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+    const names = entriesOf(root).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
     const exported = new Map<string, Set<string>>();
 
     for (const name of names)
@@ -407,7 +419,7 @@ export function findShadowedExports(root: string): ShadowedExport[]
             .map((one) => one.trim().replace(/["']/g, ""))
             .filter((one) => one !== "");
 
-        for (const entry of readdirSync(components, { withFileTypes: true }))
+        for (const entry of entriesOf(components))
         {
             if (!entry.isDirectory())
             {

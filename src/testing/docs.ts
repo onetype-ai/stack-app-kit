@@ -134,6 +134,11 @@ export function findPrivateComments(source: string, dist: string): PrivateCommen
 
     const walk = (folder: string): void =>
     {
+        if (!existsSync(folder))
+        {
+            return;
+        }
+
         for (const entry of readdirSync(folder, { withFileTypes: true }))
         {
             const path = join(folder, entry.name);
@@ -218,6 +223,11 @@ export function findComments(source: string): Commented[]
 
     const walk = (folder: string): void =>
     {
+        if (!existsSync(folder))
+        {
+            return;
+        }
+
         for (const entry of readdirSync(folder, { withFileTypes: true }))
         {
             const path = join(folder, entry.name);

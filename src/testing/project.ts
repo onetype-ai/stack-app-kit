@@ -1,6 +1,18 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import type { Dirent } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
+
+function entriesOf(folder: string, recursive = false): Dirent[]
+{
+    if (!existsSync(folder))
+    {
+        return [];
+    }
+
+    return readdirSync(folder, { withFileTypes: true, recursive });
+}
+
 
 import { findImportViolations, findShadowedExports, findSharedNames, findSharedVocabulary, findSplitVocabulary } from "./boundaries";
 import { findComments, findMissingDocs, findOversizedDocs, findUndocumentedKeys, findUnexplainedPlugins } from "./docs";
@@ -179,7 +191,7 @@ function everyDocument(folder: string): string
         return "";
     }
 
-    return readdirSync(folder, { recursive: true, withFileTypes: true })
+    return entriesOf(folder, true)
         .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
         .map((entry) => readFileSync(join(entry.parentPath, entry.name), "utf8"))
         .join("\n");

@@ -440,3 +440,37 @@ describe("a key the contract accepts", () =>
         expect(Project.findAll({ root: at }).filter((problem) => problem.check === "undocumented")).toEqual([]);
     });
 });
+
+describe("a project with no plugins yet", () =>
+{
+    test("answers what it found rather than throwing: git keeps no empty folder, so a fresh clone has no src/plugins at all", () =>
+    {
+        const at = mkdtempSync(join(tmpdir(), "empty-"));
+
+        try
+        {
+            expect(() => Project.findAll({ root: at })).not.toThrow();
+        }
+        finally
+        {
+            rmSync(at, { recursive: true, force: true });
+        }
+    });
+
+    test("and says nothing about boundaries, because there are none to cross", () =>
+    {
+        const at = mkdtempSync(join(tmpdir(), "empty-"));
+
+        try
+        {
+            const structural = Project.findAll({ root: at })
+                .filter((problem) => problem.check === "boundaries" || problem.check === "unexplained");
+
+            expect(structural).toEqual([]);
+        }
+        finally
+        {
+            rmSync(at, { recursive: true, force: true });
+        }
+    });
+});
