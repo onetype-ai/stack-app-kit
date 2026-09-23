@@ -23,6 +23,9 @@ export type StartOptions = {
 
     /** What the bundler exposes (`import.meta.env`): `VITE_<PLUGIN>__<FIELD>` reaches that plugin's config, under whatever `config` gives it. */
     environment?: Readonly<Record<string, unknown>> | undefined;
+
+    /** The page holds prerendered markup (`prerenderedState() !== undefined`): the router loads before `start` answers, so `hydrateRoot` matches what the server wrote. */
+    prerendered?: boolean | undefined;
     permissions?: PermissionSource | undefined;
     log?: Logger | undefined;
 

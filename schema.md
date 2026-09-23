@@ -576,6 +576,8 @@
     config?: Readonly<Record<string, unknown>> | undefined
     // What the bundler exposes (`import.meta.env`): `VITE_<PLUGIN>__<FIELD>` reaches that plugin's config, under whatever `config` gives it.
     environment?: Readonly<Record<string, unknown>> | undefined
+    // The page holds prerendered markup (`prerenderedState() !== undefined`): the router loads before `start` answers, so `hydrateRoot` matches what the server wrote.
+    prerendered?: boolean | undefined
     permissions?: PermissionSource | undefined
     log?: Logger | undefined
     // Which plugin may answer what the viewer holds; any other declaring `grants` is refused. Left out, the one plugin declaring `grants` is that plugin, and may own permissions under its own name.
@@ -1316,7 +1318,7 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     state?: (() => unknown) | undefined
     // Paths robots.txt asks crawlers to leave alone: the client-only part of the site.
     disallow?: readonly string[] | undefined
-    // Where the untouched template is written (`spa.html` by default), for the host to serve every path with no page of
+    // Where the untouched template is written (`_shell.html` by default), for the host to serve every path with no page of
     // its own. Prerendering `/` rewrites `index.html`, so falling back to it would hand a client route the home page.
     fallback?: string | undefined
     // Writes one file; the file system by default, a map in a test.

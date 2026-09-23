@@ -10,6 +10,7 @@ import { transportPlugin } from "../../transport/plugin";
 import { tree } from "../../router/api";
 import type { StartOptions, StartedApp } from "../api";
 import { client } from "./client";
+import { readyToHydrate } from "./hydration";
 import { configFor } from "../../settings/api";
 
 /** Brings an application up: transport, then kernel, then plugins. */
@@ -131,20 +132,25 @@ export async function start(given: StartOptions): Promise<StartedApp>
     logger?.info("transport ready", { channel });
 
     const building = starting.router;
+    const router = building === undefined
+        ? undefined
+        : tree(kernel, building.building, {
+            shell: building.wrap(kernel.frame(), building.outlet),
+            missing: building.missing,
+            landing: building.landing,
+        }, building.guard);
+
+    if (starting.prerendered === true)
+    {
+        await readyToHydrate(router);
+    }
 
     return {
         kernel,
         http: client(carrier),
         realtime,
         channel,
-
-        router: building === undefined
-            ? undefined
-            : tree(kernel, building.building, {
-                shell: building.wrap(kernel.frame(), building.outlet),
-                missing: building.missing,
-                landing: building.landing,
-            }, building.guard),
+        router,
 
         stop: async (): Promise<void> =>
         {

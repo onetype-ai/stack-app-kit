@@ -32,7 +32,7 @@ export type PrerenderOptions = {
     disallow?: readonly string[] | undefined;
 
     /**
-     * Where the untouched template is written (`spa.html` by default), for the host to serve every path with no page of
+     * Where the untouched template is written (`_shell.html` by default), for the host to serve every path with no page of
      * its own. Prerendering `/` rewrites `index.html`, so falling back to it would hand a client route the home page.
      */
     fallback?: string | undefined;
@@ -124,7 +124,7 @@ export async function prerender(options: PrerenderOptions): Promise<readonly Pre
         problems.push(`the template must hold both ${headMarker} and ${appMarker}`);
     }
 
-    const fallback = options.fallback ?? "spa.html";
+    const fallback = options.fallback ?? "_shell.html";
 
     if (!/^[\w-]+\.html$/.test(fallback) || fallback === "index.html")
     {
@@ -147,7 +147,7 @@ export async function prerender(options: PrerenderOptions): Promise<readonly Pre
         await page.load();
 
         const markup = renderToString(await options.render(page.path));
-        const head = renderTags(page.tags) + (options.state === undefined ? "" : `\n${stateScript(options.state())}`);
+        const head = `${renderTags(page.tags)}\n${stateScript(options.state?.())}`;
         const file = join(options.outDir, page.path, "index.html");
 
         await write(file, options.template.replace(headMarker, () => head).replace(appMarker, () => markup));

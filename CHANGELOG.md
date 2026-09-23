@@ -30,7 +30,10 @@ Additive, except `settings.refusingSecrets`, which is new here.
     validated `head` (canonical, robots, Open Graph, Twitter, JSON-LD,
     hreflang);
   - `prerender()` writes each page, `sitemap.xml`, `robots.txt` and the
-    untouched template as `spa.html`, the host's fallback for client routes;
+    untouched template as `_shell.html`, served for every path without a
+    page of its own;
+  - `start({ prerendered: true })` loads the router as the server rendered
+    it before answering, so `hydrateRoot` matches;
   - `RouteGuard` applies the head in the browser (pass `params`), replacing
     what the prerender wrote;
   - `prerenderedState()` from `./react` reads back the cache state a

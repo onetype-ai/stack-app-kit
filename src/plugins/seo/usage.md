@@ -26,13 +26,13 @@ await prerender({ app, origin: "https://shop.example", outDir: "dist", template,
 ```
 
 - `template` holds `<!--kit-head-->` and `<!--kit-app-->`; a page lands at
-  `<outDir><path>/index.html`, the untouched template at `spa.html`
-  (`fallback`): serve it for every path without a page.
+  `<outDir><path>/index.html`, the untouched template at `_shell.html`
+  (`fallback`): serve files by path, the shell for every other path.
 - `head` is validated and escaped; `title` falls back to the route's.
-- The browser fills its cache with `hydrate(queryClient,
-  prerenderedState())`, then renders with `createRoot`: the page is for
-  crawlers and first paint, and a router hydrates only markup it wrote
-  itself, with its own state (phase 2).
+- The browser: `hydrate(queryClient, prerenderedState())`, then
+  `start({ prerendered: prerenderedState() !== undefined, … })` loads the
+  router first, then `hydrateRoot` with the same tree `render` returned
+  (StrictMode and providers included).
 - A page with `robots: { index: false }` stays out of the sitemap.
 - `RouteGuard` replaces the prerendered head on each navigation, never a tag
   it did not write; pass it the router's `params`.

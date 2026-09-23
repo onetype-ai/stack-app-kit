@@ -62,16 +62,17 @@ describe("prerendering", () =>
             { path: "/account", title: "Account", component: page },
         ]);
 
-        expect([...files.keys()].sort()).toEqual(["dist/index.html", "dist/robots.txt", "dist/sitemap.xml", "dist/spa.html"]);
+        expect([...files.keys()].sort()).toEqual(["dist/_shell.html", "dist/index.html", "dist/robots.txt", "dist/sitemap.xml"]);
         expect(files.get("dist/index.html")).toContain("<title>Shop</title>\n<meta name=\"description\" content=\"Chairs\" data-kit-head>");
+        expect(files.get("dist/index.html")).toContain("<script type=\"application/json\" id=\"kit-state\">null</script>");
         expect(files.get("dist/index.html")).toContain("<div id=\"root\"><p>page at <!-- -->/</p></div>");
     });
 
-    test("keeps the untouched template apart, so a client route never falls back to the prerendered home page", async () =>
+    test("keeps the untouched shell apart, so prerendering / leaves a client-only route rendering its own page", async () =>
     {
         const files = await written([{ path: "/", title: "Shop", component: page, render: "prerender" }]);
 
-        expect(files.get("dist/spa.html")).toBe("<html><head></head><body><div id=\"root\"></div></body></html>");
+        expect(files.get("dist/_shell.html")).toBe("<html><head></head><body><div id=\"root\"></div></body></html>");
         expect(files.get("dist/index.html")).toContain("page at");
     });
 
