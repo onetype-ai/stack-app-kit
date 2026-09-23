@@ -1,7 +1,7 @@
 import { Component, createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ComponentType, type FunctionComponent, type ReactNode } from "react";
 
 import { KernelFault, checkHead, tagsOf } from "../api";
-import type { Context, FallbackProps, HeadTag, RegisteredRoute, RouteParams } from "../api";
+import type { Context, FallbackProps, HeadTag, PluginLocale, RegisteredRoute, RouteParams } from "../api";
 import type { Kernel } from "../internal/kernel";
 
 export { StartupFailure } from "./StartupFailure";
@@ -341,6 +341,16 @@ export function RouteGuard({ route, send, params = {} }: { route: RegisteredRout
             <route.component />
         </Boundary>
     );
+}
+
+/** A plugin's view of the viewer's locale, re-rendering the component whenever any plugin changes it. */
+export function useLocale(plugin: string): PluginLocale
+{
+    const locale = useKernel().context(plugin).locale;
+
+    useSyncExternalStore(locale.watch, locale.current, locale.current);
+
+    return locale;
 }
 
 /** What a prerender wrote for the cache to hydrate from (`<script id="kit-state">`), or undefined on a page the browser rendered first. */

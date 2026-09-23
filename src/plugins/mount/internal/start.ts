@@ -99,6 +99,7 @@ export async function start(given: StartOptions): Promise<StartedApp>
         ...(starting.config !== undefined && { config: starting.config }),
         ...(starting.permissions !== undefined && { permissions: starting.permissions }),
         ...(starting.grantedBy !== undefined && { grantedBy: starting.grantedBy }),
+        ...(starting.locale !== undefined && { locale: starting.locale }),
         ...(logger !== undefined && {
             log: (level, plugin, line, extra) =>
             {

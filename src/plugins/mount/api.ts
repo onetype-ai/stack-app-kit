@@ -1,6 +1,6 @@
 import type { ComponentType, FunctionComponent, ReactNode } from "react";
 
-import type { Cache, HttpClient, Kernel, Logger, Plugin as AppPlugin, Realtime, PermissionSource, RegisteredRoute } from "../kernel/api";
+import type { Cache, HttpClient, Kernel, LocaleOptions, Logger, Plugin as AppPlugin, Realtime, PermissionSource, RegisteredRoute } from "../kernel/api";
 import type { RouterOptions } from "../router/api";
 import type { TransportOptions as TransportOptions } from "../transport/api";
 
@@ -23,6 +23,9 @@ export type StartOptions = {
 
     /** What the bundler exposes (`import.meta.env`): `VITE_<PLUGIN>__<FIELD>` reaches that plugin's config, under whatever `config` gives it. */
     environment?: Readonly<Record<string, unknown>> | undefined;
+
+    /** The locales plugins' messages are in, and the viewer's: `current: locale.negotiate(navigator.languages, supported, fallback, stored)`. */
+    locale?: LocaleOptions | undefined;
 
     /** The page holds prerendered markup (`prerenderedState() !== undefined`): the router loads before `start` answers, so `hydrateRoot` matches what the server wrote. */
     prerendered?: boolean | undefined;

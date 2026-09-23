@@ -1,3 +1,5 @@
+import { createLocale, localeProblems } from "./locale";
+import type { LocaleOptions } from "./locale";
 import type { Cache, HttpClient, Context, FallbackProps, Pages, Plugin, Realtime, Route } from "./contract";
 import { events, type ListenerFailure } from "./events";
 import { KernelFault } from "./faults";
@@ -31,6 +33,9 @@ export type KernelOptions = {
     /** Which plugin may answer what the viewer holds; any other declaring `grants` is refused. Left out, the one plugin declaring `grants` is that plugin, and may own permissions under its own name. */
     grantedBy?: string;
     log?: LogFn;
+
+    /** The locales plugins' messages are in; `en` alone when left out. */
+    locale?: LocaleOptions;
 };
 
 /** A route, and the plugin it came from. */
@@ -161,6 +166,11 @@ export function createKernel(options: KernelOptions): Kernel
             return givenHttp.upload(path, body, request);
         },
     };
+    const localeOptions: LocaleOptions = options.locale ?? { supported: ["en"], fallback: "en" };
+    const locales = createLocale(localeOptions, (message) =>
+    {
+        throw new KernelFault("INVALID_CONFIG", `locale: ${message}`);
+    });
     const givenCache = options.cache ?? noCache;
     const cache: Cache = {
         invalidate: (key) =>
@@ -320,6 +330,8 @@ export function createKernel(options: KernelOptions): Kernel
                 },
             },
 
+            locale: locales.forPlugin(registry.get(plugin)?.definition.messages),
+
             session: {
                 changed: () =>
                 {
@@ -403,7 +415,11 @@ export function createKernel(options: KernelOptions): Kernel
                 return;
             }
 
-            const problems = validate(options.plugins, config, options.permissions !== undefined, options.grantedBy);
+            const problems = [
+                ...validate(options.plugins, config, options.permissions !== undefined, options.grantedBy),
+                ...options.plugins.flatMap((plugin) => localeProblems(plugin.name, plugin.definition.messages, localeOptions)
+                    .map((message) => ({ code: "INVALID_CONFIG" as const, plugin: plugin.name, message }))),
+            ];
 
             if (problems.length > 0)
             {

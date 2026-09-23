@@ -23,6 +23,11 @@
 - `prerenderOnBuild` makes `vite preview` serve as the documented host: a
   page's own `index.html`, and `_shell.html` for every other page path, so a
   client route no longer hydrates against the prerendered home page.
+- `locale`: `locale.negotiate(accepted, supported, fallback, chosen?)`, the
+  same function and case table as the api kit; a plugin's `messages` by
+  locale (refused at start when the fallback lacks a key), `ctx.locale`
+  (`text` with `{holes}` and plural forms, `format.number/date`, `change`,
+  `watch`), `start({ locale })` and `useLocale(plugin)`.
 - `./react`: `AppBoundary` (a page with a retry instead of a blank screen,
   and `onError` to log what it caught) and `StreamedText` (busy while it
   grows, announced once when it completes, never for text that did not

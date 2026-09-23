@@ -39,6 +39,7 @@ export type {
 export { declarationsOf } from "./internal/declared";
 export { checkHead, renderTags, tagsOf } from "./internal/head";
 export type { Head, HeadProblem, HeadTag } from "./internal/head";
+export type { LocaleOptions, LocaleValues, Message, Messages, PluginLocale } from "./internal/locale";
 export type {
     Declaration,
     DeclaredCommand,

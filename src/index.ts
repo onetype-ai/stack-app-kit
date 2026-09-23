@@ -46,6 +46,10 @@ export type {
     RouteParams,
     Head,
     HeadTag,
+    LocaleOptions,
+    Message,
+    Messages,
+    PluginLocale,
     DescribableWithSchema,
     Slot,
     PermissionSource,
@@ -64,6 +68,8 @@ export { routerPlugin } from "./plugins/router/plugin";
 export * as logs from "./plugins/logs/api";
 export { logsPlugin } from "./plugins/logs/plugin";
 export * as e2e from "./plugins/e2e/api";
+export * as locale from "./plugins/locale/api";
+export { localePlugin } from "./plugins/locale/plugin";
 export { e2ePlugin } from "./plugins/e2e/plugin";
 export * as seo from "./plugins/seo/api";
 export * as server from "./plugins/server/api";

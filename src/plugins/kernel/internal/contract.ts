@@ -1,4 +1,5 @@
 import type { Head } from "./head";
+import type { Messages, PluginLocale } from "./locale";
 import type { ComponentType, FunctionComponent, ReactNode } from "react";
 import type { z } from "zod";
 
@@ -206,6 +207,9 @@ export type Context<Config = unknown, Services = unknown> = {
         run: (command: string, input: unknown) => Promise<void>;
     };
 
+    /** The viewer's language: this plugin's own messages, numbers and dates formatted for it, and a change that reaches every plugin. */
+    locale: PluginLocale;
+
     session: {
         /**
          * Says who is looking, or at what, changed (sign-in, sign-out, a workspace switch), in the order that leaves nothing
@@ -262,6 +266,9 @@ export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown>
     participates?: Readonly<Record<string, Participant<Context<z.infer<Schema>, Given<Services>>>>> | undefined;
 
     commands?: Readonly<Record<string, Command<Context<z.infer<Schema>, Given<Services>>>>> | undefined;
+
+    /** This plugin's text by locale, then key: `{ en: { empty: "No items yet" } }`. The fallback locale holds every key; `ctx.locale.text(key)` reads them. */
+    messages?: Messages | undefined;
 
     /** What this plugin adds to the headers of every request the kit makes: asked per request, never sent outside `baseUrl`. */
     sends?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => Readonly<Record<string, string>>) | undefined;

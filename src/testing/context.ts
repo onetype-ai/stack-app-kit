@@ -335,6 +335,17 @@ export function fakeContext<Config = unknown, Services = unknown>(
             },
         },
 
+        locale: {
+            current: () => "en",
+            text: (key, values = {}) => Object.keys(values).length === 0 ? key : `${key} ${JSON.stringify(values)}`,
+            format: {
+                number: (value) => String(value),
+                date: (value) => new Date(value).toISOString(),
+            },
+            change: () => {},
+            watch: () => () => {},
+        },
+
         session: {
             changed: () =>
             {

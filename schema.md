@@ -40,6 +40,9 @@
 > The kernel plugin: what lets an application declare plugins of its own.
 ### kernelPlugin(): HostPlugin
 
+> Offers the negotiation both kits share: one tag from what the viewer accepts.
+### localePlugin(): HostPlugin
+
 > Offers the leveled logger and the shipper that sends a browser's logs home.
 ### logsPlugin(): HostPlugin
 
@@ -175,6 +178,8 @@
     commands: {
     run: (command: string, input: unknown) => Promise<void>
     }
+    // The viewer's language: this plugin's own messages, numbers and dates formatted for it, and a change that reaches every plugin.
+    locale: PluginLocale
     session: {
     // Says who is looking, or at what, changed (sign-in, sign-out, a workspace switch), in the order that leaves nothing
     // stale: the cache clears (when the one given can), every guard asks again, and the socket dials the address as it reads now.
@@ -267,6 +272,8 @@
     hooks?: Readonly<Record<string, Hook>> | undefined
     participates?: Readonly<Record<string, Participant<Context<z.infer<Schema>, Given<Services>>>>> | undefined
     commands?: Readonly<Record<string, Command<Context<z.infer<Schema>, Given<Services>>>>> | undefined
+    // This plugin's text by locale, then key: `{ en: { empty: "No items yet" } }`. The fallback locale holds every key; `ctx.locale.text(key)` reads them.
+    messages?: Messages | undefined
     // What this plugin adds to the headers of every request the kit makes: asked per request, never sent outside `baseUrl`.
     sends?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => Readonly<Record<string, string>>) | undefined
     setup?: ((ctx: Context<z.infer<Schema>, Given<Services>>) => void | Promise<void>) | undefined
@@ -414,6 +421,8 @@
     // Which plugin may answer what the viewer holds; any other declaring `grants` is refused. Left out, the one plugin declaring `grants` is that plugin, and may own permissions under its own name.
     grantedBy?: string
     log?: LogFn
+    // The locales plugins' messages are in; `en` alone when left out.
+    locale?: LocaleOptions
 
 ### Listener
     who: string
@@ -430,6 +439,13 @@
     error: unknown
     atMs: number
 
+> Which locales the application speaks, and the one every plugin's messages must be complete in.
+### LocaleOptions
+    supported: readonly string[]
+    fallback: string
+    // The viewer's locale at start: what `locale.negotiate` answered. The fallback when left out.
+    current?: string | undefined
+
 > Where a line goes. The application decides; a plugin never writes directly.
 ### LogFn = (level: "debug" | "info" | "warn" | "error", plugin: string, line: string, about?: Readonly<Record<string, unknown>>) => void
 
@@ -439,6 +455,13 @@
     info: (line: string, about?: Readonly<Record<string, unknown>>) => void
     warn: (line: string, about?: Readonly<Record<string, unknown>>) => void
     error: (line: string, about?: Readonly<Record<string, unknown>>) => void
+
+> One message: plain text with `{name}` holes, or plural forms chosen by `count` through `Intl.PluralRules`.
+### Message = string | (Readonly<Partial<Record<Intl.LDMLPluralRule, string>>> &
+    other: string
+
+> A plugin's messages: by locale tag, then by key. The fallback locale holds every key.
+### Messages = Readonly<Record<string, Readonly<Record<string, Message>>>>
 
 > One thing to render in a slot, and what it needs to be seen.
 ### MountedContribution = SlotContribution &
@@ -467,6 +490,19 @@
 ### Plugin
     name: string
     definition: Definition
+
+> What a plugin reads its language through.
+### PluginLocale
+    current: () => string
+    text: (key: string, values?: LocaleValues) => string
+    format: {
+    number: (value: number, options?: Intl.NumberFormatOptions) => string
+    date: (value: Date | number, options?: Intl.DateTimeFormatOptions) => string
+    }
+    // Changes the viewer's locale for every plugin; one outside `supported` is refused.
+    change: (tag: string) => void
+    // Runs `notify` on every change. Returns a stop.
+    watch: (notify: () => void) => () => void
 
 > What a bundler's eager glob returns.
 ### PluginModules = Readonly<Record<string,
@@ -606,6 +642,8 @@
     config?: Readonly<Record<string, unknown>> | undefined
     // What the bundler exposes (`import.meta.env`): `VITE_<PLUGIN>__<FIELD>` reaches that plugin's config, under whatever `config` gives it.
     environment?: Readonly<Record<string, unknown>> | undefined
+    // The locales plugins' messages are in, and the viewer's: `current: locale.negotiate(navigator.languages, supported, fallback, stored)`.
+    locale?: LocaleOptions | undefined
     // The page holds prerendered markup (`prerenderedState() !== undefined`): the router loads before `start` answers, so `hydrateRoot` matches what the server wrote.
     prerendered?: boolean | undefined
     permissions?: PermissionSource | undefined
@@ -675,6 +713,23 @@ Imported whole, then reached through the name: `import { e2e } from "@onetype/st
 
 > What this plugin offers itself as.
 ### e2e.NAME = "e2e"
+
+## locale
+
+Imported whole, then reached through the name: `import { locale } from "@onetype/stack-app-kit";`. Its members have no import of their own.
+
+> The locale helpers, for a plugin that declared "locale" in needs.
+### locale.from(host: Host): Locale | undefined
+
+> What `locale.from(host)` answers.
+### locale.Locale
+    // The one tag from `supported` a viewer gets: a supported stored choice, then the accepted languages in order (exact, then by language), then `fallback`.
+    negotiate: typeof negotiate
+
+> What this plugin offers itself as.
+### locale.NAME = "locale"
+
+### locale.negotiate(accepted: string | readonly string[], supported: readonly string[], fallback: string, chosen?: string): string
 
 ## logs
 
@@ -1077,6 +1132,9 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 
 > The kernel, for a component under a provider.
 ### useKernel(): Kernel
+
+> A plugin's view of the viewer's locale, re-rendering the component whenever any plugin changes it.
+### useLocale(plugin: string): PluginLocale
 
 > One plugin's context and services, by name.
 ### usePlugin<Config = unknown, Services = unknown>(name: string): PluginHandle<Config, Services>
