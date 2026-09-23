@@ -7,6 +7,9 @@ export const NAME = "cache";
 /** The part of a query client this plugin drives. */
 export type Queries = {
     invalidateQueries: (filters: { queryKey: unknown[] }) => unknown;
+    cancelQueries?: () => unknown;
+    removeQueries?: (filters: { type: "inactive" }) => void;
+    resetQueries?: () => unknown;
 };
 
 export type { Cache };
@@ -18,6 +21,18 @@ export function fromQueries(client: Queries): Cache
         invalidate: (key) =>
         {
             void client.invalidateQueries({ queryKey: [...key] });
+        },
+
+        clear: () =>
+        {
+            if (client.cancelQueries === undefined || client.removeQueries === undefined || client.resetQueries === undefined)
+            {
+                throw new Error("cache: clear needs cancelQueries, removeQueries and resetQueries on the query client. Pass the client itself, not a wrapper holding only invalidateQueries.");
+            }
+
+            void client.cancelQueries();
+            client.removeQueries({ type: "inactive" });
+            void client.resetQueries();
         },
     };
 }

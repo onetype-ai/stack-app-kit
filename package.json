@@ -28,6 +28,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@tanstack/query-core": "5.102.8",
         "@testing-library/react": "^16.3.3",
         "@types/node": "^26.4.0",
         "@types/react": "^19.2.18",

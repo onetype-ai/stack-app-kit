@@ -21,7 +21,8 @@ export type KernelOptions = {
     plugins: readonly Plugin[];
     config?: Readonly<Record<string, unknown>>;
     http?: HttpClient;
-    cache?: Cache;
+    /** Without `clear`, ctx.cache.clear() refuses, naming what to give. */
+    cache?: Omit<Cache, "clear"> & Partial<Pick<Cache, "clear">>;
     /** Without `reconnect`, the kernel answers one that does nothing. */
     realtime?: Omit<Realtime, "reconnect"> & Partial<Pick<Realtime, "reconnect">>;
     permissions?: PermissionSource;
@@ -106,6 +107,11 @@ const noCache: Cache = {
     {
         return missing("cache", "cache");
     },
+
+    clear: () =>
+    {
+        return missing("cache", "cache");
+    },
 };
 
 const noRealtime: Realtime = {
@@ -129,7 +135,22 @@ export function createKernel(options: KernelOptions): Kernel
     const config = options.config ?? {};
     const log = options.log ?? quiet;
     const http = options.http ?? noClient;
-    const cache = options.cache ?? noCache;
+    const givenCache = options.cache ?? noCache;
+    const cache: Cache = {
+        invalidate: (key) =>
+        {
+            givenCache.invalidate(key);
+        },
+        clear: () =>
+        {
+            if (givenCache.clear === undefined)
+            {
+                throw new KernelFault("NOT_STARTED", "A plugin used ctx.cache.clear(), and the cache given to createKernel has no clear. Give one that drops every entry, as cache.fromQueries does.");
+            }
+
+            givenCache.clear();
+        },
+    };
     const givenRealtime = options.realtime ?? noRealtime;
     const realtime: Realtime = {
         channel: () => givenRealtime.channel(),

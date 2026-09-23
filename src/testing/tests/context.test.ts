@@ -257,6 +257,18 @@ describe("a channel a plugin listens to", () =>
     });
 });
 
+describe("a plugin dropping the whole cache", () =>
+{
+    test("counts it, so a test can prove the plugin cleared after a switch", () =>
+    {
+        const fake = fakeContext({});
+
+        fake.ctx.cache.clear();
+
+        expect(fake.cleared).toBe(1);
+    });
+});
+
 describe("a plugin asking for the socket to be dialled again", () =>
 {
     test("counts it, so a test can prove the plugin asked after a switch", () =>

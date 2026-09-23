@@ -117,6 +117,9 @@ export type HttpClient = {
 /** What the kernel needs to drop what a view is holding. */
 export type Cache = {
     invalidate: (key: readonly unknown[]) => void;
+
+    /** Cancels what is still loading, drops every entry no view shows, and resets the ones a view shows so they fetch again: when the data's owner changed (a workspace switch, sign-out), not when some of it went stale. */
+    clear: () => void;
 };
 
 /** What the kernel needs to hear a server push. */

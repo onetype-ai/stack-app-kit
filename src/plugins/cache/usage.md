@@ -34,6 +34,9 @@ listens: {
 },
 ```
 
+- `invalidate` marks one key stale; `clear` is for when the data's owner
+  changed (sign-out, a workspace switch): it cancels what is loading, drops
+  what no view shows, and resets what a view shows so it fetches again.
 - `invalidate` takes a key as an array, and passes it on unchanged.
 - The key is copied before it is handed over, so a caller holding the array
   cannot change what was invalidated.
@@ -42,5 +45,8 @@ listens: {
 
 ## Refuses
 
-Nothing. An invalidation for a key nothing holds is not an error: it is a view
-that had already moved on.
+- `clear` on a client lacking `cancelQueries`, `removeQueries` or
+  `resetQueries`: pass the query client itself.
+
+An invalidation for a key nothing holds is not an error: it is a view that had
+already moved on.
