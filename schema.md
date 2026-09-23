@@ -1316,5 +1316,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     state?: (() => unknown) | undefined
     // Paths robots.txt asks crawlers to leave alone: the client-only part of the site.
     disallow?: readonly string[] | undefined
+    // Where the untouched template is written (`spa.html` by default), for the host to serve every path with no page of
+    // its own. Prerendering `/` rewrites `index.html`, so falling back to it would hand a client route the home page.
+    fallback?: string | undefined
     // Writes one file; the file system by default, a map in a test.
     write?: ((file: string, contents: string) => Promise<void>) | undefined

@@ -62,9 +62,17 @@ describe("prerendering", () =>
             { path: "/account", title: "Account", component: page },
         ]);
 
-        expect([...files.keys()].sort()).toEqual(["dist/index.html", "dist/robots.txt", "dist/sitemap.xml"]);
+        expect([...files.keys()].sort()).toEqual(["dist/index.html", "dist/robots.txt", "dist/sitemap.xml", "dist/spa.html"]);
         expect(files.get("dist/index.html")).toContain("<title>Shop</title>\n<meta name=\"description\" content=\"Chairs\" data-kit-head>");
         expect(files.get("dist/index.html")).toContain("<div id=\"root\"><p>page at <!-- -->/</p></div>");
+    });
+
+    test("keeps the untouched template apart, so a client route never falls back to the prerendered home page", async () =>
+    {
+        const files = await written([{ path: "/", title: "Shop", component: page, render: "prerender" }]);
+
+        expect(files.get("dist/spa.html")).toBe("<html><head></head><body><div id=\"root\"></div></body></html>");
+        expect(files.get("dist/index.html")).toContain("page at");
     });
 
     test("writes one page per set of parameters, loading each before it renders", async () =>
@@ -98,6 +106,7 @@ describe("prerendering", () =>
         const failed = await prerender({
             app,
             template: "<html></html>",
+            fallback: "../index.html",
             origin: "https://shop.example",
             outDir: "dist",
             render: () => null,
@@ -112,6 +121,7 @@ describe("prerendering", () =>
         expect(failed).toBeInstanceOf(SeoFault);
         expect((failed as SeoFault).problems).toEqual([
             expect.stringContaining("<!--kit-head--> and <!--kit-app-->"),
+            expect.stringContaining("fallback \"../index.html\""),
             expect.stringContaining("head.canonical"),
             expect.stringContaining("\"..\" as id"),
             expect.stringContaining("no id"),

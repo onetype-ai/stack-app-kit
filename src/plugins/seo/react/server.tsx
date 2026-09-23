@@ -31,6 +31,12 @@ export type PrerenderOptions = {
     /** Paths robots.txt asks crawlers to leave alone: the client-only part of the site. */
     disallow?: readonly string[] | undefined;
 
+    /**
+     * Where the untouched template is written (`spa.html` by default), for the host to serve every path with no page of
+     * its own. Prerendering `/` rewrites `index.html`, so falling back to it would hand a client route the home page.
+     */
+    fallback?: string | undefined;
+
     /** Writes one file; the file system by default, a map in a test. */
     write?: ((file: string, contents: string) => Promise<void>) | undefined;
 };
@@ -118,6 +124,13 @@ export async function prerender(options: PrerenderOptions): Promise<readonly Pre
         problems.push(`the template must hold both ${headMarker} and ${appMarker}`);
     }
 
+    const fallback = options.fallback ?? "spa.html";
+
+    if (!/^[\w-]+\.html$/.test(fallback) || fallback === "index.html")
+    {
+        problems.push(`fallback "${fallback}" must be a file name ending in .html, other than index.html, with no folder`);
+    }
+
     const planned = await plan(options.app, problems);
 
     if (problems.length > 0)
@@ -126,6 +139,8 @@ export async function prerender(options: PrerenderOptions): Promise<readonly Pre
     }
 
     const written: PrerenderedPage[] = [];
+
+    await write(join(options.outDir, fallback), options.template.replace(headMarker, "").replace(appMarker, ""));
 
     for (const page of planned)
     {
