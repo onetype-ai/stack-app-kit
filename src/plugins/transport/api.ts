@@ -49,6 +49,15 @@ export type TransportOptions = {
 
     /** Spreads every retry and redial between half and all of its backoff, so the tabs of a restarted server do not return in the same instant. */
     random?: (() => number) | undefined;
+
+    /** Once the server has sent `$ping`, a socket silent this long is closed and dialled again (60 s by default). A server that never pings is never timed. */
+    silenceMs?: number | undefined;
+
+    /** Hands a listener to whatever says the device is back (online, a tab shown again); the socket then redials at once rather than waiting its backoff. Answers a stop. */
+    wake?: ((listener: () => void) => () => void) | undefined;
+
+    /** Runs once a socket after the first is settled: the server said `$ready` and answered every subscription, or said nothing within `connectTimeoutMs`. Pushes sent while it was down are lost, so this is when to fetch again. */
+    onReconnected?: ((about: { downMs: number }) => void) | undefined;
 };
 
 /** The socket shape this plugin drives. */
@@ -69,8 +78,8 @@ export type Transport = {
     /** One request. The body comes back as unknown, so the caller validates. */
     request: (request: HttpRequest) => Promise<unknown>;
 
-    /** Server-pushed messages. With no socket this succeeds and delivers nothing. */
-    subscribe: (topic: string, receive: (message: unknown) => void) => Subscription;
+    /** Server-pushed messages. With no socket this succeeds and delivers nothing. `refused` hears the server decline the channel (unknown and forbidden read alike). */
+    subscribe: (topic: string, receive: (message: unknown) => void, refused?: (code: string) => void) => Subscription;
 
     /** Closes the socket and dials again with the address as it reads now, keeping every subscription; a socket closed as signed out (4001) waits for this. */
     reconnect: () => void;

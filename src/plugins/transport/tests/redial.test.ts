@@ -1,17 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { boot } from "../../../kernel/boot";
-import { from } from "../api";
-import type { Transport, TransportOptions } from "../api";
-import { transportPlugin } from "../plugin";
-import { fakeFetch, fakeSocket, type Answering } from "./fake";
+import type { TransportOptions } from "../api";
+import type { Answering } from "./fake";
+import { dialling } from "./dialling";
 
-const quiet = (): void => {};
-
-type Dialled = ReturnType<typeof fakeSocket> & { url: string };
-
-let restore: (() => void) | undefined;
-let stop: (() => Promise<void>) | undefined;
+const opened: { stop: () => Promise<void> }[] = [];
 
 beforeEach(() =>
 {
@@ -20,79 +13,21 @@ beforeEach(() =>
 
 afterEach(async () =>
 {
-    await stop?.();
-    stop = undefined;
-    restore?.();
-    restore = undefined;
+    for (const app of opened.splice(0))
+    {
+        await app.stop();
+    }
+
     vi.useRealTimers();
 });
 
-function startDialling(settings: Partial<TransportOptions> = {}, answers: Answering[] = [{ body: {} }])
+function startDialling(settings: Partial<TransportOptions> = {}, answers?: Answering[])
 {
-    const fetches = fakeFetch(answers);
+    const app = dialling(settings, answers);
 
-    restore = fetches.restore;
+    opened.push(app);
 
-    let workspace: string | undefined = "a";
-    const dialled: Dialled[] = [];
-    const app = boot(quiet, [
-        transportPlugin({
-            baseUrl: "https://example.test/api",
-            headers: (): Record<string, string> => (workspace === undefined ? {} : { "x-workspace": workspace }),
-            wsUrl: (sent) => (sent["x-workspace"] === undefined ? undefined : `wss://example.test/ws?workspace=${sent["x-workspace"]}`),
-            openSocket: (url) =>
-            {
-                const socket = Object.assign(fakeSocket(), { url });
-
-                dialled.push(socket);
-
-                return socket;
-            },
-            connectTimeoutMs: 1_000,
-            reconnectBaseMs: 1_000,
-            random: () => 0,
-            sleep: async () => {},
-            ...settings,
-        }),
-    ]);
-
-    stop = () => app.stop();
-
-    const transport = from(app.host) as Transport;
-
-    const last = (): Dialled =>
-    {
-        const socket = dialled.at(-1);
-
-        if (socket === undefined)
-        {
-            throw new Error("No socket was dialled.");
-        }
-
-        return socket;
-    };
-
-    const connected = async (): Promise<Dialled> =>
-    {
-        const connecting = transport.connect();
-
-        last().opened();
-        await connecting;
-
-        return last();
-    };
-
-    return {
-        transport,
-        fetches,
-        dialled,
-        last,
-        connected,
-        choose: (chosen: string | undefined) =>
-        {
-            workspace = chosen;
-        },
-    };
+    return app;
 }
 
 describe("a socket address that follows the viewer", () =>
@@ -390,7 +325,7 @@ describe("retrying over http", () =>
             const app = startDialling({ wsUrl: undefined, random: () => random, retryBaseMs: 200, sleep: async (ms) => { waits.push(ms); } }, answers);
 
             await app.transport.request({ method: "GET", path: "/items" });
-            restore?.();
+            await app.stop();
         }
 
         expect(waits).toEqual([100, 200, 200, 400]);

@@ -85,6 +85,9 @@ export type Fake<Config = unknown, Services = unknown> = {
 
     /** Sends a message on a channel, as a server would. */
     push: (topic: string, message: unknown) => void;
+
+    /** Declines a channel, as a server would: every `refused` given to that channel's subscribe hears the code. */
+    refuse: (topic: string, code?: string) => void;
 };
 
 const isAnswered = (answer: unknown): answer is FakeResponse =>
@@ -107,6 +110,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
     const commanded: RanCommand[] = [];
     const logged: { level: string; line: string }[] = [];
     const listeners = new Map<string, Set<(message: unknown) => void>>();
+    const refusers = new Map<string, Set<(code: string) => void>>();
     const watching = new Set<() => void>();
 
     const fake: Fake<Config, Services> = {
@@ -125,6 +129,14 @@ export function fakeContext<Config = unknown, Services = unknown>(
             for (const receive of listeners.get(topic) ?? [])
             {
                 receive(message);
+            }
+        },
+
+        refuse: (topic: string, code = "CHANNEL_REFUSED"): void =>
+        {
+            for (const refused of refusers.get(topic) ?? [])
+            {
+                refused(code);
             }
         },
 
@@ -202,14 +214,31 @@ export function fakeContext<Config = unknown, Services = unknown>(
             fake.reconnected += 1;
         },
 
-        subscribe: (topic, receive) =>
+        subscribe: (topic, receive, refused) =>
         {
             const receivers = listeners.get(topic) ?? new Set<(message: unknown) => void>();
+            const refusing = refusers.get(topic) ?? new Set<(code: string) => void>();
 
             receivers.add(receive);
             listeners.set(topic, receivers);
 
-            return { close: () => receivers.delete(receive) };
+            if (refused !== undefined)
+            {
+                refusing.add(refused);
+                refusers.set(topic, refusing);
+            }
+
+            return {
+                close: () =>
+                {
+                    receivers.delete(receive);
+
+                    if (refused !== undefined)
+                    {
+                        refusing.delete(refused);
+                    }
+                },
+            };
         },
     };
 
@@ -288,6 +317,15 @@ export function fakeContext<Config = unknown, Services = unknown>(
                 commanded.push({ command, input });
 
                 return Promise.resolve();
+            },
+        },
+
+        session: {
+            changed: () =>
+            {
+                fake.ctx.cache.clear();
+                fake.ctx.permissions.changed();
+                fake.ctx.realtime.reconnect();
             },
         },
 

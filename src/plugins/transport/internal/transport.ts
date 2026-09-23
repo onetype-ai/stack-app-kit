@@ -42,6 +42,12 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
             timeoutMs,
             connectTimeoutMs: settings.connectTimeoutMs ?? 3_000,
             reconnectBaseMs: settings.reconnectBaseMs ?? 1_000,
+            silenceMs: settings.silenceMs ?? 60_000,
+            wake: settings.wake,
+            reconnected: (about) =>
+            {
+                settings.onReconnected?.(about);
+            },
             open: settings.openSocket,
             log,
         })
@@ -138,7 +144,7 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
             throw refusal;
         },
 
-        subscribe: (topic: string, receive: (message: unknown) => void): Subscription =>
+        subscribe: (topic: string, receive: (message: unknown) => void, refused?: (code: string) => void): Subscription =>
         {
             if (socketChannel === undefined)
             {
@@ -147,7 +153,7 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
                 return { close: () => {} };
             }
 
-            return socketChannel.subscribe(topic, receive);
+            return socketChannel.subscribe(topic, receive, refused);
         },
 
         reconnect: (): void =>

@@ -125,7 +125,8 @@ export type Cache = {
 /** What the kernel needs to hear a server push. */
 export type Realtime = {
     channel: () => "ws" | "http";
-    subscribe: (topic: string, receive: (message: unknown) => void) => { close: () => void };
+    /** `refused` hears the server decline the channel; unknown and forbidden read alike, so nobody can probe which exist. */
+    subscribe: (topic: string, receive: (message: unknown) => void, refused?: (code: string) => void) => { close: () => void };
 
     /** Dials the socket again with the address as it reads now, keeping every subscription: after sign-in, sign-out or a workspace switch. */
     reconnect: () => void;
@@ -167,6 +168,14 @@ export type Context<Config = unknown, Services = unknown> = {
 
     commands: {
         run: (command: string, input: unknown) => Promise<void>;
+    };
+
+    session: {
+        /**
+         * Says who is looking, or at what, changed (sign-in, sign-out, a workspace switch), in the order that leaves nothing
+         * stale: the cache clears (when the one given can), every guard asks again, and the socket dials the address as it reads now.
+         */
+        changed: () => void;
     };
 
     /** Another plugin's services, by name. Reachable outside a component. */

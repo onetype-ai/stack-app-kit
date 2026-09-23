@@ -257,6 +257,32 @@ describe("a channel a plugin listens to", () =>
     });
 });
 
+describe("a session that changed, in a fake", () =>
+{
+    test("clears, regrants and reconnects, so a test can prove each happened", () =>
+    {
+        const fake = fakeContext({});
+
+        fake.ctx.session.changed();
+
+        expect([fake.cleared, fake.regranted, fake.reconnected]).toEqual([1, 1, 1]);
+    });
+});
+
+describe("a channel a fake server declines", () =>
+{
+    test("tells every subscriber that asked to hear it", () =>
+    {
+        const fake = fakeContext({});
+        const codes: string[] = [];
+
+        fake.ctx.realtime.subscribe("items", () => {}, (code) => codes.push(code));
+        fake.refuse("items");
+
+        expect(codes).toEqual(["CHANNEL_REFUSED"]);
+    });
+});
+
 describe("a plugin dropping the whole cache", () =>
 {
     test("counts it, so a test can prove the plugin cleared after a switch", () =>

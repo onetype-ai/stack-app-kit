@@ -154,7 +154,7 @@ export function createKernel(options: KernelOptions): Kernel
     const givenRealtime = options.realtime ?? noRealtime;
     const realtime: Realtime = {
         channel: () => givenRealtime.channel(),
-        subscribe: (topic, receive) => givenRealtime.subscribe(topic, receive),
+        subscribe: (topic, receive, refused) => givenRealtime.subscribe(topic, receive, refused),
         reconnect: () =>
         {
             givenRealtime.reconnect?.();
@@ -282,6 +282,16 @@ export function createKernel(options: KernelOptions): Kernel
                 run: (command, input) =>
                 {
                     return run(command, input);
+                },
+            },
+
+            session: {
+                changed: () =>
+                {
+                    options.cache?.clear?.();
+
+                    permits.changed();
+                    realtime.reconnect();
                 },
             },
 

@@ -29,6 +29,7 @@ export async function start(given: StartOptions): Promise<StartedApp>
     };
 
     let contributed = (): Readonly<Record<string, string>> => ({});
+    let announceReconnected: (about: { downMs: number }) => void = () => {};
 
     const app = boot(log, [
         transportPlugin({
@@ -38,6 +39,11 @@ export async function start(given: StartOptions): Promise<StartedApp>
             {
                 starting.transport.onUnauthorized?.(path);
                 announce(path);
+            },
+            onReconnected: (about: { downMs: number }) =>
+            {
+                starting.transport.onReconnected?.(about);
+                announceReconnected(about);
             },
         }),
     ]);
@@ -54,9 +60,9 @@ export async function start(given: StartOptions): Promise<StartedApp>
         {
             return carrier.channel();
         },
-        subscribe: (topic, receive) =>
+        subscribe: (topic, receive, refused) =>
         {
-            return carrier.subscribe(topic, receive);
+            return carrier.subscribe(topic, receive, refused);
         },
         reconnect: () =>
         {
@@ -71,6 +77,10 @@ export async function start(given: StartOptions): Promise<StartedApp>
             "transport.unauthorized": {
                 describe: "A request was refused for want of a session.",
                 schema: z.object({ path: z.string() }),
+            },
+            "transport.reconnected": {
+                describe: "The socket is back and every channel answered; pushes sent while it was down were lost, so fetch again what a view shows.",
+                schema: z.object({ downMs: z.number() }),
             },
         },
     });
@@ -106,6 +116,11 @@ export async function start(given: StartOptions): Promise<StartedApp>
     {
         announce(path);
     }
+
+    announceReconnected = (about) =>
+    {
+        kernel.context("transport").events.emit("transport.reconnected", about);
+    };
 
     const channel = await carrier.connect();
 

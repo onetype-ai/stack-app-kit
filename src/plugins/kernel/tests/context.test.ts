@@ -83,3 +83,41 @@ describe("http reaches a plugin", () =>
         expect(() => kernel.context("probe").http.get("/items")).toThrow(/Pass one as `http`/);
     });
 });
+
+describe("a session that changed", () =>
+{
+    it("clears the cache, has every guard ask again, then dials the socket, in that order", async () =>
+    {
+        const steps: string[] = [];
+        const kernel = createKernel({
+            plugins: [probe],
+            http: answering,
+            cache: { invalidate: () => {}, clear: () => steps.push("cleared") },
+            realtime: { channel: () => "ws", subscribe: () => ({ close: () => {} }), reconnect: () => steps.push("dialled") },
+        });
+        await kernel.start();
+        const ctx = kernel.context("probe");
+        ctx.permissions.watch(() => steps.push("guards asked"));
+
+        ctx.session.changed();
+
+        expect(steps).toEqual(["cleared", "guards asked", "dialled"]);
+    });
+
+    it("still has guards ask and the socket dial when the application gave no cache", async () =>
+    {
+        const steps: string[] = [];
+        const kernel = createKernel({
+            plugins: [probe],
+            http: answering,
+            realtime: { channel: () => "ws", subscribe: () => ({ close: () => {} }), reconnect: () => steps.push("dialled") },
+        });
+        await kernel.start();
+        const ctx = kernel.context("probe");
+        ctx.permissions.watch(() => steps.push("guards asked"));
+
+        ctx.session.changed();
+
+        expect(steps).toEqual(["guards asked", "dialled"]);
+    });
+});

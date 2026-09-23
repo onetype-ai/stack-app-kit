@@ -10,9 +10,9 @@ What every service, listener, participant and command is handed.
 `"http"` so a caller can branch, and `subscribe` refuses rather than handing
 back a subscription that would deliver nothing.
 
-**`realtime.reconnect()`** after a sign-in, sign-out or workspace switch
-redials, keeping every subscription; the address carries every plugin's
-`sends`.
+**`session.changed()`** after a sign-in, sign-out or workspace switch clears
+the cache, has every guard ask again, then redials. Pushes missed while the
+socket was down are lost: listen to `transport.reconnected` and fetch again.
 
 **`http` answers the body, never an envelope.** A 204 is `undefined`, anything
 but a 2xx throws. A fake answering `{ status, body }` describes the channel

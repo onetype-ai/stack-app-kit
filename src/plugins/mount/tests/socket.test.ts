@@ -5,9 +5,17 @@ import type { Context } from "../../kernel/api";
 import type { Socket } from "../../transport/api";
 import { start } from "../internal/start";
 
-function openingSocket(): Socket
+function openingSocket(opened: ((run: (kind: string, event: unknown) => void) => void) = () => {}): Socket
 {
     const listeners = new Map<string, ((event: unknown) => void)[]>();
+
+    opened((kind, event) =>
+    {
+        for (const run of listeners.get(kind) ?? [])
+        {
+            run(event);
+        }
+    });
 
     setTimeout(() =>
     {
@@ -101,4 +109,45 @@ describe("the socket an application opens", () =>
 
         await app.stop();
     });
+
+    test("tells a listening plugin once it is back, so it fetches what it missed", async () =>
+    {
+        const fire: ((kind: string, event: unknown) => void)[] = [];
+        const heard: unknown[] = [];
+
+        const board = definePlugin("board", {
+            version: "1.0.0",
+            describe: "Fetches again what it shows once the socket is back.",
+            dependsOn: ["transport"],
+            listens: {
+                "transport.reconnected": {
+                    describe: "Fetches the items again.",
+                    handle: (payload) =>
+                    {
+                        heard.push(payload);
+                    },
+                },
+            },
+        });
+
+        const app = await start({
+            plugins: [board],
+            transport: {
+                baseUrl: "/api",
+                wsUrl: "wss://example.test/ws",
+                connectTimeoutMs: 50,
+                reconnectBaseMs: 10,
+                openSocket: () => openingSocket((run) => fire.push(run)),
+            },
+        });
+
+        fire[0]?.("close", { code: 1006 });
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        expect(heard).toHaveLength(1);
+        expect(heard[0]).toMatchObject({ downMs: expect.any(Number) });
+
+        await app.stop();
+    });
 });
+
