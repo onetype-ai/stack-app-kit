@@ -13,7 +13,8 @@
         "prepublishOnly": "tools/check.sh && tsup",
         "prepack": "tsup",
         "schema": "node bin/schemas.mjs",
-        "declared": "node tools/declared.mjs"
+        "declared": "node tools/declared.mjs",
+        "test:slow": "SLOW=1 vitest run --no-file-parallelism src/plugins/e2e"
     },
     "dependencies": {
         "zod": "^4.5.4"
@@ -21,7 +22,8 @@
     "peerDependencies": {
         "react": ">=18",
         "react-dom": ">=18",
-        "vite": ">=6"
+        "vite": ">=6",
+        "playwright": ">=1.40"
     },
     "peerDependenciesMeta": {
         "react": {
@@ -31,6 +33,9 @@
             "optional": true
         },
         "vite": {
+            "optional": true
+        },
+        "playwright": {
             "optional": true
         }
     },
@@ -43,6 +48,7 @@
         "@types/react-dom": "^19.3.0",
         "eslint": "^10.9.1",
         "jsdom": "^29.1.1",
+        "playwright": "1.62.1",
         "react": "^19.2.8",
         "react-dom": "^19.2.8",
         "tsup": "^8.5.1",
@@ -107,6 +113,10 @@
         "./server": {
             "types": "./dist/server.d.ts",
             "import": "./dist/server.js"
+        },
+        "./e2e": {
+            "types": "./dist/e2e.d.ts",
+            "import": "./dist/e2e.js"
         }
     }
 }

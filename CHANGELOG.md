@@ -13,6 +13,13 @@
   accepted, and `ctx.http.upload` then refuses.
 - The package ships every plugin's `usage.md`, for an agent reading
   `node_modules`.
+- `./e2e` (Node; Playwright is an optional peer): `Stack.start` runs an
+  application's services on strict ports with only the environment given,
+  waits for their readiness paths and stops them by their own process
+  group; `Browsers.launch` takes a machine-wide lock and opens pages that
+  record console errors, uncaught throws and 5xx answers; `Hosts` serves
+  fixture pages, over a per-run certificate when asked. Browser tests run
+  with `pnpm test:slow`.
 - `./react`: `AppBoundary` (a page with a retry instead of a blank screen,
   and `onError` to log what it caught) and `StreamedText` (busy while it
   grows, announced once when it completes, never for text that did not

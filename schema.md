@@ -20,6 +20,9 @@
 > The plugins a bundler found, sorted by name.
 ### discover(modules: PluginModules): Plugin[]
 
+> Names the entry that starts services and watched browsers for end-to-end tests.
+### e2ePlugin(): HostPlugin
+
 > Configuration rules, refused by name rather than repaired.
 > A bundler replaces `import.meta.env.NAME` where it is written, so reading
 > belongs to the application: it reads the value and passes it to a rule.
@@ -658,6 +661,20 @@ Imported whole, then reached through the name: `import { cache } from "@onetype/
     queryKey: unknown[]
     queryFn: () => Promise<unknown>
     }) => Promise<void>
+
+## e2e
+
+Imported whole, then reached through the name: `import { e2e } from "@onetype/stack-app-kit";`. Its members have no import of their own.
+
+> What `e2e.from(host)` answers: the entry an end-to-end test imports in Node.
+### e2e.E2e
+    entry: "@onetype/stack-app-kit/e2e"
+
+> The e2e plugin, for a plugin that declared "e2e" in needs.
+### e2e.from(host: Host): E2e | undefined
+
+> What this plugin offers itself as.
+### e2e.NAME = "e2e"
 
 ## logs
 
@@ -1503,3 +1520,93 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 > What a request forwards to the api on the viewer's behalf: the cookie and the language, nothing else.
 ### Session
     headers: Readonly<Record<string, string>>
+
+# @onetype/stack-app-kit/e2e
+
+## Functions
+
+### bootEnv(file: string): Record<string, string>
+
+> A browser holding the machine-wide lock, whose pages record what went wrong.
+### Browsers: { launch: typeof launch }
+    launch: typeof launch
+
+> Static fixture pages, plain or over a per-run certificate.
+### Hosts: { start: typeof startHosts; startSecure: typeof startSecureHosts }
+    start: typeof startHosts
+    startSecure: typeof startSecureHosts
+
+> Starting the application's services on strict ports, and stopping only them.
+### Stack: { start: typeof startStack; freePorts: typeof freePorts }
+    start: typeof startStack
+    freePorts: typeof freePorts
+
+## Classes
+
+> What the end-to-end harness refused, naming the port, service or value and the fix.
+### E2eFault extends Error
+    readonly code: E2eFaultCode
+    constructor(code: E2eFaultCode, message: string)
+
+## Types
+
+### E2eFaultCode = "PORT_TAKEN" | "NOT_READY" | "UNSAFE_FLAG" | "NO_COMMAND" | "NOT_ON_CI" | "LOCKED"
+
+> A launched browser holding the lock until it closes.
+### LaunchedBrowser
+    browser: Browser
+    open: (viewport?: {
+    width: number
+    height: number
+    }) => Promise<WatchedPage>
+    close: () => Promise<void>
+
+> What `Browsers.launch` takes: test hostnames that resolve to this machine, certificates to trust by hash, and the lock.
+### LaunchOptions
+    hosts?: readonly string[] | undefined
+    trustSpki?: readonly string[] | undefined
+    // The machine-wide lock one browser run holds at a time; a folder in the temp directory by default.
+    lockPath?: string | undefined
+    lockWaitMs?: number | undefined
+
+> Static pages by path, e.g. `{ "/": "<html>…</html>" }`: what a host page fixture serves.
+### Pages = Readonly<Record<string, string>>
+
+> A running fixture server, and its own stop.
+### RunningHosts
+    origin: (hostname?: string) => string
+    close: () => Promise<void>
+
+> A secure fixture server, with the hash of its per-run certificate for `Browsers.launch({ trustSpki })`.
+### RunningSecureHosts = RunningHosts &
+    spki: string
+
+> A started stack: each service's origin, the folder holding their logs, and the stop that ends only them.
+### RunningStack
+    origins: Readonly<Record<string, string>>
+    folder: string
+    stop: () => Promise<void>
+
+> One service of the application under test.
+### ServiceOptions
+    folder: string
+    command: readonly string[]
+    // Fixed and strict: a taken port is refused, never moved.
+    port: number
+    // The path answering 2xx once the service can serve (`/ready`, not `/health`); `/` when left out.
+    ready?: string | undefined
+    // The only environment the service sees besides PATH, HOME, TMPDIR, LANG; `{name}` becomes that service's origin.
+    env?: Readonly<Record<string, string>> | undefined
+
+> What `Stack.start` takes: every service by name, and how long each may take to become ready.
+### StackOptions
+    services: Readonly<Record<string, ServiceOptions>>
+    readyMs?: number | undefined
+    // How long a service has after SIGTERM before its group gets SIGKILL (5 s by default).
+    stopGraceMs?: number | undefined
+
+> A page that records what a reader would never see: console errors, uncaught throws and 5xx answers, one sentence each.
+### WatchedPage
+    context: BrowserContext
+    page: Page
+    problems: string[]
