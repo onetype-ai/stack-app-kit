@@ -104,9 +104,9 @@ describe("a prerendered route", () =>
         expect(await refusal({ path: "/items", component: page, title: "Items", paths: () => [] })).toMatchObject({ message: expect.stringContaining("holds no $parameter") });
     });
 
-    test("names only the two ways a page renders", async () =>
+    test("names only the three ways a page renders", async () =>
     {
-        expect(await refusal({ path: "/items", component: page, title: "Items", render: "server" as "client" })).toMatchObject({ message: expect.stringContaining("not \"client\" or \"prerender\"") });
+        expect(await refusal({ path: "/items", component: page, title: "Items", render: "edge" as "client" })).toMatchObject({ message: expect.stringContaining("not \"client\", \"prerender\" or \"server\"") });
     });
 
     test("starts when it holds no guard and says which paths to write", async () =>

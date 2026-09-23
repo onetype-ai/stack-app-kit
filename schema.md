@@ -476,8 +476,8 @@
     search?: z.ZodType | undefined
     // Where the viewer belongs instead, when this page is not it: asked before `requires`.
     instead?: ((ctx: Context<Config, Services>) => string | undefined) | undefined
-    // "prerender" writes this page as HTML at build time, for search engines and first paint; "client" (the default) renders it in the browser only. A prerendered page may hold no `requires` or `instead`.
-    render?: "client" | "prerender" | undefined
+    // "prerender" writes this page as HTML at build time; "server" renders it per request with the viewer's session; "client" (the default) renders it in the browser only. A prerendered page may hold no `requires` or `instead`.
+    render?: "client" | "prerender" | "server" | undefined
     // Every set of parameters to prerender, for a path holding `$name` segments: `[{ id: "1" }]` for `/items/$id`.
     paths?: ((ctx: Context<Config, Services>) => readonly RouteParams[] | Promise<readonly RouteParams[]>) | undefined
     // Fetches what the page reads before it renders on a server, filling the cache the page reads from.
@@ -1292,12 +1292,26 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 
 ## Functions
 
+> Renders a route declared `render: "server"` for one request, with a kit of its own: the api sees this viewer's cookie
+> and no other request's, and the head is resolved, checked and written before the page streams. Answers undefined for
+> a request it does not render (not GET or HEAD, or no server route matches), for the host to serve `_shell.html`.
+### handle(request: Request, options: HandleOptions): Promise<Response | undefined>
+
 > Writes every route declared `render: "prerender"`, once per set its `paths` answer, as `<outDir><path>/index.html`,
 > then `sitemap.xml` and `robots.txt`. Every head is validated and every path checked before anything is written;
 > a problem anywhere throws `SeoFault` naming them all.
 ### prerender(options: PrerenderOptions): Promise<readonly PrerenderedPage[]>
 
 ## Types
+
+> What `handle` needs: a fresh app per request, and how that app renders its document.
+### HandleOptions
+    // Starts the app for one viewer: pass `session.headers` as the transport's headers, so the api sees who is asking.
+    start: (session: Session) => Promise<StartedApp>
+    // Renders the whole document with the app's router (a streamed `Response`); the kit writes the head into it.
+    respond: (app: StartedApp, request: Request) => Promise<Response>
+    // What the client hydrates its cache from, read once the page loaded.
+    state?: ((app: StartedApp) => unknown) | undefined
 
 > One page written, and what it said about itself.
 ### PrerenderedPage
@@ -1323,3 +1337,7 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     fallback?: string | undefined
     // Writes one file; the file system by default, a map in a test.
     write?: ((file: string, contents: string) => Promise<void>) | undefined
+
+> What a request forwards to the api on the viewer's behalf: the cookie and the language, nothing else.
+### Session
+    headers: Readonly<Record<string, string>>

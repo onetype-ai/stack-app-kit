@@ -167,9 +167,9 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, report: (code: Ker
 
         const holdsParameters = /\$[A-Za-z_]/.test(route.path);
 
-        if (route.render !== undefined && route.render !== "client" && route.render !== "prerender")
+        if (route.render !== undefined && route.render !== "client" && route.render !== "prerender" && route.render !== "server")
         {
-            report("INVALID_ROUTE", name, `Route "${route.path}" asks to render "${String(route.render)}", which is not "client" or "prerender".`);
+            report("INVALID_ROUTE", name, `Route "${route.path}" asks to render "${String(route.render)}", which is not "client", "prerender" or "server".`);
         }
 
         if (route.render === "prerender" && ((route.requires?.length ?? 0) > 0 || route.instead !== undefined))

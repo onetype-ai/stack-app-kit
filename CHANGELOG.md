@@ -1,5 +1,22 @@
 # Changelog
 
+## 6.3.0 (unreleased)
+
+### Added
+
+- `render: "server"` and `./server` `handle(request, { start, respond })`:
+  an app per request (the viewer's cookie and language only), the route's
+  checked head written into the streamed document, undefined for requests
+  it does not render.
+
+### Changed
+
+- Tests run in worker threads.
+
+### Fixed
+
+- `reference.md`: a `Slot` given no payload parses `{}`.
+
 ## 6.2.0
 
 Additive, except `settings.refusingSecrets`, which is new here.

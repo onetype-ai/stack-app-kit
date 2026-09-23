@@ -75,8 +75,8 @@ export type Route<Config = unknown, Services = unknown> = {
     /** Where the viewer belongs instead, when this page is not it: asked before `requires`. */
     instead?: ((ctx: Context<Config, Services>) => string | undefined) | undefined;
 
-    /** "prerender" writes this page as HTML at build time, for search engines and first paint; "client" (the default) renders it in the browser only. A prerendered page may hold no `requires` or `instead`. */
-    render?: "client" | "prerender" | undefined;
+    /** "prerender" writes this page as HTML at build time; "server" renders it per request with the viewer's session; "client" (the default) renders it in the browser only. A prerendered page may hold no `requires` or `instead`. */
+    render?: "client" | "prerender" | "server" | undefined;
 
     /** Every set of parameters to prerender, for a path holding `$name` segments: `[{ id: "1" }]` for `/items/$id`. */
     paths?: ((ctx: Context<Config, Services>) => readonly RouteParams[] | Promise<readonly RouteParams[]>) | undefined;

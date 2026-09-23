@@ -2,8 +2,8 @@
 
 ## Description
 
-Writes a route declared `render: "prerender"` as HTML at build time, with its
-head, plus `sitemap.xml` and `robots.txt`. Other routes stay client pages.
+A route as HTML with its head: `render: "prerender"` at build time,
+`render: "server"` per request. Other routes stay client pages.
 
 ## Purpose
 
@@ -12,33 +12,31 @@ A crawler and a link preview read the first HTML, not what a script draws.
 ## Usage
 
 ```ts
-routes: [{
-    path: "/items/$id", component: ItemPage, title: "Item", render: "prerender",
+routes: [{ path: "/items/$id", component: ItemPage, title: "Item", render: "prerender",
     paths: async (ctx) => (await ctx.http.get("/items")).map(({ id }) => ({ id })),
     load: (ctx, { id }) => ctx.http.get(`/items/${id}`),
-    head: (ctx, { id }) => ({ description: "…", canonical: `https://shop.example/items/${id}` }),
-}],
+    head: (ctx, { id }) => ({ description: "…", canonical: `https://shop.example/items/${id}` }) }],
 
-// prerender.ts, run by Node after `vite build`
-await prerender({ app, origin: "https://shop.example", outDir: "dist", template,
-    render: async (path) => <App router={await routerAt(path)} />,
-    state: () => dehydrate(queryClient) });
+await prerender({ app, origin, outDir: "dist", template, render: (path) => …, state });
+const page = await handle(request, { respond, state,
+    start: (session) => start({ …, transport: { baseUrl, headers: () => session.headers } }) });
 ```
 
-- `template` holds `<!--kit-head-->` and `<!--kit-app-->`; a page lands at
-  `<outDir><path>/index.html`, the untouched template at `_shell.html`
-  (`fallback`): serve files by path, the shell for every other path.
+- `prerender` fills `<!--kit-head-->` and `<!--kit-app-->` of `template`
+  into `<outDir><path>/index.html`, and writes `sitemap.xml`, `robots.txt`
+  and `_shell.html`, served for every path without a file.
+- `handle` starts an app per request (only the cookie and the language
+  forwarded), writes the head before `</head>` of what `respond` streams,
+  and answers undefined unless a server route matches a GET. Keep request
+  state in the kernel.
 - `head` is validated and escaped; `title` defaults to the route's.
-- The browser: `hydrate(queryClient, state)` when `prerenderedState()` is
-  an object (it is `unknown`: narrow it), then
-  `start({ prerendered: prerenderedState() !== undefined, … })` loads the
-  router first, then `hydrateRoot` with the same tree `render` returned
-  (StrictMode and providers included).
-- `robots: { index: false }` keeps a page out of the sitemap.
-- `RouteGuard` replaces the prerendered head on each navigation, never a tag
-  it did not write; pass it the router's `params`.
+- The browser: `hydrate(queryClient, state)` once `prerenderedState()` is
+  narrowed to an object, then
+  `start({ prerendered: prerenderedState() !== undefined })`, then
+  `hydrateRoot` with the same tree the server rendered.
+- `RouteGuard` replaces the head on navigation; pass it `params`.
 
 ## Refuses
 
-All at once, before anything is written: an invalid head, a template
-missing a marker, a bad `fallback`, a parameter missing, empty, `.` or `..`.
+All at once, before prerender writes: an invalid head, a template missing a
+marker, a bad `fallback`, a parameter missing, empty, `.` or `..`.
