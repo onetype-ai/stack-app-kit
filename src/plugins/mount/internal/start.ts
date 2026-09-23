@@ -46,10 +46,6 @@ export async function start(starting: StartOptions): Promise<StartedApp>
         throw new Error("mount: the transport plugin offered nothing.");
     }
 
-    const channel = await carrier.connect();
-
-    logger?.info("transport ready", { channel });
-
     const realtime: Realtime = {
         channel: () =>
         {
@@ -58,6 +54,10 @@ export async function start(starting: StartOptions): Promise<StartedApp>
         subscribe: (topic, receive) =>
         {
             return carrier.subscribe(topic, receive);
+        },
+        reconnect: () =>
+        {
+            carrier.reconnect();
         },
     };
 
@@ -103,6 +103,10 @@ export async function start(starting: StartOptions): Promise<StartedApp>
     {
         announce(path);
     }
+
+    const channel = await carrier.connect();
+
+    logger?.info("transport ready", { channel });
 
     const building = starting.router;
 

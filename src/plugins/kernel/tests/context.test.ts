@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createKernel, definePlugin } from "../api";
-import type { HttpClient, Realtime } from "../api";
+import type { HttpClient, KernelOptions } from "../api";
 
 const answering: HttpClient = {
     get: () => Promise.resolve({}),
@@ -18,7 +18,7 @@ describe("realtime reaches a plugin", () =>
     it("gives a plugin the realtime client it was started with", async () =>
     {
         const subscribe = vi.fn(() => ({ close: () => {} }));
-        const realtime: Realtime = { channel: () => "ws", subscribe };
+        const realtime: KernelOptions["realtime"] = { channel: () => "ws", subscribe };
 
         const kernel = createKernel({ plugins: [probe], http: answering, realtime });
 
@@ -44,6 +44,20 @@ describe("realtime reaches a plugin", () =>
 
         // a subscription that returned quietly looked live and delivered nothing
         expect(() => ctx.realtime.subscribe("x", () => {})).toThrow(/no realtime was given/);
+    });
+
+    it("answers a reconnect that does nothing when the realtime given has none, and passes it on when it has", async () =>
+    {
+        const reconnect = vi.fn();
+        const without = createKernel({ plugins: [probe], http: answering, realtime: { channel: () => "http", subscribe: () => ({ close: () => {} }) } });
+        const withIt = createKernel({ plugins: [probe], http: answering, realtime: { channel: () => "ws", subscribe: () => ({ close: () => {} }), reconnect } });
+
+        await without.start();
+        await withIt.start();
+        without.context("probe").realtime.reconnect();
+        withIt.context("probe").realtime.reconnect();
+
+        expect(reconnect).toHaveBeenCalledOnce();
     });
 });
 

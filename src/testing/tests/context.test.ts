@@ -257,6 +257,18 @@ describe("a channel a plugin listens to", () =>
     });
 });
 
+describe("a plugin asking for the socket to be dialled again", () =>
+{
+    test("counts it, so a test can prove the plugin asked after a switch", () =>
+    {
+        const fake = fakeContext({});
+
+        fake.ctx.realtime.reconnect();
+
+        expect(fake.reconnected).toBe(1);
+    });
+});
+
 describe("a plugin saying what a viewer may do has moved", () =>
 {
     test("counts it, so a test can prove the plugin said so", () =>

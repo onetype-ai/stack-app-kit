@@ -4,7 +4,9 @@ import { TransportFault } from "./faults";
 import { frame } from "./frame";
 
 type SocketOptions = {
-    wsUrl: string;
+    address: () => string | undefined;
+    headers: () => Readonly<Record<string, string>>;
+    random: () => number;
     timeoutMs: number;
     connectTimeoutMs: number;
     reconnectBaseMs: number;
@@ -14,17 +16,36 @@ type SocketOptions = {
 };
 
 type InFlight = {
+    method: string;
+    path: string;
     resolve: (answer: Answer) => void;
     fail: (cause: Error) => void;
     timer: ReturnType<typeof setTimeout>;
 };
 
+const closedAsSignedOut = 4001;
+const closedAtLifetime = 4000;
+const longestWaitMs = 30_000;
+
+function closeCodeOf(event: unknown): number | undefined
+{
+    if (typeof event !== "object" || event === null || !("code" in event))
+    {
+        return undefined;
+    }
+
+    return typeof event.code === "number" ? event.code : undefined;
+}
+
 export function socket(settings: SocketOptions)
 {
     const waiting = new Map<string, InFlight>();
     const subscribers = new Map<string, Set<(message: unknown) => void>>();
+    const now = settings.now ?? Date.now;
 
+    let current: Socket | undefined;
     let wire: Socket | undefined;
+    let openedAt: number | undefined;
     let isOpen = false;
     let tries = 0;
     let closedByUs = false;
@@ -67,7 +88,7 @@ export function socket(settings: SocketOptions)
 
             if (read.status >= 400)
             {
-                pending.fail(TransportFault.fromStatus(read.status, { method: "WS", path: read.id }));
+                pending.fail(TransportFault.fromStatus(read.status, { method: pending.method, path: pending.path, body: read.body }));
 
                 return;
             }
@@ -91,6 +112,54 @@ export function socket(settings: SocketOptions)
         }
     }
 
+    function dropped(): void
+    {
+        isOpen = false;
+        wire = undefined;
+        openedAt = undefined;
+
+        failAll(new TransportFault("NETWORK", "The socket closed before the response arrived.", {
+            method: "WS",
+            path: "(in flight)",
+            retryable: true,
+        }));
+    }
+
+    function redialAfter(code: number | undefined, livedMs: number): void
+    {
+        if (closedByUs || later !== undefined)
+        {
+            return;
+        }
+
+        if (code === closedAsSignedOut)
+        {
+            settings.log("transport socket was closed as signed out; it waits for reconnect()");
+
+            return;
+        }
+
+        const livedLong = livedMs >= settings.reconnectBaseMs;
+
+        if (livedLong)
+        {
+            tries = 0;
+        }
+
+        tries += 1;
+
+        const ceiling = Math.min(settings.reconnectBaseMs * 2 ** (tries - 1), longestWaitMs);
+        const wait = code === closedAtLifetime && livedLong ? 0 : Math.round(ceiling / 2 + (settings.random() * ceiling) / 2);
+
+        settings.log("transport lost its socket; http carries requests while it retries", { tries, wait });
+
+        later = setTimeout(() =>
+        {
+            later = undefined;
+            void connect();
+        }, wait);
+    }
+
     function connect(): Promise<boolean>
     {
         return new Promise<boolean>((resolve) =>
@@ -106,33 +175,72 @@ export function socket(settings: SocketOptions)
                 }
             };
 
-            const timer = setTimeout(() =>
-            {
-                settings.log("transport could not open a socket in time; using http");
-                resolveOnce(false);
-            }, settings.connectTimeoutMs);
-
-            let next: Socket;
+            let url: string | undefined;
 
             try
             {
-                next = settings.open(settings.wsUrl);
+                url = settings.address();
             }
             catch (cause)
             {
-                clearTimeout(timer);
-                settings.log("transport could not open a socket; using http", { cause });
+                settings.log("transport could not work out a socket address; using http while it retries", { cause });
+                resolveOnce(false);
+                redialAfter(undefined, 0);
+
+                return;
+            }
+
+            if (url === undefined)
+            {
+                settings.log("transport has no socket address for now; using http");
                 resolveOnce(false);
 
                 return;
             }
 
+            let next: Socket;
+
+            try
+            {
+                next = settings.open(url);
+            }
+            catch (cause)
+            {
+                settings.log("transport could not open a socket; using http while it retries", { cause });
+                resolveOnce(false);
+                redialAfter(undefined, 0);
+
+                return;
+            }
+
+            current = next;
+
+            const timer = setTimeout(() =>
+            {
+                settings.log("transport could not open a socket in time; using http");
+                resolveOnce(false);
+
+                if (current === next && !isOpen)
+                {
+                    next.close();
+                }
+            }, settings.connectTimeoutMs);
+
             next.addEventListener("open", () =>
             {
                 clearTimeout(timer);
+
+                if (current !== next || settled)
+                {
+                    next.close();
+
+                    return;
+                }
+
                 wire = next;
                 isOpen = true;
-                tries = 0;
+                openedAt = now();
+
                 for (const topic of subscribers.keys())
                 {
                     tell("subscribe", topic);
@@ -144,7 +252,10 @@ export function socket(settings: SocketOptions)
 
             next.addEventListener("message", (event: unknown) =>
             {
-                received((event as { data?: unknown }).data);
+                if (current === next)
+                {
+                    received((event as { data?: unknown }).data);
+                }
             });
 
             next.addEventListener("error", () =>
@@ -153,34 +264,52 @@ export function socket(settings: SocketOptions)
                 resolveOnce(false);
             });
 
-            next.addEventListener("close", () =>
+            next.addEventListener("close", (event: unknown) =>
             {
                 clearTimeout(timer);
-                isOpen = false;
-                wire = undefined;
-
-                failAll(new TransportFault("NETWORK", "The socket closed before the response arrived.", {
-                    method: "WS",
-                    path: "(in flight)",
-                    retryable: true,
-                }));
-
                 resolveOnce(false);
 
-                if (closedByUs)
+                if (current !== next)
                 {
                     return;
                 }
 
-                tries += 1;
+                current = undefined;
 
-                const wait = Math.min(settings.reconnectBaseMs * 2 ** (tries - 1), 30_000);
+                const livedMs = wire === next && openedAt !== undefined ? now() - openedAt : 0;
 
-                settings.log("transport lost its socket; http carries requests while it retries", { tries, wait });
-
-                later = setTimeout(() => void connect(), wait);
+                dropped();
+                redialAfter(closeCodeOf(event), livedMs);
             });
         });
+    }
+
+    function reconnect(): void
+    {
+        if (closedByUs)
+        {
+            return;
+        }
+
+        if (later !== undefined)
+        {
+            clearTimeout(later);
+            later = undefined;
+        }
+
+        tries = 0;
+
+        const previous = current;
+
+        current = undefined;
+
+        if (previous !== undefined)
+        {
+            dropped();
+            previous.close();
+        }
+
+        void connect();
     }
 
     const channel: Wire = {
@@ -206,7 +335,7 @@ export function socket(settings: SocketOptions)
 
             counter += 1;
 
-            const id = `${settings.now?.() ?? Date.now()}-${counter}`;
+            const id = `${now()}-${counter}`;
 
             return new Promise<Answer>((resolve, fail) =>
             {
@@ -220,7 +349,7 @@ export function socket(settings: SocketOptions)
                     }));
                 }, settings.timeoutMs);
 
-                waiting.set(id, { resolve, fail, timer });
+                waiting.set(id, { method: request.method, path: request.path, resolve, fail, timer });
 
                 try
                 {
@@ -230,7 +359,7 @@ export function socket(settings: SocketOptions)
                         path: request.path,
                         query: request.query,
                         body: request.body,
-                        headers: request.headers,
+                        headers: { ...settings.headers(), ...request.headers },
                     }));
                 }
                 catch (cause)
@@ -252,6 +381,8 @@ export function socket(settings: SocketOptions)
         channel,
 
         connect,
+
+        reconnect,
 
         subscribe: (topic: string, receive: (message: unknown) => void): Subscription =>
         {
@@ -286,6 +417,7 @@ export function socket(settings: SocketOptions)
             if (later !== undefined)
             {
                 clearTimeout(later);
+                later = undefined;
             }
 
             failAll(new TransportFault("ABORTED", "The transport was closed.", {
@@ -293,9 +425,12 @@ export function socket(settings: SocketOptions)
                 path: "(in flight)",
             }));
 
-            wire?.close();
+            const previous = current;
+
+            current = undefined;
             wire = undefined;
             isOpen = false;
+            previous?.close();
         },
     };
 }

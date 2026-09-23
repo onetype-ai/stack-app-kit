@@ -62,7 +62,7 @@ export type StartedApp = {
     http: HttpClient;
     realtime: Realtime;
 
-    /** Which channel carried the first request: "ws" or "http". */
+    /** Which channel was live once every plugin had started: the socket is dialled only then, so it carries every plugin's `sends`. */
     channel: "ws" | "http";
 
     /** The router built from what plugins declared, where `start` was given one to build with. */

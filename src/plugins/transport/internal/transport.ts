@@ -14,6 +14,19 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
     const retries = settings.retries ?? 2;
     const retryBaseMs = settings.retryBaseMs ?? 200;
     const rest = settings.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)));
+    const random = settings.random ?? Math.random;
+    const sent = (): Readonly<Record<string, string>> => settings.headers?.() ?? {};
+    const wsUrl = settings.wsUrl;
+
+    if (settings.socketFor !== undefined && settings.socketFor !== "requests" && settings.socketFor !== "push")
+    {
+        throw new TransportFault("CLIENT", `transport: socketFor "${String(settings.socketFor)}" is not one of "requests" or "push". Name one of those, or leave it out for "requests".`, {
+            method: "WS",
+            path: "(settings)",
+        });
+    }
+
+    const requestsOverSocket = settings.socketFor !== "push";
 
     const overHttp = http({
         baseUrl: settings.baseUrl,
@@ -21,9 +34,11 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
         headers: settings.headers,
     });
 
-    const socketChannel = settings.wsUrl !== undefined && settings.openSocket !== undefined
+    const socketChannel = wsUrl !== undefined && settings.openSocket !== undefined
         ? socket({
-            wsUrl: settings.wsUrl,
+            address: typeof wsUrl === "function" ? () => wsUrl(sent()) : () => wsUrl,
+            headers: sent,
+            random,
             timeoutMs,
             connectTimeoutMs: settings.connectTimeoutMs ?? 3_000,
             reconnectBaseMs: settings.reconnectBaseMs ?? 1_000,
@@ -34,7 +49,7 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
 
     async function sendOnce(request: HttpRequest): Promise<Answer>
     {
-        const channel = socketChannel !== undefined && socketChannel.channel.open() ? socketChannel.channel : overHttp;
+        const channel = requestsOverSocket && socketChannel !== undefined && socketChannel.channel.open() ? socketChannel.channel : overHttp;
 
         try
         {
@@ -112,7 +127,7 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
                         throw cause;
                     }
 
-                    const wait = retry.delayMs(attempt, retryBaseMs);
+                    const wait = retry.delayMs(attempt, retryBaseMs, random);
 
                     log("retrying", { path: request.path, attempt: attempt + 1, wait });
 
@@ -133,6 +148,11 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
             }
 
             return socketChannel.subscribe(topic, receive);
+        },
+
+        reconnect: (): void =>
+        {
+            socketChannel?.reconnect();
         },
 
         close: (): void =>

@@ -22,7 +22,8 @@ export type KernelOptions = {
     config?: Readonly<Record<string, unknown>>;
     http?: HttpClient;
     cache?: Cache;
-    realtime?: Realtime;
+    /** Without `reconnect`, the kernel answers one that does nothing. */
+    realtime?: Omit<Realtime, "reconnect"> & Partial<Pick<Realtime, "reconnect">>;
     permissions?: PermissionSource;
 
     /** Which plugin may answer what the viewer holds; any other declaring `grants` is refused. */
@@ -118,6 +119,8 @@ const noRealtime: Realtime = {
     {
         return missing("realtime", "realtime");
     },
+
+    reconnect: () => {},
 };
 
 /** Builds a kernel from what the application declared. */
@@ -127,7 +130,15 @@ export function createKernel(options: KernelOptions): Kernel
     const log = options.log ?? quiet;
     const http = options.http ?? noClient;
     const cache = options.cache ?? noCache;
-    const realtime = options.realtime ?? noRealtime;
+    const givenRealtime = options.realtime ?? noRealtime;
+    const realtime: Realtime = {
+        channel: () => givenRealtime.channel(),
+        subscribe: (topic, receive) => givenRealtime.subscribe(topic, receive),
+        reconnect: () =>
+        {
+            givenRealtime.reconnect?.();
+        },
+    };
 
     const registry = new Map(options.plugins.map((plugin) => [plugin.name, plugin]));
     const bus = events<Context>(Date.now, (failure) =>

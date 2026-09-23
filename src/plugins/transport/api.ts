@@ -28,7 +28,15 @@ export type Subscription = {
 /** What the plugin needs before it can dial anything. */
 export type TransportOptions = {
     baseUrl: string;
-    wsUrl?: string | undefined;
+
+    /**
+     * Where the socket dials. A function is read on every dial and redial with the headers a request would carry now
+     * (`headers` and every plugin's), so the address can follow the viewer; answering undefined keeps the socket closed until `reconnect()`.
+     */
+    wsUrl?: string | ((sent: Readonly<Record<string, string>>) => string | undefined) | undefined;
+
+    /** "requests" (the default) sends requests over the socket while it is open; "push" keeps every request on HTTP and the socket for pushes only. */
+    socketFor?: "requests" | "push" | undefined;
     openSocket?: ((url: string) => Socket) | undefined;
     headers?: (() => Readonly<Record<string, string>>) | undefined;
     onUnauthorized?: ((path: string) => void) | undefined;
@@ -38,6 +46,9 @@ export type TransportOptions = {
     connectTimeoutMs?: number;
     reconnectBaseMs?: number;
     sleep?: ((ms: number) => Promise<void>) | undefined;
+
+    /** Spreads every retry and redial between half and all of its backoff, so the tabs of a restarted server do not return in the same instant. */
+    random?: (() => number) | undefined;
 };
 
 /** The socket shape this plugin drives. */
@@ -60,6 +71,9 @@ export type Transport = {
 
     /** Server-pushed messages. With no socket this succeeds and delivers nothing. */
     subscribe: (topic: string, receive: (message: unknown) => void) => Subscription;
+
+    /** Closes the socket and dials again with the address as it reads now, keeping every subscription; a socket closed as signed out (4001) waits for this. */
+    reconnect: () => void;
 
     /** Stops the socket for good. */
     close: () => void;

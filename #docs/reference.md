@@ -10,6 +10,11 @@ What every service, listener, participant and command is handed.
 `"http"` so a caller can branch, and `subscribe` refuses rather than handing
 back a subscription that would deliver nothing.
 
+**The socket follows the viewer.** `start` dials once every plugin started,
+so the address already carries every plugin's `sends`. `realtime.reconnect()`
+dials again and keeps every subscription: call it when what the address reads
+from changed (sign-in, sign-out, a workspace switch).
+
 **`http` answers the body, never an envelope.** A 204 is `undefined`, anything
 but a 2xx throws. A fake answering `{ status, body }` describes the channel
 underneath, and tests itself rather than the code.
@@ -108,11 +113,9 @@ Memoise what `useStore`'s `read` answers, or it never stops re-rendering.
 A contribution renders as `ComponentType<{ payload: unknown }>`. `Slot` filters
 by `requires` and wraps each in its plugin's `fallback`.
 
-**A contribution needs no `dependsOn` on the plugin whose slot it fills.** It
-hands over a component and takes back a payload the kernel parses, so it
-reaches for nothing. A `listens` or `participates` does: both read a shape
-whose owner may change it, and name that owner. Without the difference a shell
-could never frame the plugins filling it, which is what a slot is for.
+**A contribution names the slot's owner in `dependsOn`**, as a `listens` or
+`participates` does: the payload it takes is a shape that owner may change.
+Without it, start refuses `UNDECLARED_DEPENDENCY`.
 
 `/react` also answers `StartupFailure`, `StatusPageProvider`, `useDismiss`,
 `useEventCallback` and `useFocusTrap`. `NotFound` is not optional: routes

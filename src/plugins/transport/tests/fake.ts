@@ -3,7 +3,7 @@ import type { Socket } from "../api";
 export function fakeSocket(): Socket & {
     opened: () => void;
     delivered: (text: string) => void;
-    dropped: () => void;
+    dropped: (code?: number) => void;
     failed: () => void;
     sent: () => string[];
 } {
@@ -63,10 +63,10 @@ export function fakeSocket(): Socket & {
             fire("message", { data: text });
         },
 
-        dropped: () =>
+        dropped: (code?: number) =>
         {
             state = 3;
-            fire("close");
+            fire("close", code === undefined ? undefined : { code });
         },
 
         failed: () =>

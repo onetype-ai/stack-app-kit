@@ -123,6 +123,9 @@ export type Cache = {
 export type Realtime = {
     channel: () => "ws" | "http";
     subscribe: (topic: string, receive: (message: unknown) => void) => { close: () => void };
+
+    /** Dials the socket again with the address as it reads now, keeping every subscription: after sign-in, sign-out or a workspace switch. */
+    reconnect: () => void;
 };
 
 /** What every plugin function receives. */

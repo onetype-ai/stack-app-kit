@@ -74,6 +74,9 @@ export type Fake<Config = unknown, Services = unknown> = {
     /** How many times the plugin said what a viewer may do had moved. */
     regranted: number;
 
+    /** How many times the plugin asked the socket to be dialled again. */
+    reconnected: number;
+
     /** What `ctx.hooks.run` answers next. Set it to refuse. */
     refusal: string | undefined;
 
@@ -110,6 +113,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
         commanded,
         logged,
         regranted: 0,
+        reconnected: 0,
         refusal: faking.refusal,
 
         push: (topic: string, message: unknown): void =>
@@ -183,6 +187,11 @@ export function fakeContext<Config = unknown, Services = unknown>(
 
     const realtime: Realtime = {
         channel: () => "http",
+
+        reconnect: () =>
+        {
+            fake.reconnected += 1;
+        },
 
         subscribe: (topic, receive) =>
         {
