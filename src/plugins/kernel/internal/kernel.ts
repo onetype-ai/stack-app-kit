@@ -1,14 +1,23 @@
 import { createLocale, localeProblems } from "./locale";
 import type { LocaleOptions } from "./locale";
-import type { Cache, HttpClient, Context, FallbackProps, Pages, PipelineStep, Plugin, Realtime, RegistryAccess, Route } from "./contract";
+import type { Cache, HttpClient, Context, FallbackProps, Pages, Plugin, Realtime, Route } from "./contract";
 import { events, type ListenerFailure } from "./events";
 import { KernelFault } from "./faults";
 import { hooks } from "./hooks";
 import { permissions, type PermissionSource } from "./permissions";
-import { mirror } from "./mirror";
+import type { mirror} from "./mirror";
+import { startMirrors } from "./mirror";
 import { pipelines, type ExplainedStep } from "./pipelines";
 import { registries, type RegistryEntry } from "./registries";
+import { refuseSharedHeaders, warnUngated } from "./settling";
 import { slots, type MountedContribution } from "./slots";
+import { addAll, declareAll, explainAll } from "./declaring";
+import { access } from "./access";
+import { commandsTable } from "./commanding";
+import { contexts } from "./context";
+import { given } from "./given";
+import { grantsFrom } from "./granting";
+import { inDependencyOrder } from "./order";
 import { validate } from "./validate";
 
 import type { ComponentType, FunctionComponent, ReactNode } from "react";
@@ -96,134 +105,17 @@ export type Kernel = {
 
 const quiet: LogFn = () => {};
 
-function missing(what: string, field: string): never
-{
-    throw new KernelFault(
-        "NOT_STARTED",
-        `A plugin used ctx.${field}, but no ${what} was given to createKernel. Pass one as \`${field}\`.`,
-    );
-}
-
-const noClient: HttpClient = {
-    get: () =>
-    {
-        return missing("http client", "http");
-    },
-    post: () =>
-    {
-        return missing("http client", "http");
-    },
-    put: () =>
-    {
-        return missing("http client", "http");
-    },
-    patch: () =>
-    {
-        return missing("http client", "http");
-    },
-    delete: () =>
-    {
-        return missing("http client", "http");
-    },
-    upload: () =>
-    {
-        return missing("http client", "http");
-    },
-};
-
-const noCache: Cache = {
-    invalidate: () =>
-    {
-        return missing("cache", "cache");
-    },
-
-    clear: () =>
-    {
-        return missing("cache", "cache");
-    },
-
-    prefetch: () =>
-    {
-        return missing("cache", "cache");
-    },
-};
-
-const noRealtime: Realtime = {
-    channel: () =>
-    {
-        return "http";
-    },
-
-    // a subscription that returns quietly looks live and delivers nothing
-    subscribe: () =>
-    {
-        return missing("realtime", "realtime");
-    },
-
-    reconnect: () => {},
-};
-
 /** Builds a kernel from what the application declared. */
 export function createKernel(options: KernelOptions): Kernel
 {
     const config = options.config ?? {};
     const log = options.log ?? quiet;
-    const givenHttp = options.http ?? noClient;
-    const http: HttpClient = {
-        get: (path, request) => givenHttp.get(path, request),
-        post: (path, request) => givenHttp.post(path, request),
-        put: (path, request) => givenHttp.put(path, request),
-        patch: (path, request) => givenHttp.patch(path, request),
-        delete: (path, request) => givenHttp.delete(path, request),
-        upload: (path, body, request) =>
-        {
-            if (givenHttp.upload === undefined)
-            {
-                throw new KernelFault("NOT_STARTED", "A plugin used ctx.http.upload(), and the http client given to createKernel has no upload. Give one that uploads, as start does.");
-            }
-
-            return givenHttp.upload(path, body, request);
-        },
-    };
     const localeOptions: LocaleOptions = options.locale ?? { supported: ["en"], fallback: "en" };
     const locales = createLocale(localeOptions, (message) =>
     {
         throw new KernelFault("INVALID_CONFIG", `locale: ${message}`);
     });
-    const givenCache = options.cache ?? noCache;
-    const cache: Cache = {
-        invalidate: (key) =>
-        {
-            givenCache.invalidate(key);
-        },
-        clear: () =>
-        {
-            if (givenCache.clear === undefined)
-            {
-                throw new KernelFault("NOT_STARTED", "A plugin used ctx.cache.clear(), and the cache given to createKernel has no clear. Give one that drops every entry, as cache.fromQueries does.");
-            }
-
-            givenCache.clear();
-        },
-        prefetch: (key, fetch) =>
-        {
-            if (givenCache.prefetch === undefined)
-            {
-                throw new KernelFault("NOT_STARTED", "A plugin used ctx.cache.prefetch(), and the cache given to createKernel has no prefetch. Give one that fetches into itself, as cache.fromQueries does.");
-            }
-
-            return givenCache.prefetch(key, fetch);
-        },
-    };
-    const givenRealtime = options.realtime ?? noRealtime;
-    const realtime: Realtime = {
-        channel: () => givenRealtime.channel(),
-        subscribe: (topic, receive, refused) => givenRealtime.subscribe(topic, receive, refused),
-        reconnect: () =>
-        {
-            givenRealtime.reconnect?.();
-        },
-    };
+    const { http, cache, realtime } = given(options);
 
     const registry = new Map(options.plugins.map((plugin) => [plugin.name, plugin]));
     const bus = events<Context>(Date.now, (failure) =>
@@ -253,15 +145,9 @@ export function createKernel(options: KernelOptions): Kernel
         },
     });
     const services = new Map<string, unknown>();
-    const commands = new Map<string, {
-        plugin: string;
-        requires: readonly string[];
-        run: (input: unknown, ctx: Context) => void | Promise<void>;
-        schema: { safeParse: (value: unknown) => { success: boolean; data?: unknown; error?: { issues: { message: string }[] } } };
-    }>();
-
     let running = false;
     let stopped = false;
+    const commands = commandsTable(permits, () => running);
 
     // start() fills these; leaving them means a restart registers twice and a
     // listener keeps firing against state its teardown released.
@@ -290,228 +176,30 @@ export function createKernel(options: KernelOptions): Kernel
 
     const parsed = new Map<string, unknown>();
 
-    const seen = new Map<string, { from: readonly RegistryEntry[]; version: number; visible: readonly RegistryEntry[] }>();
-    let permitted = 0;
-
-    permits.watch(() =>
-    {
-        permitted += 1;
+    const reach = access(lists, permits, registry);
+    const context = contexts({
+        config,
+        parsed,
+        services,
+        byName: registry,
+        log,
+        http,
+        cache,
+        realtime,
+        clearGivenCache: () =>
+        {
+            options.cache?.clear?.();
+        },
+        bus,
+        points,
+        permits,
+        locales,
+        flows,
+        mirrors,
+        reach,
+        isRunning: () => running,
+        run: (command, input) => commands.run(command, input, context),
     });
-
-    // the same array back until an entry or a permission moved, so a React store reading it settles
-    function visible(name: string): readonly RegistryEntry[]
-    {
-        const from = lists.list(name);
-        const last = seen.get(name);
-
-        if (last !== undefined && last.from === from && last.version === permitted)
-        {
-            return last.visible;
-        }
-
-        const answer = Object.freeze(from.filter((entry) => permits.all(entry.requires ?? [])));
-
-        seen.set(name, { from, version: permitted, visible: answer });
-
-        return answer;
-    }
-
-    function registryFor(plugin: string, name: string): RegistryAccess
-    {
-        reachable(plugin, lists.ownerOf(name), "registry", name);
-
-        return {
-            list: () => visible(name),
-            set: (entry) => lists.add(plugin, name, entry),
-        };
-    }
-
-    function reachable(plugin: string, owner: string | undefined, kind: string, name: string): void
-    {
-        if (owner === undefined)
-        {
-            throw new KernelFault(kind === "pipeline" ? "UNDECLARED_PIPELINE" : "UNDECLARED_REGISTRY", `"${plugin}" reached ${kind} "${name}", which no plugin declares. Declare it, or correct the name.`, { plugin });
-        }
-
-        if (owner !== plugin && !(registry.get(plugin)?.definition.dependsOn ?? []).includes(owner))
-        {
-            throw new KernelFault("UNDECLARED_DEPENDENCY", `${kind === "pipeline" ? "Pipeline" : "Registry"} "${name}" belongs to "${owner}", which "${plugin}" does not depend on. Add "${owner}" to dependsOn.`, { plugin });
-        }
-    }
-
-    function context(plugin: string): Context
-    {
-        return {
-            name: plugin,
-            config: parsed.get(plugin) ?? config[plugin],
-            services: services.get(plugin),
-
-            log: {
-                debug: (line, about) =>
-                {
-                    log("debug", plugin, line, about);
-                },
-                info: (line, about) =>
-                {
-                    log("info", plugin, line, about);
-                },
-                warn: (line, about) =>
-                {
-                    log("warn", plugin, line, about);
-                },
-                error: (line, about) =>
-                {
-                    log("error", plugin, line, about);
-                },
-            },
-
-            http,
-            cache,
-            realtime,
-
-            events: {
-                emit: (event, payload) =>
-                {
-                    // stop() clears the registries, so without this the refusal
-                    // would name a missing declaration rather than the real cause
-                    if (!running)
-                    {
-                        throw new KernelFault(
-                            "NOT_STARTED",
-                            `"${plugin}" emitted "${event}" while the kernel was not running.`,
-                        );
-                    }
-
-                    bus.emit(plugin, event, payload, context);
-                },
-
-                on: (event, handle) =>
-                {
-                    return bus.listen(plugin, event, {
-                        describe: `${plugin} listening while it runs`,
-                        handle: (payload) =>
-                        {
-                            handle(payload);
-                        },
-                    }, (owner) => owner === plugin || (registry.get(plugin)?.definition.dependsOn ?? []).includes(owner));
-                },
-            },
-
-            hooks: {
-                run: (hook, payload) =>
-                {
-                    return points.run(plugin, hook, payload, context);
-                },
-            },
-
-            permissions: permits,
-
-            commands: {
-                run: (command, input) =>
-                {
-                    return run(command, input);
-                },
-            },
-
-            locale: locales.forPlugin(registry.get(plugin)?.definition.messages),
-
-            session: {
-                changed: () =>
-                {
-                    options.cache?.clear?.();
-
-                    // gone before the next identity reads, as the socket is; refetched with the headers as they read now
-                    for (const one of mirrors.values())
-                    {
-                        one.drop();
-                    }
-
-                    permits.changed();
-                    realtime.reconnect();
-
-                    for (const one of mirrors.values())
-                    {
-                        void one.refetch();
-                    }
-                },
-            },
-
-            registry: (name) =>
-            {
-                return registryFor(plugin, name);
-            },
-
-            pipeline: (name) =>
-            {
-                reachable(plugin, flows.ownerOf(name), "pipeline", name);
-
-                return {
-                    run: (input) => flows.run(name, input, context, (step, ms, outcome) =>
-                    {
-                        log("debug", plugin, `pipeline "${name}" step "${step}" ${outcome}`, { ms });
-                    }),
-                };
-            },
-
-            use: <Api,>(name: string): Api =>
-            {
-                const declared = registry.get(plugin)?.definition.dependsOn ?? [];
-
-                if (name !== plugin && !declared.includes(name))
-                {
-                    throw new KernelFault(
-                        "UNDECLARED_DEPENDENCY",
-                        `"${plugin}" reached "${name}", which it does not depend on. Add "${name}" to dependsOn.`,
-                        { plugin },
-                    );
-                }
-
-                return services.get(name) as Api;
-            },
-        };
-    }
-
-    async function run(command: string, input: unknown): Promise<void>
-    {
-        if (!running)
-        {
-            throw new KernelFault(
-                "NOT_STARTED",
-                `Command "${command}" was run before the kernel started. Every plugin's setup runs first, so a command called from one is too early: reach the service directly instead.`,
-            );
-        }
-
-        const declared = commands.get(command);
-
-        if (declared === undefined)
-        {
-            throw new KernelFault("UNDECLARED_COMMAND", `Command "${command}" is not declared by any plugin.`);
-        }
-
-        const lacking = declared.requires.filter((permission) => !permits.has(permission));
-
-        if (lacking.length > 0)
-        {
-            throw new KernelFault(
-                "PERMISSION_DENIED",
-                `Command "${command}" needs ${lacking.map((permission) => `"${permission}"`).join(", ")}, which the viewer does not have. This is a UI guard, not authorization: the server must refuse it too.`,
-                { plugin: declared.plugin, detail: { lacking } },
-            );
-        }
-
-        const answer = declared.schema.safeParse(input);
-
-        if (!answer.success)
-        {
-            throw new KernelFault(
-                "INVALID_PAYLOAD",
-                `The input for "${command}" does not match its schema: ${answer.error?.issues[0]?.message ?? "it was rejected"}.`,
-                { plugin: declared.plugin },
-            );
-        }
-
-        await declared.run(answer.data, context(declared.plugin));
-    }
 
     return {
         started: () =>
@@ -555,72 +243,9 @@ export function createKernel(options: KernelOptions): Kernel
                 }
             }
 
-            for (const plugin of order)
-            {
-                for (const [key, event] of Object.entries(plugin.definition.emits ?? {}))
-                {
-                    bus.declare(plugin.name, key, event);
-                }
+            declareAll(order, { bus, points, places, lists, flows });
 
-                for (const [key, hook] of Object.entries(plugin.definition.hooks ?? {}))
-                {
-                    points.declare(plugin.name, key, hook);
-                }
-
-                for (const [key, slot] of Object.entries(plugin.definition.slots ?? {}))
-                {
-                    places.declare(plugin.name, key, slot);
-                }
-
-                for (const [key, declared] of Object.entries(plugin.definition.registries ?? {}))
-                {
-                    lists.declare(plugin.name, key, declared);
-                }
-
-                for (const [key, declared] of Object.entries(plugin.definition.pipelines ?? {}))
-                {
-                    flows.declare(plugin.name, key, declared);
-                }
-            }
-
-            const refused: string[] = [];
-
-            for (const plugin of order)
-            {
-                for (const [key, entries] of Object.entries(plugin.definition.adds ?? {}))
-                {
-                    if (flows.known(key))
-                    {
-                        for (const step of entries)
-                        {
-                            if (typeof (step as Partial<PipelineStep> | null)?.id !== "string" || typeof (step as Partial<PipelineStep> | null)?.run !== "function")
-                            {
-                                refused.push(`  - Pipeline "${key}" refused a step from "${plugin.name}": it needs id: "<step>" and run: (state, ctx) => ....`);
-
-                                continue;
-                            }
-
-                            flows.add(plugin.name, key, step as PipelineStep);
-                        }
-
-                        continue;
-                    }
-
-                    for (const entry of entries)
-                    {
-                        try
-                        {
-                            lists.add(plugin.name, key, entry);
-                        }
-                        catch (cause)
-                        {
-                            refused.push(`  - ${cause instanceof Error ? cause.message : String(cause)}`);
-                        }
-                    }
-                }
-            }
-
-            refused.push(...flows.settle().map((problem) => `  - ${problem}`));
+            const refused = addAll(order, { lists, flows });
 
             if (refused.length > 0)
             {
@@ -629,13 +254,7 @@ export function createKernel(options: KernelOptions): Kernel
                 throw new KernelFault("INVALID_ENTRY", `${refused.length} ${refused.length === 1 ? "entry" : "entries"} stopped the kernel from starting:\n${refused.join("\n")}`);
             }
 
-            for (const plugin of order)
-            {
-                for (const key of Object.keys(plugin.definition.pipelines ?? {}))
-                {
-                    log("debug", plugin.name, `pipeline "${key}" runs ${flows.explain(key).map((step) => step.id).join(" → ")}`, { steps: flows.explain(key) });
-                }
-            }
+            explainAll(order, flows, log);
 
             for (const plugin of order)
             {
@@ -658,73 +277,11 @@ export function createKernel(options: KernelOptions): Kernel
 
                 for (const [key, command] of Object.entries(plugin.definition.commands ?? {}))
                 {
-                    commands.set(key, {
-                        plugin: plugin.name,
-                        requires: command.requires ?? [],
-                        run: command.run,
-                        schema: command.schema,
-                    });
+                    commands.declare(plugin.name, key, command);
                 }
             }
 
-            const source = order.find((plugin) => plugin.definition.grants !== undefined);
-
-            if (source !== undefined)
-            {
-                const declaredPermissions = new Set(
-                    order.flatMap((plugin) => Object.keys(plugin.definition.permissions ?? {})),
-                );
-                const warnedAbout = new Set<string>();
-
-                // Replacement, not a merge, is deliberate: the granting plugin
-                // holds the session, and merging would keep a permission alive
-                // after sign-out. Saying so is what was missing -- an
-                // application that passed both read its own permissions as
-                // false with nothing anywhere to explain why.
-                if (options.permissions !== undefined)
-                {
-                    log(
-                        "warn",
-                        source.name,
-                        `"${source.name}" declares grants, so it answers what the viewer holds and the \`permissions\` passed to createKernel is never read. Pass one or the other.`,
-                    );
-                }
-
-                readGranted = () =>
-                {
-                    const answered = source.definition.grants?.(context(source.name)) ?? [];
-
-                    // grants is read on every check, so its answer cannot be
-                    // validated at startup the way a declaration is. A name no
-                    // plugin declares guards nothing, so it is dropped rather
-                    // than answered: has() saying yes to a permission nothing
-                    // checks is the shape a misspelling hides in.
-                    const held: string[] = [];
-
-                    for (const permission of answered)
-                    {
-                        if (declaredPermissions.has(permission))
-                        {
-                            held.push(permission);
-
-                            continue;
-                        }
-
-                        if (!warnedAbout.has(permission))
-                        {
-                            warnedAbout.add(permission);
-
-                            log(
-                                "warn",
-                                source.name,
-                                `"${source.name}" granted "${permission}", which no plugin declares, so it was dropped. Declare it under the owning plugin's \`permissions\`, or correct the name.`,
-                            );
-                        }
-                    }
-
-                    return held;
-                };
-            }
+            readGranted = grantsFrom(order, options, context, log);
 
             // "Nothing partially starts" is the promise; a setup that threw
             // used to leave every earlier plugin holding its sockets and timers
@@ -760,83 +317,9 @@ export function createKernel(options: KernelOptions): Kernel
             running = true;
             stopped = false;
 
-            // A command naming no permission runs for anyone holding an
-            // account. Routes get UNGRANTABLE_PERMISSION and a 403 page;
-            // commands had neither, and an omission carries no signal.
-            const ungated = order
-                .flatMap((plugin) => Object.entries(plugin.definition.commands ?? {}).map(([command, declared]) => ({ plugin: plugin.name, command, declared })))
-                .filter(({ declared }) => (declared.requires ?? []).length === 0)
-                .map(({ plugin, command }) => `${plugin}: ${command}`);
-
-            // sends reads ctx.services, so it cannot run before setup — but it
-            // can run here, where a clash costs a boot rather than the first
-            // request that happened to need a header.
-            const wroteHeader = new Map<string, string>();
-
-            for (const plugin of order)
-            {
-                for (const name of Object.keys(plugin.definition.sends?.(context(plugin.name)) ?? {}))
-                {
-                    const wrote = wroteHeader.get(name.toLowerCase());
-
-                    if (wrote !== undefined)
-                    {
-                        throw new KernelFault(
-                            "DUPLICATE_HEADER",
-                            `"${plugin.name}" and "${wrote}" both send "${name}". One plugin owns a header, or which one answers depends on the order they booted.`,
-                            { plugin: plugin.name },
-                        );
-                    }
-
-                    wroteHeader.set(name.toLowerCase(), plugin.name);
-                }
-            }
-
-            if (ungated.length > 0)
-            {
-                log("warn", "kernel", "COMMANDS ANY VIEWER MAY RUN", {
-                    meaning: "these name no permission, so every viewer may run them",
-                    commands: ungated,
-                    turnOn: "declare requires: [...] on each, or leave it if anyone really may",
-                });
-            }
-
-            for (const { name, remote } of lists.remotes())
-            {
-                const owner = lists.ownerOf(name) ?? "kernel";
-                const one = mirror(remote, {
-                    feed: (entries) => lists.feed(name, entries),
-                    patch: (key, entry) => lists.patch(name, key, entry),
-                }, http, realtime, (line, about) =>
-                {
-                    log("warn", owner, line, about);
-                });
-
-                mirrors.set(name, one);
-                void one.start();
-            }
-
-            if (mirrors.size > 0)
-            {
-                try
-                {
-                    // pushes sent while the socket was down are lost, so every mirror reads its snapshot again
-                    bus.listen("kernel", "transport.reconnected", {
-                        describe: "Registries mirroring the server read their snapshot again.",
-                        handle: () =>
-                        {
-                            for (const one of mirrors.values())
-                            {
-                                void one.refetch();
-                            }
-                        },
-                    }, () => true);
-                }
-                catch
-                {
-                    log("debug", "kernel", "no transport.reconnected event is declared; mirrored registries refetch only on a gap or a session change");
-                }
-            }
+            refuseSharedHeaders(order, context);
+            warnUngated(order, log);
+            startMirrors(lists, bus, http, realtime, log, mirrors);
 
             permits.changed();
         },
@@ -922,7 +405,7 @@ export function createKernel(options: KernelOptions): Kernel
         registry: (name) =>
         {
             return {
-                list: () => visible(name),
+                list: () => reach.visible(name),
                 watch: (notify) =>
                 {
                     const stopEntries = lists.watch(name, notify);
@@ -950,7 +433,7 @@ export function createKernel(options: KernelOptions): Kernel
 
         events: { failures: bus.failures },
 
-        run,
+        run: (command, input) => commands.run(command, input, context),
 
         sent: () =>
         {
@@ -987,44 +470,4 @@ export function createKernel(options: KernelOptions): Kernel
             return headers;
         },
     };
-}
-
-function inDependencyOrder(registry: ReadonlyMap<string, Plugin>): Plugin[]
-{
-    const ordered: Plugin[] = [];
-    const state = new Map<string, "open" | "done">();
-
-    function walk(name: string): void
-    {
-        if (state.get(name) !== undefined)
-        {
-            return;
-        }
-
-        state.set(name, "open");
-
-        const plugin = registry.get(name);
-
-        for (const need of [...(plugin?.definition.dependsOn ?? [])].sort())
-        {
-            if (registry.has(need))
-            {
-                walk(need);
-            }
-        }
-
-        state.set(name, "done");
-
-        if (plugin !== undefined)
-        {
-            ordered.push(plugin);
-        }
-    }
-
-    for (const name of [...registry.keys()].sort())
-    {
-        walk(name);
-    }
-
-    return ordered;
 }

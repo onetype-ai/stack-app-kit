@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import type { HttpClient, Realtime } from "./contract";
+import type { Context, HttpClient, Realtime } from "./contract";
+import type { events } from "./events";
+import type { LogFn } from "./kernel";
+import type { registries } from "./registries";
 
 const Snapshot = z.object({ version: z.number().int().nonnegative(), entries: z.array(z.unknown()) });
 
@@ -115,4 +118,45 @@ export function mirror(remote: string, into: Mirrored, http: HttpClient, realtim
             subscription = undefined;
         },
     };
+}
+
+// Every registry fed by the server starts its mirror; each reads its snapshot again once the socket is back.
+export function startMirrors(lists: ReturnType<typeof registries>, bus: ReturnType<typeof events<Context>>, http: HttpClient, realtime: Realtime, log: LogFn, mirrors: Map<string, ReturnType<typeof mirror>>): void
+{
+    for (const { name, remote } of lists.remotes())
+    {
+        const owner = lists.ownerOf(name) ?? "kernel";
+        const one = mirror(remote, {
+            feed: (entries) => lists.feed(name, entries),
+            patch: (key, entry) => lists.patch(name, key, entry),
+        }, http, realtime, (line, about) =>
+        {
+            log("warn", owner, line, about);
+        });
+
+        mirrors.set(name, one);
+        void one.start();
+    }
+
+    if (mirrors.size > 0)
+    {
+        try
+        {
+            // pushes sent while the socket was down are lost, so every mirror reads its snapshot again
+            bus.listen("kernel", "transport.reconnected", {
+                describe: "Registries mirroring the server read their snapshot again.",
+                handle: () =>
+                {
+                    for (const one of mirrors.values())
+                    {
+                        void one.refetch();
+                    }
+                },
+            }, () => true);
+        }
+        catch
+        {
+            log("debug", "kernel", "no transport.reconnected event is declared; mirrored registries refetch only on a gap or a session change");
+        }
+    }
 }
