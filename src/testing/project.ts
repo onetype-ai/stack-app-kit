@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import type { Dirent } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { gzipSync } from "node:zlib";
 
 function entriesOf(folder: string, recursive = false): Dirent[]
@@ -41,7 +41,7 @@ export type ProjectCheckOptions = {
     /** Where the documents sit while they are a folder. */
     docs?: string;
 
-    /** What every application must hold, whatever else it keeps. */
+    /** Documents this application asks itself to hold; none unless named. `Project.required` is the kit's suggestion. */
     required?: readonly string[];
 
     /** The size a document may reach before it has outgrown its point. */
@@ -97,6 +97,13 @@ export const Project = {
                 check: "unexplained" as const,
                 message: `"${name}" has no usage.md. A plugin nobody can read is one nobody can depend on.`,
             })),
+
+            ...findOversizedDocs(plugins, checking.maxCharacters)
+                .filter((doc) => basename(doc.path) === "usage.md")
+                .map((doc) => ({
+                    check: "oversized" as const,
+                    message: `${doc.path.replace(`${root}/`, "")} is ${String(doc.size)} characters, past the size another author reads whole. Cut it to what a caller needs.`,
+                })),
 
             ...findUnknownTokens(source).map((unknown) => ({
                 check: "token" as const,
