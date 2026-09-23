@@ -63,6 +63,7 @@
     "files": [
         "dist",
         "schema.md",
+        "CHANGELOG.md",
         "README.md",
         "#docs",
         "!#docs/progress"
