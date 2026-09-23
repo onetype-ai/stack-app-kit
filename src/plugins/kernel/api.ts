@@ -28,6 +28,8 @@ export type {
     Permission,
     Plugin,
     Realtime,
+    Pipeline,
+    PipelineStep,
     Registry,
     RegistryAccess,
     CallOptions,
@@ -55,6 +57,7 @@ export type {
 export type { ListenerFailure } from "./internal/events";
 export type { MountedContribution } from "./internal/slots";
 export type { RegistryEntry } from "./internal/registries";
+export type { ExplainedStep } from "./internal/pipelines";
 export type { PermissionSource } from "./internal/permissions";
 export type { Kernel, LogFn, KernelOptions, RegisteredRoute } from "./internal/kernel";
 export type { ContractProblem } from "./internal/validate";

@@ -38,7 +38,8 @@ frame?: FunctionComponent; pages?: Pages; fallback?: ComponentType;
 routes?: readonly Route[];   // path, component, title, requires?, search?, instead?,
                              // render?, paths?, load?, head? (seo/usage.md)
 slots?: Record<string, Slot>; contributes?: readonly SlotContribution[];
-registries?: Record<string, Registry>; adds?: Record<string, unknown[]>;
+registries?: Record<string, Registry>; pipelines?: Record<string, Pipeline>;
+adds?: Record<string, unknown[]>;
 emits?: Record<string, Event>; listens?: Record<string, Listener>;
 hooks?: Record<string, Hook>; participates?: Record<string, Participant>;
 commands?: Record<string, Command>;
@@ -99,8 +100,6 @@ useEvent(listener, event, handle): void             // listener: the plugin hear
 useStore(watch, read): Value                         // a value a service keeps
 useRegistry(name): readonly RegistryEntry[]          // what the viewer may see
 ```
-
-`kernel.permissions.changed()` has every guard ask again.
 
 `Route.instead(ctx)` answers a path when the viewer belongs elsewhere (an
 empty cart's checkout); `send` does the going. `RouteGuard` asks it

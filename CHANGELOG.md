@@ -14,8 +14,19 @@
   `useRegistry(name)` answer the entries by `order` and then key, without
   those whose `requires` the viewer lacks. `declarationsOf` lists
   `registries` and `adds`, and `fakeContext()` records what a plugin set.
-- `Context` gains `registry`: a hand-built fake annotated with `Context`
-  needs it (see 6.4.0).
+
+### Pipeline
+
+- A plugin declares `pipelines` (`input`, `output`, ordered `steps`), and
+  plugins depending on it add steps with `adds`, each `before` or `after` a
+  step id. Start refuses an unknown anchor, a taken id and a cycle.
+- `ctx.pipeline(name).run(input)` checks the input, runs each step as
+  `run(state, ctx, { stop })`, and checks the output. A failing step throws
+  `PIPELINE_FAILED`, naming it. A pipeline opens no transaction.
+- `kernel.explain(name)` answers the resolved order. Start logs it at debug,
+  and each step logs its outcome and duration, never the state.
+- `Context` gains `registry` and `pipeline`: a hand-built fake annotated with
+  `Context` needs them (see 6.4.0). `fakeContext()` records runs in `piped`.
 
 ## 6.4.0
 

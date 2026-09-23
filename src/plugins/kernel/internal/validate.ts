@@ -130,6 +130,21 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, report: (code: Ker
         }
     }
 
+    for (const [key, pipeline] of Object.entries(plugin.definition.pipelines ?? {}))
+    {
+        if (checkNamespaced(name, key, "pipeline", report))
+        {
+            claim("registries", key, "DUPLICATE_REGISTRY", "Registry or pipeline");
+        }
+
+        const shape = pipeline as Partial<typeof pipeline> | undefined;
+
+        if (typeof (shape?.input as { safeParse?: unknown } | undefined)?.safeParse !== "function" || typeof (shape?.output as { safeParse?: unknown } | undefined)?.safeParse !== "function" || !Array.isArray(shape?.steps))
+        {
+            report("INVALID_PIPELINE", name, `Pipeline "${key}" needs input and output schemas and a steps list, so what enters and leaves it is checked.`);
+        }
+    }
+
     for (const [key, slot] of Object.entries(plugin.definition.slots ?? {}))
     {
         if (checkNamespaced(name, key, "slot", report))
@@ -336,7 +351,7 @@ function checkReferences(
 
     for (const key of Object.keys(plugin.definition.adds ?? {}))
     {
-        reach("registries", key, "UNDECLARED_REGISTRY", "Registry");
+        reach("registries", key, "UNDECLARED_REGISTRY", "Registry or pipeline");
     }
 
     for (const route of plugin.definition.routes ?? [])

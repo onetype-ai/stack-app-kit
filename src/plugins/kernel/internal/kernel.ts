@@ -1,10 +1,11 @@
 import { createLocale, localeProblems } from "./locale";
 import type { LocaleOptions } from "./locale";
-import type { Cache, HttpClient, Context, FallbackProps, Pages, Plugin, Realtime, RegistryAccess, Route } from "./contract";
+import type { Cache, HttpClient, Context, FallbackProps, Pages, PipelineStep, Plugin, Realtime, RegistryAccess, Route } from "./contract";
 import { events, type ListenerFailure } from "./events";
 import { KernelFault } from "./faults";
 import { hooks } from "./hooks";
 import { permissions, type PermissionSource } from "./permissions";
+import { pipelines, type ExplainedStep } from "./pipelines";
 import { registries, type RegistryEntry } from "./registries";
 import { slots, type MountedContribution } from "./slots";
 import { validate } from "./validate";
@@ -59,6 +60,9 @@ export type Kernel = {
     pages: () => Pages;
     slot: (name: string, payload: unknown) => { contributions: readonly MountedContribution[]; payload: unknown; problem?: string };
     hasSlot: (name: string) => boolean;
+
+    /** A pipeline's steps in the order they run, and who put each there. */
+    explain: (pipeline: string) => readonly ExplainedStep[];
 
     /** A registry as the viewer sees it: `list` changes identity only when an entry or a permission changed. */
     registry: (name: string) => {
@@ -231,6 +235,7 @@ export function createKernel(options: KernelOptions): Kernel
     {
         log("warn", plugin, line, about);
     });
+    const flows = pipelines();
     let readGranted: (() => readonly string[]) | undefined;
 
     const permits = permissions({
@@ -264,6 +269,7 @@ export function createKernel(options: KernelOptions): Kernel
         points.reset();
         places.reset();
         lists.reset();
+        flows.reset();
         services.clear();
         commands.clear();
         parsed.clear();
@@ -303,22 +309,25 @@ export function createKernel(options: KernelOptions): Kernel
 
     function registryFor(plugin: string, name: string): RegistryAccess
     {
-        const owner = lists.ownerOf(name);
-
-        if (owner === undefined)
-        {
-            throw new KernelFault("UNDECLARED_REGISTRY", `"${plugin}" reached registry "${name}", which no plugin declares. Declare it, or correct the name.`, { plugin });
-        }
-
-        if (owner !== plugin && !(registry.get(plugin)?.definition.dependsOn ?? []).includes(owner))
-        {
-            throw new KernelFault("UNDECLARED_DEPENDENCY", `Registry "${name}" belongs to "${owner}", which "${plugin}" does not depend on. Add "${owner}" to dependsOn.`, { plugin });
-        }
+        reachable(plugin, lists.ownerOf(name), "registry", name);
 
         return {
             list: () => visible(name),
             set: (entry) => lists.add(plugin, name, entry),
         };
+    }
+
+    function reachable(plugin: string, owner: string | undefined, kind: string, name: string): void
+    {
+        if (owner === undefined)
+        {
+            throw new KernelFault(kind === "pipeline" ? "UNDECLARED_PIPELINE" : "UNDECLARED_REGISTRY", `"${plugin}" reached ${kind} "${name}", which no plugin declares. Declare it, or correct the name.`, { plugin });
+        }
+
+        if (owner !== plugin && !(registry.get(plugin)?.definition.dependsOn ?? []).includes(owner))
+        {
+            throw new KernelFault("UNDECLARED_DEPENDENCY", `${kind === "pipeline" ? "Pipeline" : "Registry"} "${name}" belongs to "${owner}", which "${plugin}" does not depend on. Add "${owner}" to dependsOn.`, { plugin });
+        }
     }
 
     function context(plugin: string): Context
@@ -410,6 +419,18 @@ export function createKernel(options: KernelOptions): Kernel
             registry: (name) =>
             {
                 return registryFor(plugin, name);
+            },
+
+            pipeline: (name) =>
+            {
+                reachable(plugin, flows.ownerOf(name), "pipeline", name);
+
+                return {
+                    run: (input) => flows.run(name, input, context, (step, ms, outcome) =>
+                    {
+                        log("debug", plugin, `pipeline "${name}" step "${step}" ${outcome}`, { ms });
+                    }),
+                };
             },
 
             use: <Api,>(name: string): Api =>
@@ -535,6 +556,11 @@ export function createKernel(options: KernelOptions): Kernel
                 {
                     lists.declare(plugin.name, key, declared);
                 }
+
+                for (const [key, declared] of Object.entries(plugin.definition.pipelines ?? {}))
+                {
+                    flows.declare(plugin.name, key, declared);
+                }
             }
 
             const refused: string[] = [];
@@ -543,6 +569,23 @@ export function createKernel(options: KernelOptions): Kernel
             {
                 for (const [key, entries] of Object.entries(plugin.definition.adds ?? {}))
                 {
+                    if (flows.known(key))
+                    {
+                        for (const step of entries)
+                        {
+                            if (typeof (step as Partial<PipelineStep> | null)?.id !== "string" || typeof (step as Partial<PipelineStep> | null)?.run !== "function")
+                            {
+                                refused.push(`  - Pipeline "${key}" refused a step from "${plugin.name}": it needs id: "<step>" and run: (state, ctx) => ....`);
+
+                                continue;
+                            }
+
+                            flows.add(plugin.name, key, step as PipelineStep);
+                        }
+
+                        continue;
+                    }
+
                     for (const entry of entries)
                     {
                         try
@@ -557,11 +600,21 @@ export function createKernel(options: KernelOptions): Kernel
                 }
             }
 
+            refused.push(...flows.settle().map((problem) => `  - ${problem}`));
+
             if (refused.length > 0)
             {
                 clear();
 
                 throw new KernelFault("INVALID_ENTRY", `${refused.length} ${refused.length === 1 ? "entry" : "entries"} stopped the kernel from starting:\n${refused.join("\n")}`);
+            }
+
+            for (const plugin of order)
+            {
+                for (const key of Object.keys(plugin.definition.pipelines ?? {}))
+                {
+                    log("debug", plugin.name, `pipeline "${key}" runs ${flows.explain(key).map((step) => step.id).join(" → ")}`, { steps: flows.explain(key) });
+                }
             }
 
             for (const plugin of order)
@@ -802,6 +855,11 @@ export function createKernel(options: KernelOptions): Kernel
         hasSlot: (name) =>
         {
             return places.known(name);
+        },
+
+        explain: (name) =>
+        {
+            return flows.explain(name);
         },
 
         registry: (name) =>

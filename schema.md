@@ -185,6 +185,10 @@
     // stale: the cache clears (when the one given can), every guard asks again, and the socket dials the address as it reads now.
     changed: () => void
     }
+    // Runs a pipeline this plugin owns or depends on the owner of, checking its input and output.
+    pipeline: (name: string) => {
+    run: (input: unknown) => Promise<unknown>
+    }
     // A registry this plugin owns or depends on the owner of.
     registry: (name: string) => RegistryAccess
     // Another plugin's services, by name. Reachable outside a component.
@@ -282,7 +286,9 @@
     contributes?: readonly SlotContribution[] | undefined
     // Named lists this plugin owns, keyed `<plugin>.<name>`.
     registries?: Readonly<Record<string, Registry>> | undefined
-    // Entries this plugin adds to others' registries at start, by registry name.
+    // Ordered steps this plugin owns, keyed `<plugin>.<name>`; others add steps through `adds`.
+    pipelines?: Readonly<Record<string, Pipeline>> | undefined
+    // Entries this plugin adds at start to others' registries, or steps to their pipelines, by name.
     adds?: Readonly<Record<string, readonly unknown[]>> | undefined
     emits?: Readonly<Record<string, Event>> | undefined
     listens?: Readonly<Record<string, Listener<Context<z.infer<Schema>, Given<Services>>>>> | undefined
@@ -308,6 +314,9 @@
 ### Event
     describe: string
     schema: z.ZodType
+
+> Where one step sits in a pipeline, and who put it there.
+### ExplainedStep = { readonly id: string; readonly owner: string; readonly anchor?: { readonly before: string } | { readonly after: string } | undefined }
 
 > What a component sees when a contribution or a page threw.
 ### FallbackProps
@@ -380,6 +389,8 @@
     problem?: string
     }
     hasSlot: (name: string) => boolean
+    // A pipeline's steps in the order they run, and who put each there.
+    explain: (pipeline: string) => readonly ExplainedStep[]
     // A registry as the viewer sees it: `list` changes identity only when an entry or a permission changed.
     registry: (name: string) => {
     list: () => readonly RegistryEntry[]
@@ -420,6 +431,9 @@
     | "UNDECLARED_REGISTRY"
     | "DUPLICATE_REGISTRY"
     | "INVALID_ENTRY"
+    | "UNDECLARED_PIPELINE"
+    | "INVALID_PIPELINE"
+    | "PIPELINE_FAILED"
     | "UNDECLARED_COMMAND"
     | "UNDECLARED_PERMISSION"
     | "UNDECLARED_DEPENDENCY"
@@ -516,6 +530,23 @@
 > Where the viewer's permissions come from. The application owns this.
 ### PermissionSource
     granted: () => readonly string[]
+
+> Ordered steps one plugin declares and others add to, run in the caller's context. It opens no transaction:
+> a step that calls a provider never writes inside the same transaction, since a provider call must never hold locks.
+### Pipeline = Describable &
+    input: z.ZodType
+    output: z.ZodType
+    steps: readonly PipelineStep[]
+
+> One step of a pipeline: it answers the next state, or `stop(result)` to end the run with that output.
+### PipelineStep
+    id: string
+    // Where an added step sits: beside one step, before or after it. The owner's own steps need neither.
+    before?: string | undefined
+    after?: string | undefined
+    run: (state: unknown, ctx: Context, step: {
+    stop: (result: unknown) => unknown
+    }) => unknown
 
 > A plugin: its name, and what it declared.
 ### Plugin
@@ -1410,6 +1441,11 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     prefetched: unknown[][]
     // What the plugin set in each registry, by name, in order; a stop takes its entry out.
     registries: Record<string, unknown[]>
+    // Every pipeline the plugin ran, with its input, in order; a run answers its input.
+    piped: {
+    pipeline: string
+    input: unknown
+    }[]
     // What `ctx.hooks.run` answers next. Set it to refuse.
     refusal: string | undefined
     // Sends a message on a channel, as a server would.

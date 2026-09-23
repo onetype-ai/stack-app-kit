@@ -93,7 +93,7 @@ describe("a registry refuses", () =>
     {
         const kernel = createKernel({ plugins: [createEditor(), createQuotes({ adds: { "editor.widgets": [{ id: "x" }] } })] });
 
-        await expect(kernel.start()).rejects.toThrow(/Registry "editor.widgets" is not declared by any plugin/);
+        await expect(kernel.start()).rejects.toThrow(/Registry or pipeline "editor.widgets" is not declared by any plugin/);
     });
 
     test("at start, an addition from a plugin that does not depend on the owner", async () =>

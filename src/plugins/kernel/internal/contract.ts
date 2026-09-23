@@ -80,6 +80,27 @@ export type RegistryAccess = {
     set: (entry: unknown) => () => void;
 };
 
+/** One step of a pipeline: it answers the next state, or `stop(result)` to end the run with that output. */
+export type PipelineStep = {
+    id: string;
+
+    /** Where an added step sits: beside one step, before or after it. The owner's own steps need neither. */
+    before?: string | undefined;
+    after?: string | undefined;
+
+    run: (state: unknown, ctx: Context, step: { stop: (result: unknown) => unknown }) => unknown;
+};
+
+/**
+ * Ordered steps one plugin declares and others add to, run in the caller's context. It opens no transaction:
+ * a step that calls a provider never writes inside the same transaction, since a provider call must never hold locks.
+ */
+export type Pipeline = Describable & {
+    input: z.ZodType;
+    output: z.ZodType;
+    steps: readonly PipelineStep[];
+};
+
 /** What one plugin renders in another's slot. */
 export type SlotContribution = {
     slot: string;
@@ -248,6 +269,9 @@ export type Context<Config = unknown, Services = unknown> = {
         changed: () => void;
     };
 
+    /** Runs a pipeline this plugin owns or depends on the owner of, checking its input and output. */
+    pipeline: (name: string) => { run: (input: unknown) => Promise<unknown> };
+
     /** A registry this plugin owns or depends on the owner of. */
     registry: (name: string) => RegistryAccess;
 
@@ -295,7 +319,10 @@ export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown>
     /** Named lists this plugin owns, keyed `<plugin>.<name>`. */
     registries?: Readonly<Record<string, Registry>> | undefined;
 
-    /** Entries this plugin adds to others' registries at start, by registry name. */
+    /** Ordered steps this plugin owns, keyed `<plugin>.<name>`; others add steps through `adds`. */
+    pipelines?: Readonly<Record<string, Pipeline>> | undefined;
+
+    /** Entries this plugin adds at start to others' registries, or steps to their pipelines, by name. */
     adds?: Readonly<Record<string, readonly unknown[]>> | undefined;
 
     emits?: Readonly<Record<string, Event>> | undefined;

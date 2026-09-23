@@ -40,9 +40,7 @@ await kernel.start();
 `Slot` renders contributions in `order` with the validated payload, each in
 a boundary, hiding what the viewer may not see.
 `usePlugin("auth")` returns its context; `ctx.use("auth")` does so outside a
-component. A registry (`registries`) takes `adds` at start and
-`ctx.registry(name).set(entry)` later, checked alike; `useRegistry(name)`
-lists what the viewer may see. `ctx.http` answers the body: a 204 is `undefined`, a non-2xx
+component. Registries and pipelines: #docs/procedures/registries-and-pipelines.md. `ctx.http` answers the body: a 204 is `undefined`, a non-2xx
 throws.
 
 ## Refuses

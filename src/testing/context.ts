@@ -86,6 +86,9 @@ export type Fake<Config = unknown, Services = unknown> = {
     /** What the plugin set in each registry, by name, in order; a stop takes its entry out. */
     registries: Record<string, unknown[]>;
 
+    /** Every pipeline the plugin ran, with its input, in order; a run answers its input. */
+    piped: { pipeline: string; input: unknown }[];
+
     /** What `ctx.hooks.run` answers next. Set it to refuse. */
     refusal: string | undefined;
 
@@ -130,6 +133,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
         cleared: 0,
         prefetched: [],
         registries: {},
+        piped: [],
         refusal: faking.refusal,
 
         push: (topic: string, message: unknown): void =>
@@ -328,6 +332,18 @@ export function fakeContext<Config = unknown, Services = unknown>(
                     watching.delete(notify);
                 };
             },
+        },
+
+        pipeline: (name) =>
+        {
+            return {
+                run: (input) =>
+                {
+                    fake.piped.push({ pipeline: name, input });
+
+                    return Promise.resolve(input);
+                },
+            };
         },
 
         registry: (name) =>
