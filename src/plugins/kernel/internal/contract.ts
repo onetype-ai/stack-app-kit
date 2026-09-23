@@ -50,6 +50,36 @@ export type Command<Context> = DescribableWithSchema & {
 /** A place other plugins may render into. */
 export type Slot = DescribableWithSchema;
 
+/** A named list one plugin declares and others add to, each entry checked as the owner says. */
+export type Registry = Describable & {
+    /** What every entry must match, whoever adds it and whenever. */
+    entry: z.ZodType;
+
+    /** The entry field naming it: a non-empty string, unique within the registry. */
+    key: string;
+
+    /** The most entries it holds; an add beyond it is refused. */
+    cap?: number | undefined;
+
+    /** Keys only the owner may add. */
+    reserved?: readonly string[] | undefined;
+
+    /** A second entry under a taken key: refused (the default), or it replaces the first with a warning. */
+    replace?: "refuse" | "warn" | undefined;
+
+    /** Who may add: the plugins depending on the owner (the default), or the owner alone. */
+    set?: "owner" | "dependants" | undefined;
+};
+
+/** What a plugin reads from, and adds to, one registry. */
+export type RegistryAccess = {
+    /** Ordered by `order`, then key, without what the viewer lacks the `requires` for. */
+    list: () => readonly Readonly<Record<string, unknown>>[];
+
+    /** Checks the entry as the owner declared, and answers what takes it out again. */
+    set: (entry: unknown) => () => void;
+};
+
 /** What one plugin renders in another's slot. */
 export type SlotContribution = {
     slot: string;
@@ -218,6 +248,9 @@ export type Context<Config = unknown, Services = unknown> = {
         changed: () => void;
     };
 
+    /** A registry this plugin owns or depends on the owner of. */
+    registry: (name: string) => RegistryAccess;
+
     /** Another plugin's services, by name. Reachable outside a component. */
     use: <Api>(plugin: string) => Api;
 };
@@ -258,6 +291,12 @@ export type Definition<Schema extends z.ZodType = z.ZodType, Services = unknown>
     routes?: readonly Route<z.infer<Schema>, Given<Services>>[] | undefined;
     slots?: Readonly<Record<string, Slot>> | undefined;
     contributes?: readonly SlotContribution[] | undefined;
+
+    /** Named lists this plugin owns, keyed `<plugin>.<name>`. */
+    registries?: Readonly<Record<string, Registry>> | undefined;
+
+    /** Entries this plugin adds to others' registries at start, by registry name. */
+    adds?: Readonly<Record<string, readonly unknown[]>> | undefined;
 
     emits?: Readonly<Record<string, Event>> | undefined;
     listens?: Readonly<Record<string, Listener<Context<z.infer<Schema>, Given<Services>>>>> | undefined;

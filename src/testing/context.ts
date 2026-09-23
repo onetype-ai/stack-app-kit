@@ -83,6 +83,9 @@ export type Fake<Config = unknown, Services = unknown> = {
     /** Every key the plugin fetched ahead, in order. */
     prefetched: unknown[][];
 
+    /** What the plugin set in each registry, by name, in order; a stop takes its entry out. */
+    registries: Record<string, unknown[]>;
+
     /** What `ctx.hooks.run` answers next. Set it to refuse. */
     refusal: string | undefined;
 
@@ -126,6 +129,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
         reconnected: 0,
         cleared: 0,
         prefetched: [],
+        registries: {},
         refusal: faking.refusal,
 
         push: (topic: string, message: unknown): void =>
@@ -324,6 +328,29 @@ export function fakeContext<Config = unknown, Services = unknown>(
                     watching.delete(notify);
                 };
             },
+        },
+
+        registry: (name) =>
+        {
+            const held = (fake.registries[name] ??= []);
+
+            return {
+                list: () => [...held] as Readonly<Record<string, unknown>>[],
+                set: (entry) =>
+                {
+                    held.push(entry);
+
+                    return () =>
+                    {
+                        const at = held.indexOf(entry);
+
+                        if (at >= 0)
+                        {
+                            held.splice(at, 1);
+                        }
+                    };
+                },
+            };
         },
 
         commands: {

@@ -1,7 +1,7 @@
 import { Component, createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ComponentType, type FunctionComponent, type ReactNode } from "react";
 
 import { KernelFault, checkHead, tagsOf } from "../api";
-import type { Context, FallbackProps, HeadTag, PluginLocale, RegisteredRoute, RouteParams } from "../api";
+import type { Context, FallbackProps, HeadTag, PluginLocale, RegisteredRoute, RegistryEntry, RouteParams } from "../api";
 import type { Kernel } from "../internal/kernel";
 
 export { StartupFailure } from "./StartupFailure";
@@ -157,6 +157,15 @@ export function useStore<Value>(
 }
 
 /** Renders every contribution to a slot. */
+/** A registry's entries the viewer may see, ordered; re-renders when one is added, taken out, or a permission changes. */
+export function useRegistry(name: string): readonly RegistryEntry[]
+{
+    const kernel = useKernel();
+    const read = useMemo(() => kernel.registry(name), [kernel, name]);
+
+    return useSyncExternalStore(read.watch, read.list, read.list);
+}
+
 export function Slot({ name, payload }: { name: string; payload?: unknown }): ReactNode
 {
     const kernel = useKernel();

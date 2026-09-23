@@ -2,23 +2,21 @@
 
 ## Description
 
-The plugin runtime an application builds on: registry, contract validation,
-events, hooks, slots, permissions.
+The plugin runtime: contract validation, events, hooks, slots,
+registries, permissions.
 
 ## Purpose
 
-A front-end grows into one thing unless something holds the seams. A plugin
-declares what crosses its boundary and the kernel refuses the rest, so a
-feature is added and removed in one folder.
+A plugin declares what crosses its boundary and the kernel refuses the
+rest, so a feature is added and removed in one folder.
 
 ## Usage
 
 ```ts
 export default definePlugin("auth", {
     version: "1.0.0",
-    describe: "Owns the session others check against.",
+    describe: "Owns the session.",
     dependsOn: ["transport"],
-    config: AuthConfig,
     services: (ctx) => ({ session: session(ctx) }),
     emits: { "auth.signed-out": { describe: "Session ended.", schema } },
 });
@@ -30,8 +28,7 @@ const kernel = createKernel({ plugins: [auth, billing], config, http, permission
 await kernel.start();
 ```
 
-`start` validates first and throws naming every problem at once. Nothing
-partially starts.
+`start` validates first, naming every problem at once.
 
 ```tsx
 <KernelProvider kernel={kernel}>
@@ -40,18 +37,21 @@ partially starts.
 </KernelProvider>
 ```
 
-`Slot` renders contributions in `order`, hides what the viewer may not see,
-passes each the validated payload, and wraps each in a boundary.
+`Slot` renders contributions in `order` with the validated payload, each in
+a boundary, hiding what the viewer may not see.
 `usePlugin("auth")` returns its context; `ctx.use("auth")` does so outside a
-component. `ctx.http` answers the body, not an envelope: a 204 is
-`undefined`, and anything but a 2xx throws.
+component. A registry (`registries`) takes `adds` at start and
+`ctx.registry(name).set(entry)` later, checked alike; `useRegistry(name)`
+lists what the viewer may see. `ctx.http` answers the body: a 204 is `undefined`, a non-2xx
+throws.
 
 ## Refuses
 
 At startup: a duplicate plugin, an unknown or cyclic dependency, a name
-outside the plugin's namespace, a duplicate route, slot, event, hook, command
-or permission, a reference to anything undeclared or owned by a plugin this
-one does not depend on, a bad route path, and config failing its schema.
+outside the plugin's namespace, a duplicate route, slot, registry, event, hook,
+command or permission, a bad registry entry (schema, taken or reserved
+key, cap), a reference to anything undeclared or owned by a plugin not
+depended on, a bad route path, and config failing its schema.
 
-At runtime: an undeclared event or one another plugin owns, a payload failing
-its schema, a command run without its permission.
+At runtime: an undeclared or foreign event, a payload failing its schema, a
+command without its permission, a bad registry entry.

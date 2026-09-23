@@ -28,6 +28,17 @@ export type DeclaredContribution = {
     readonly requires: readonly string[];
 };
 
+/** One registry: its sentence, and the field that names each entry. */
+export type DeclaredRegistry = DeclaredEntry & {
+    readonly key: string;
+};
+
+/** What one plugin adds at start to one registry. */
+export type DeclaredAddition = {
+    readonly registry: string;
+    readonly keys: readonly string[];
+};
+
 /** Everything one plugin declares, as data rather than source. */
 export type Declaration = {
     readonly name: string;
@@ -38,6 +49,8 @@ export type Declaration = {
     readonly permissions: readonly DeclaredEntry[];
     readonly slots: readonly DeclaredEntry[];
     readonly contributes: readonly DeclaredContribution[];
+    readonly registries: readonly DeclaredRegistry[];
+    readonly adds: readonly DeclaredAddition[];
     readonly emits: readonly DeclaredEntry[];
     readonly listens: readonly DeclaredEntry[];
     readonly hooks: readonly DeclaredEntry[];
@@ -99,6 +112,37 @@ function contributionsOf(declared: unknown): DeclaredContribution[]
     }));
 }
 
+function registriesOf(held: unknown): DeclaredRegistry[]
+{
+    return entriesOf(held).map((entry) =>
+    {
+        const key = (held as Record<string, { key?: unknown }>)[entry.name]?.key;
+
+        return { ...entry, key: typeof key === "string" ? key : "" };
+    });
+}
+
+// Entries are read by the key their registry declares, which this plugin's own declaration does not know; "id" and "name" cover what reads as data.
+function additionsOf(held: unknown): DeclaredAddition[]
+{
+    if (held === undefined || held === null || typeof held !== "object")
+    {
+        return [];
+    }
+
+    return Object.entries(held as Record<string, unknown>)
+        .map(([registry, entries]) => ({
+            registry,
+            keys: (Array.isArray(entries) ? entries : []).map((entry: Record<string, unknown> | null) =>
+            {
+                const named = entry?.["id"] ?? entry?.["name"];
+
+                return typeof named === "string" ? named : "";
+            }),
+        }))
+        .sort((first, second) => first.registry.localeCompare(second.registry));
+}
+
 function commandsOf(held: unknown): DeclaredCommand[]
 {
     if (held === undefined || held === null || typeof held !== "object")
@@ -128,6 +172,8 @@ function declarationFor(plugin: Plugin): Declaration
         permissions: entriesOf(definition["permissions"]),
         slots: entriesOf(definition["slots"]),
         contributes: contributionsOf(definition["contributes"]),
+        registries: registriesOf(definition["registries"]),
+        adds: additionsOf(definition["adds"]),
         emits: entriesOf(definition["emits"]),
         listens: entriesOf(definition["listens"]),
         hooks: entriesOf(definition["hooks"]),

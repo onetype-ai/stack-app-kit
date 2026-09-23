@@ -1,5 +1,22 @@
 # Changelog
 
+## 6.5.0 (unreleased)
+
+### Registry
+
+- A plugin declares `registries` (`entry` schema, `key`, and optionally
+  `cap`, `reserved`, `replace: "warn"`, `set: "owner"`). Plugins depending on
+  it add entries with `adds` at start or `ctx.registry(name).set(entry)` at
+  run time, which answers a stop. Both go through the same checks, and start
+  refuses every bad entry at once (`INVALID_ENTRY`, `UNDECLARED_REGISTRY`,
+  `DUPLICATE_REGISTRY`).
+- `ctx.registry(name).list()`, `kernel.registry(name)` and
+  `useRegistry(name)` answer the entries by `order` and then key, without
+  those whose `requires` the viewer lacks. `declarationsOf` lists
+  `registries` and `adds`, and `fakeContext()` records what a plugin set.
+- `Context` gains `registry`: a hand-built fake annotated with `Context`
+  needs it (see 6.4.0).
+
 ## 6.4.0
 
 The first release after 6.0.2. An application on 6.0.2 starts, and its tests

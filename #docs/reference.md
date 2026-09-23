@@ -33,11 +33,12 @@ What `definePlugin(name, { … })` takes. Every key is optional but `version`.
 version: string; describe: string; dependsOn?: readonly string[];
 config?: ZodType; permissions?: Record<string, { describe: string }>;
 grants?: (ctx) => readonly string[];          // at most one plugin
-services?: (ctx) => Services;                 // ctx.services is never here
+services?: (ctx) => Services;
 frame?: FunctionComponent; pages?: Pages; fallback?: ComponentType;
 routes?: readonly Route[];   // path, component, title, requires?, search?, instead?,
                              // render?, paths?, load?, head? (seo/usage.md)
 slots?: Record<string, Slot>; contributes?: readonly SlotContribution[];
+registries?: Record<string, Registry>; adds?: Record<string, unknown[]>;
 emits?: Record<string, Event>; listens?: Record<string, Listener>;
 hooks?: Record<string, Hook>; participates?: Record<string, Participant>;
 commands?: Record<string, Command>;
@@ -70,8 +71,7 @@ sent(): Record<string, string>  // what `sends` adds to every request
 
 ```ts
 declarationsOf(plugins): Declaration[]    // pure, before start
-declarationsOf(plugins, "dashboard")      // one, or [] if absent
-declarationsOf(kernel.plugins())          // what actually started
+declarationsOf(plugins, "dashboard")      // one, or []
 ```
 
 A `Declaration` names every surface with its sentence, and flags the parts
@@ -93,10 +93,11 @@ import { transport, cache } from "@onetype/stack-app-kit";
 <Slot name="board.aside" payload={{ id }} />        // parsed by its schema; none is {}
 <RouteGuard route={registered} send={goTo} />       // one route, guarded
 useKernel(): Kernel
-usePlugin<Config, Services>(name): Context          // the context itself, not a wrapper
+usePlugin<Config, Services>(name): Context
 useFrame(): FunctionComponent
-useEvent(listener, event, handle): void             // listener is the plugin hearing, not the owner
+useEvent(listener, event, handle): void             // listener: the plugin hearing
 useStore(watch, read): Value                         // a value a service keeps
+useRegistry(name): readonly RegistryEntry[]          // what the viewer may see
 ```
 
 `kernel.permissions.changed()` has every guard ask again.

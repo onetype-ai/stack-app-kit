@@ -185,6 +185,8 @@
     // stale: the cache clears (when the one given can), every guard asks again, and the socket dials the address as it reads now.
     changed: () => void
     }
+    // A registry this plugin owns or depends on the owner of.
+    registry: (name: string) => RegistryAccess
     // Another plugin's services, by name. Reachable outside a component.
     use: <Api>(plugin: string) => Api
 
@@ -204,6 +206,8 @@
     readonly permissions: readonly DeclaredEntry[]
     readonly slots: readonly DeclaredEntry[]
     readonly contributes: readonly DeclaredContribution[]
+    readonly registries: readonly DeclaredRegistry[]
+    readonly adds: readonly DeclaredAddition[]
     readonly emits: readonly DeclaredEntry[]
     readonly listens: readonly DeclaredEntry[]
     readonly hooks: readonly DeclaredEntry[]
@@ -217,6 +221,11 @@
     readonly services: boolean
     readonly setup: boolean
     readonly teardown: boolean
+
+> What one plugin adds at start to one registry.
+### DeclaredAddition
+    readonly registry: string
+    readonly keys: readonly string[]
 
 > One command, which unlike an event names what the caller must hold.
 ### DeclaredCommand = DeclaredEntry &
@@ -232,6 +241,10 @@
 ### DeclaredEntry
     readonly name: string
     readonly describe: string
+
+> One registry: its sentence, and the field that names each entry.
+### DeclaredRegistry = DeclaredEntry &
+    readonly key: string
 
 > One page as declared: where it lives, and what it takes to see it.
 ### DeclaredRoute
@@ -267,6 +280,10 @@
     routes?: readonly Route<z.infer<Schema>, Given<Services>>[] | undefined
     slots?: Readonly<Record<string, Slot>> | undefined
     contributes?: readonly SlotContribution[] | undefined
+    // Named lists this plugin owns, keyed `<plugin>.<name>`.
+    registries?: Readonly<Record<string, Registry>> | undefined
+    // Entries this plugin adds to others' registries at start, by registry name.
+    adds?: Readonly<Record<string, readonly unknown[]>> | undefined
     emits?: Readonly<Record<string, Event>> | undefined
     listens?: Readonly<Record<string, Listener<Context<z.infer<Schema>, Given<Services>>>>> | undefined
     hooks?: Readonly<Record<string, Hook>> | undefined
@@ -363,6 +380,11 @@
     problem?: string
     }
     hasSlot: (name: string) => boolean
+    // A registry as the viewer sees it: `list` changes identity only when an entry or a permission changed.
+    registry: (name: string) => {
+    list: () => readonly RegistryEntry[]
+    watch: (notify: () => void) => () => void
+    }
     fallbackFor: (plugin: string) => ComponentType<FallbackProps> | undefined
     context: (plugin: string) => Context
     permissions: {
@@ -395,6 +417,9 @@
     | "UNDECLARED_EVENT"
     | "UNDECLARED_HOOK"
     | "UNDECLARED_SLOT"
+    | "UNDECLARED_REGISTRY"
+    | "DUPLICATE_REGISTRY"
+    | "INVALID_ENTRY"
     | "UNDECLARED_COMMAND"
     | "UNDECLARED_PERMISSION"
     | "UNDECLARED_DEPENDENCY"
@@ -530,6 +555,33 @@
 ### RegisteredRoute = Route &
     plugin: string
     fallback: ComponentType<FallbackProps> | undefined
+
+> A named list one plugin declares and others add to, each entry checked as the owner says.
+### Registry = Describable &
+    // What every entry must match, whoever adds it and whenever.
+    entry: z.ZodType
+    // The entry field naming it: a non-empty string, unique within the registry.
+    key: string
+    // The most entries it holds; an add beyond it is refused.
+    cap?: number | undefined
+    // Keys only the owner may add.
+    reserved?: readonly string[] | undefined
+    // A second entry under a taken key: refused (the default), or it replaces the first with a warning.
+    replace?: "refuse" | "warn" | undefined
+    // Who may add: the plugins depending on the owner (the default), or the owner alone.
+    set?: "owner" | "dependants" | undefined
+
+> What a plugin reads from, and adds to, one registry.
+### RegistryAccess
+    // Ordered by `order`, then key, without what the viewer lacks the `requires` for.
+    list: () => readonly Readonly<Record<string, unknown>>[]
+    // Checks the entry as the owner declared, and answers what takes it out again.
+    set: (entry: unknown) => () => void
+
+> One entry in a registry, and the plugin that added it.
+### RegistryEntry = Readonly<Record<string, unknown>> &
+    readonly order?: number | undefined
+    readonly requires?: readonly string[] | undefined
 
 > A page, and what it takes to see it.
 ### Route<Config = unknown, Services = unknown> =
@@ -1109,7 +1161,6 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     send?: (to: string) => ReactNode
     params?: RouteParams
 
-> Renders every contribution to a slot.
 ### Slot({ name, payload }: { name: string; payload?: unknown }): ReactNode
     name: string
     payload?: unknown
@@ -1152,6 +1203,10 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 
 > One plugin's context and services, by name.
 ### usePlugin<Config = unknown, Services = unknown>(name: string): PluginHandle<Config, Services>
+
+> Renders every contribution to a slot.
+> A registry's entries the viewer may see, ordered; re-renders when one is added, taken out, or a permission changes.
+### useRegistry(name: string): readonly RegistryEntry[]
 
 > Reads a value a service keeps, and re-renders when it changes.
 ### useStore<Value>(watch: (notify: () => void) => () => void, read: () => Value): Value
@@ -1353,6 +1408,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     cleared: number
     // Every key the plugin fetched ahead, in order.
     prefetched: unknown[][]
+    // What the plugin set in each registry, by name, in order; a stop takes its entry out.
+    registries: Record<string, unknown[]>
     // What `ctx.hooks.run` answers next. Set it to refuse.
     refusal: string | undefined
     // Sends a message on a channel, as a server would.

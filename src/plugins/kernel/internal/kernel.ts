@@ -1,10 +1,11 @@
 import { createLocale, localeProblems } from "./locale";
 import type { LocaleOptions } from "./locale";
-import type { Cache, HttpClient, Context, FallbackProps, Pages, Plugin, Realtime, Route } from "./contract";
+import type { Cache, HttpClient, Context, FallbackProps, Pages, Plugin, Realtime, RegistryAccess, Route } from "./contract";
 import { events, type ListenerFailure } from "./events";
 import { KernelFault } from "./faults";
 import { hooks } from "./hooks";
 import { permissions, type PermissionSource } from "./permissions";
+import { registries, type RegistryEntry } from "./registries";
 import { slots, type MountedContribution } from "./slots";
 import { validate } from "./validate";
 
@@ -58,6 +59,12 @@ export type Kernel = {
     pages: () => Pages;
     slot: (name: string, payload: unknown) => { contributions: readonly MountedContribution[]; payload: unknown; problem?: string };
     hasSlot: (name: string) => boolean;
+
+    /** A registry as the viewer sees it: `list` changes identity only when an entry or a permission changed. */
+    registry: (name: string) => {
+        list: () => readonly RegistryEntry[];
+        watch: (notify: () => void) => () => void;
+    };
     fallbackFor: (plugin: string) => ComponentType<FallbackProps> | undefined;
 
     context: (plugin: string) => Context;
@@ -220,6 +227,10 @@ export function createKernel(options: KernelOptions): Kernel
     });
     const points = hooks<Context>();
     const places = slots();
+    const lists = registries((plugin, line, about) =>
+    {
+        log("warn", plugin, line, about);
+    });
     let readGranted: (() => readonly string[]) | undefined;
 
     const permits = permissions({
@@ -252,6 +263,7 @@ export function createKernel(options: KernelOptions): Kernel
         bus.reset();
         points.reset();
         places.reset();
+        lists.reset();
         services.clear();
         commands.clear();
         parsed.clear();
@@ -262,6 +274,52 @@ export function createKernel(options: KernelOptions): Kernel
     let order: Plugin[] = [];
 
     const parsed = new Map<string, unknown>();
+
+    const seen = new Map<string, { from: readonly RegistryEntry[]; version: number; visible: readonly RegistryEntry[] }>();
+    let permitted = 0;
+
+    permits.watch(() =>
+    {
+        permitted += 1;
+    });
+
+    // the same array back until an entry or a permission moved, so a React store reading it settles
+    function visible(name: string): readonly RegistryEntry[]
+    {
+        const from = lists.list(name);
+        const last = seen.get(name);
+
+        if (last !== undefined && last.from === from && last.version === permitted)
+        {
+            return last.visible;
+        }
+
+        const answer = Object.freeze(from.filter((entry) => permits.all(entry.requires ?? [])));
+
+        seen.set(name, { from, version: permitted, visible: answer });
+
+        return answer;
+    }
+
+    function registryFor(plugin: string, name: string): RegistryAccess
+    {
+        const owner = lists.ownerOf(name);
+
+        if (owner === undefined)
+        {
+            throw new KernelFault("UNDECLARED_REGISTRY", `"${plugin}" reached registry "${name}", which no plugin declares. Declare it, or correct the name.`, { plugin });
+        }
+
+        if (owner !== plugin && !(registry.get(plugin)?.definition.dependsOn ?? []).includes(owner))
+        {
+            throw new KernelFault("UNDECLARED_DEPENDENCY", `Registry "${name}" belongs to "${owner}", which "${plugin}" does not depend on. Add "${owner}" to dependsOn.`, { plugin });
+        }
+
+        return {
+            list: () => visible(name),
+            set: (entry) => lists.add(plugin, name, entry),
+        };
+    }
 
     function context(plugin: string): Context
     {
@@ -347,6 +405,11 @@ export function createKernel(options: KernelOptions): Kernel
                     permits.changed();
                     realtime.reconnect();
                 },
+            },
+
+            registry: (name) =>
+            {
+                return registryFor(plugin, name);
             },
 
             use: <Api,>(name: string): Api =>
@@ -467,6 +530,38 @@ export function createKernel(options: KernelOptions): Kernel
                 {
                     places.declare(plugin.name, key, slot);
                 }
+
+                for (const [key, declared] of Object.entries(plugin.definition.registries ?? {}))
+                {
+                    lists.declare(plugin.name, key, declared);
+                }
+            }
+
+            const refused: string[] = [];
+
+            for (const plugin of order)
+            {
+                for (const [key, entries] of Object.entries(plugin.definition.adds ?? {}))
+                {
+                    for (const entry of entries)
+                    {
+                        try
+                        {
+                            lists.add(plugin.name, key, entry);
+                        }
+                        catch (cause)
+                        {
+                            refused.push(`  - ${cause instanceof Error ? cause.message : String(cause)}`);
+                        }
+                    }
+                }
+            }
+
+            if (refused.length > 0)
+            {
+                clear();
+
+                throw new KernelFault("INVALID_ENTRY", `${refused.length} ${refused.length === 1 ? "entry" : "entries"} stopped the kernel from starting:\n${refused.join("\n")}`);
             }
 
             for (const plugin of order)
@@ -707,6 +802,24 @@ export function createKernel(options: KernelOptions): Kernel
         hasSlot: (name) =>
         {
             return places.known(name);
+        },
+
+        registry: (name) =>
+        {
+            return {
+                list: () => visible(name),
+                watch: (notify) =>
+                {
+                    const stopEntries = lists.watch(name, notify);
+                    const stopPermits = permits.watch(notify);
+
+                    return () =>
+                    {
+                        stopEntries();
+                        stopPermits();
+                    };
+                },
+            };
         },
 
         fallbackFor: (plugin) =>

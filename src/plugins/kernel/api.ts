@@ -28,6 +28,8 @@ export type {
     Permission,
     Plugin,
     Realtime,
+    Registry,
+    RegistryAccess,
     CallOptions,
     UploadOptions,
     Route,
@@ -46,10 +48,13 @@ export type {
     DeclaredContribution,
     DeclaredEntry,
     DeclaredRoute,
+    DeclaredRegistry,
+    DeclaredAddition,
 } from "./internal/declared";
 
 export type { ListenerFailure } from "./internal/events";
 export type { MountedContribution } from "./internal/slots";
+export type { RegistryEntry } from "./internal/registries";
 export type { PermissionSource } from "./internal/permissions";
 export type { Kernel, LogFn, KernelOptions, RegisteredRoute } from "./internal/kernel";
 export type { ContractProblem } from "./internal/validate";

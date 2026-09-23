@@ -12,6 +12,7 @@ export type ContractProblem = {
 type Owned = {
     routes: Map<string, string>;
     slots: Map<string, string>;
+    registries: Map<string, string>;
     events: Map<string, string>;
     hooks: Map<string, string>;
     commands: Map<string, string>;
@@ -43,6 +44,7 @@ export function validate(plugins: readonly Plugin[], config: Readonly<Record<str
     const owned: Owned = {
         routes: new Map(),
         slots: new Map(),
+        registries: new Map(),
         events: new Map(),
         hooks: new Map(),
         commands: new Map(),
@@ -110,6 +112,21 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, report: (code: Ker
         if (checkNamespaced(name, key, "hook", report))
         {
             claim("hooks", key, "DUPLICATE_HOOK", "Hook");
+        }
+    }
+
+    for (const [key, registry] of Object.entries(plugin.definition.registries ?? {}))
+    {
+        if (checkNamespaced(name, key, "registry", report))
+        {
+            claim("registries", key, "DUPLICATE_REGISTRY", "Registry");
+        }
+
+        const shape = registry as Partial<typeof registry> | undefined;
+
+        if (typeof (shape?.entry as { safeParse?: unknown } | undefined)?.safeParse !== "function" || typeof shape?.key !== "string" || shape.key === "")
+        {
+            report("UNDECLARED_REGISTRY", name, `Registry "${key}" needs entry: z.object({ ... }) and key: "<field>", so every entry is checked and named.`);
         }
     }
 
@@ -315,6 +332,11 @@ function checkReferences(
         {
             declaredSomewhere("permissions", permission, "UNDECLARED_PERMISSION", "Permission");
         }
+    }
+
+    for (const key of Object.keys(plugin.definition.adds ?? {}))
+    {
+        reach("registries", key, "UNDECLARED_REGISTRY", "Registry");
     }
 
     for (const route of plugin.definition.routes ?? [])
