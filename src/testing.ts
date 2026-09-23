@@ -15,3 +15,6 @@ export type { EmittedEvent, FakeResponse, Answers, FakeRequest, RanCommand, Fake
 
 export { Project } from "./testing/project";
 export type { ProjectCheckOptions, ProjectProblem, ProjectSkipped } from "./testing/project";
+
+export { configureTestKernels, resetTestKernels, withDependencies } from "./plugins/mount/api";
+export type { FoundPlugin, TestKernels } from "./plugins/mount/api";

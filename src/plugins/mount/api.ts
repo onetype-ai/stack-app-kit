@@ -7,6 +7,8 @@ import type { TransportOptions as TransportOptions } from "../transport/api";
 export { discover } from "./internal/discover";
 export type { PluginModules } from "./internal/discover";
 export { start } from "./internal/start";
+export { configureTestKernels, resetTestKernels, withDependencies } from "./internal/closure";
+export type { FoundPlugin, TestKernels } from "./internal/closure";
 
 /** What this plugin offers itself as. */
 export const NAME = "mount";

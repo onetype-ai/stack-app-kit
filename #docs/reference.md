@@ -152,3 +152,24 @@ weighs a built file gzipped.
 Each `find*` is exported too.
 `otherStacks: ["../api/src/plugins"]` names the other half of a two-stack
 application; a guard that cannot reach it is `skipped`, never a pass.
+
+A test names only the plugin under test; a setup file says where the rest
+come from, and `start` adds what it depends on, transitively. A plugin the
+test passes wins by name, so a stand-in stays one.
+
+```ts
+// vitest setup file
+const loaders = import.meta.glob<{ default: Plugin }>("./plugins/*/plugin.ts");
+
+configureTestKernels({
+    resolve: async (name) =>
+    {
+        const load = loaders[`./plugins/${name}/plugin.ts`];
+
+        return load === undefined ? undefined : { plugin: (await load()).default };
+    },
+});
+```
+
+`withDependencies(plugins)` does the same for `createKernel`;
+`resetTestKernels()` undoes it. Only `./testing` exports them.
