@@ -1,33 +1,44 @@
 #!/usr/bin/env node
 //
-// The package's exported surface, written out as a flat list of signatures.
+// The kit's exported surface, written out as a flat list of signatures.
 //
 // Generated from the built .d.ts rather than the source, so what it shows is
 // what a consumer actually receives. Hand-written before, it drifted: it still
 // named `listenTo`, `resetsIn` and `UNHEARD_EVENT` months after those were
-// renamed. Run it from the package root, after a build.
-
+// renamed. Run from the kit's root after a build, it writes schema.md; run
+// from an application depending on the kit (`npx stack-app-kit-schema`), it
+// writes schemas.md there, from the kit that application installed.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const OUT = "schema.md";
+const KIT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const kitName = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8")).name;
+const isKit = JSON.parse(readFileSync("package.json", "utf8")).name === kitName;
+const OUT = isKit ? "schema.md" : "schemas.md";
 
 function entryPoints()
 {
-    const manifest = JSON.parse(readFileSync("package.json", "utf8"));
+    const manifest = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"));
     const entries = [];
 
     for (const [path, target] of Object.entries(manifest.exports ?? {}))
     {
         const types = typeof target === "string" ? null : target.types ?? target.import?.types ?? null;
+        const file = types === null ? null : join(KIT, types);
 
-        if (types !== null && existsSync(types))
+        if (file !== null && existsSync(file))
         {
             entries.push({
                 name: path === "." ? manifest.name : `${manifest.name}/${path.replace("./", "")}`,
-                file: types,
+                file,
             });
         }
+    }
+
+    if (entries.length === 0)
+    {
+        throw new Error(`${manifest.name} has no built types to read. Build it first.`);
     }
 
     return entries;

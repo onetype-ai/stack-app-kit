@@ -37,6 +37,9 @@
 > The kernel plugin: what lets an application declare plugins of its own.
 ### kernelPlugin(): HostPlugin
 
+> Offers the leveled logger and the shipper that sends a browser's logs home.
+### logsPlugin(): HostPlugin
+
 > Brings an application up in one call.
 ### mountPlugin(): HostPlugin
 
@@ -48,6 +51,9 @@
 > quietly moved to, so two people running their own never share one by
 > accident and wonder whose change they are looking at.
 ### serving(options?: ServingOptions): Serving
+
+> Offers what maps the environment onto plugin config, and what refuses a public secret.
+### settingsPlugin(): HostPlugin
 
 > Brings an application up: transport, then kernel, then plugins.
 ### start(given: StartOptions): Promise<StartedApp>
@@ -148,6 +154,11 @@
     }
     commands: {
     run: (command: string, input: unknown) => Promise<void>
+    }
+    session: {
+    // Says who is looking, or at what, changed (sign-in, sign-out, a workspace switch), in the order that leaves nothing
+    // stale: the cache clears (when the one given can), every guard asks again, and the socket dials the address as it reads now.
+    changed: () => void
     }
     // Another plugin's services, by name. Reachable outside a component.
     use: <Api>(plugin: string) => Api
@@ -432,7 +443,8 @@
 > What the kernel needs to hear a server push.
 ### Realtime
     channel: () => "ws" | "http"
-    subscribe: (topic: string, receive: (message: unknown) => void) => {
+    // `refused` hears the server decline the channel; unknown and forbidden read alike, so nobody can probe which exist.
+    subscribe: (topic: string, receive: (message: unknown) => void, refused?: (code: string) => void) => {
     close: () => void
     }
     // Dials the socket again with the address as it reads now, keeping every subscription: after sign-in, sign-out or a workspace switch.
@@ -542,6 +554,8 @@
     // Where the server is, and how to reach it.
     transport: TransportOptions
     config?: Readonly<Record<string, unknown>> | undefined
+    // What the bundler exposes (`import.meta.env`): `VITE_<PLUGIN>__<FIELD>` reaches that plugin's config, under whatever `config` gives it.
+    environment?: Readonly<Record<string, unknown>> | undefined
     permissions?: PermissionSource | undefined
     log?: Logger | undefined
     // Which plugin may answer what the viewer holds; any other declaring `grants` is refused. Left out, the one plugin declaring `grants` is that plugin, and may own permissions under its own name.
@@ -580,6 +594,72 @@ Imported whole, then reached through the name: `import { cache } from "@onetype/
     type: "inactive"
     }) => void
     resetQueries?: () => unknown
+
+## logs
+
+Imported whole, then reached through the name: `import { logs } from "@onetype/stack-app-kit";`. Its members have no import of their own.
+
+### logs.captureErrors(log: Logger, source: ErrorSource): () => void
+
+### logs.create(options: LoggerOptions): Logger
+
+### logs.ErrorSource
+    addEventListener: (kind: string, listener: (event: unknown) => void) => void
+    removeEventListener: (kind: string, listener: (event: unknown) => void) => void
+
+> The logs, for a plugin that declared "logs" in needs.
+### logs.from(host: Host): Logs | undefined
+
+### logs.Level = (typeof levels)[number]
+
+### logs.levels: readonly ["debug", "info", "warn", "error"]
+
+### logs.LogEntry
+    level: Level
+    at: string
+    plugin: string | undefined
+    line: string
+    about: Readonly<Record<string, unknown>> | undefined
+
+### logs.LoggerOptions
+    level: Level
+    write: LogWriter | readonly LogWriter[]
+    now?: (() => Date) | undefined
+
+> What `logs.from(host)` answers.
+### logs.Logs
+    // A leveled logger for `start({ log })`, handing every entry at or above `level` to each writer.
+    create: typeof create
+    // Batches, clips, redacts and sends entries at or above `level` (never below info); a 429 pauses it for a minute.
+    shipper: typeof shipper
+
+### logs.LogWriter = (entry: LogEntry) => void
+
+> What this plugin offers itself as.
+### logs.NAME = "logs"
+
+### logs.postTo(url: string): (entries: readonly ShippedEntry[], isLeaving: boolean) => Promise<number>
+
+### logs.ShippedEntry
+    level: "info" | "warn" | "error"
+    at: string
+    plugin?: string
+    line: string
+    about?: Record<string, string | number | boolean | null>
+
+### logs.shipper(options: ShipperOptions): Shipper
+
+### logs.Shipper
+    write: (entry: LogEntry) => void
+    flush: (isLeaving: boolean) => void
+
+### logs.ShipperOptions
+    level: Level
+    send: (entries: readonly ShippedEntry[], isLeaving: boolean) => Promise<number>
+    every: (run: () => void) => void
+    now?: (() => number) | undefined
+
+### logs.toConsole: LogWriter
 
 ## router
 
@@ -627,6 +707,43 @@ Imported whole, then reached through the name: `import { router } from "@onetype
 
 ### router.tree(kernel: Kernel, building: RouterOptions, frame: Frame, guard: (route: RegisteredRoute) => ComponentType): unknown
 
+## settings
+
+Imported whole, then reached through the name: `import { settings } from "@onetype/stack-app-kit";`. Its members have no import of their own.
+
+### settings.BuildGuard
+    name: string
+    configResolved: () => void
+
+### settings.configFor(plugins: readonly Plugin[], environment: Readonly<Record<string, unknown>>): PluginConfig
+
+> The settings, for a plugin that declared "settings" in needs.
+### settings.from(host: Host): Settings | undefined
+
+> What this plugin offers itself as.
+### settings.NAME = "settings"
+
+### settings.PluginConfig = Readonly<Record<string, Readonly<Record<string, string>>>>
+
+### settings.problemsOf(names: readonly string[], options?: PublicOptions): string[]
+
+### settings.PublicOptions = Partial<PublicRule>
+
+### settings.refusingSecrets(names: readonly string[], options?: PublicOptions): BuildGuard
+
+> What `settings.from(host)` answers.
+### settings.Settings
+    // Maps `VITE_<PLUGIN>__<FIELD>` variables onto each plugin's config, or throws every problem at once.
+    configFor: typeof configFor
+    // Every public variable that should not ship, one sentence each; empty when all may.
+    problemsOf: typeof publicProblemsOf
+
+> Every problem found at once, one line each; `problems` lets a caller show them apart.
+### settings.SettingsFault extends Error
+    readonly code = "REFUSED_SETTINGS"
+    readonly problems: readonly string[]
+    constructor(what: string, problems: readonly string[])
+
 ## transport
 
 Imported whole, then reached through the name: `import { transport } from "@onetype/stack-app-kit";`. Its members have no import of their own.
@@ -673,8 +790,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     channel: () => Channel
     // One request. The body comes back as unknown, so the caller validates.
     request: (request: HttpRequest) => Promise<unknown>
-    // Server-pushed messages. With no socket this succeeds and delivers nothing.
-    subscribe: (topic: string, receive: (message: unknown) => void) => Subscription
+    // Server-pushed messages. With no socket this succeeds and delivers nothing. `refused` hears the server decline the channel (unknown and forbidden read alike).
+    subscribe: (topic: string, receive: (message: unknown) => void, refused?: (code: string) => void) => Subscription
     // Closes the socket and dials again with the address as it reads now, keeping every subscription; a socket closed as signed out (4001) waits for this.
     reconnect: () => void
     // Stops the socket for good.
@@ -730,6 +847,14 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     sleep?: ((ms: number) => Promise<void>) | undefined
     // Spreads every retry and redial between half and all of its backoff, so the tabs of a restarted server do not return in the same instant.
     random?: (() => number) | undefined
+    // Once the server has sent `$ping`, a socket silent this long is closed and dialled again (60 s by default). A server that never pings is never timed.
+    silenceMs?: number | undefined
+    // Hands a listener to whatever says the device is back (online, a tab shown again); the socket then redials at once rather than waiting its backoff. Answers a stop.
+    wake?: ((listener: () => void) => () => void) | undefined
+    // Runs once a socket after the first is settled: the server said `$ready` and answered every subscription, or said nothing within `connectTimeoutMs`. Pushes sent while it was down are lost, so this is when to fetch again.
+    onReconnected?: ((about: {
+    downMs: number
+    }) => void) | undefined
 
 # @onetype/stack-app-kit/react
 
@@ -950,6 +1075,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     refusal: string | undefined
     // Sends a message on a channel, as a server would.
     push: (topic: string, message: unknown) => void
+    // Declines a channel, as a server would: every `refused` given to that channel's subscribe hears the code.
+    refuse: (topic: string, code?: string) => void
 
 > One request a plugin made, as the fake recorded it.
 ### FakeRequest

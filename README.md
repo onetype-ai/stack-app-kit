@@ -29,6 +29,9 @@ the one that failed. Nothing partly starts.
 Three entries: `.` is pure and runs without a DOM, `./react` renders, and
 `./testing` holds the checks an application runs on itself.
 
+`npx stack-app-kit-schema` writes `schemas.md`: every signature the installed
+kit offers, read from its built types. Rerun it after each upgrade.
+
 ## Layout
 
 ```

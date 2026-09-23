@@ -9,10 +9,10 @@
         "typecheck": "tsc --noEmit",
         "boundaries": "node tools/boundaries.mjs",
         "docs": "node tools/docs.mjs",
-        "build": "tsup && node tools/schema.mjs",
+        "build": "tsup && node bin/schema.mjs",
         "prepublishOnly": "tools/check.sh && tsup",
         "prepack": "tsup",
-        "schema": "node tools/schema.mjs",
+        "schema": "node bin/schema.mjs",
         "declared": "node tools/declared.mjs"
     },
     "dependencies": {
@@ -60,8 +60,12 @@
     "publishConfig": {
         "access": "public"
     },
+    "bin": {
+        "stack-app-kit-schema": "bin/schema.mjs"
+    },
     "files": [
         "dist",
+        "bin",
         "schema.md",
         "CHANGELOG.md",
         "README.md",
