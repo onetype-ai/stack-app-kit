@@ -10,10 +10,9 @@ What every service, listener, participant and command is handed.
 `"http"` so a caller can branch, and `subscribe` refuses rather than handing
 back a subscription that would deliver nothing.
 
-**The socket follows the viewer.** `start` dials once every plugin started,
-so the address already carries every plugin's `sends`. `realtime.reconnect()`
-dials again and keeps every subscription: call it when what the address reads
-from changed (sign-in, sign-out, a workspace switch).
+**`realtime.reconnect()`** after a sign-in, sign-out or workspace switch
+redials, keeping every subscription; the address carries every plugin's
+`sends`.
 
 **`http` answers the body, never an envelope.** A 204 is `undefined`, anything
 but a 2xx throws. A fake answering `{ status, body }` describes the channel
@@ -153,23 +152,7 @@ Each `find*` is exported too.
 `otherStacks: ["../api/src/plugins"]` names the other half of a two-stack
 application; a guard that cannot reach it is `skipped`, never a pass.
 
-A test names only the plugin under test; a setup file says where the rest
-come from, and `start` adds what it depends on, transitively. A plugin the
-test passes wins by name, so a stand-in stays one.
-
-```ts
-// vitest setup file
-const loaders = import.meta.glob<{ default: Plugin }>("./plugins/*/plugin.ts");
-
-configureTestKernels({
-    resolve: async (name) =>
-    {
-        const load = loaders[`./plugins/${name}/plugin.ts`];
-
-        return load === undefined ? undefined : { plugin: (await load()).default };
-    },
-});
-```
-
-`withDependencies(plugins)` does the same for `createKernel`;
-`resetTestKernels()` undoes it. Only `./testing` exports them.
+`configureTestKernels({ resolve })` in a setup file lets a test name only the
+plugin under test: `start` adds its dependencies, transitively, from
+`resolve(name)` → `{ plugin, config? }`; a passed plugin wins by name.
+`withDependencies` does it for `createKernel`.
