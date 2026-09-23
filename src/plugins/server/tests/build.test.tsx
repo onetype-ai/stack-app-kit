@@ -1,4 +1,5 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createElement } from "react";
@@ -19,6 +20,19 @@ afterEach(async () =>
         await rm(made, { recursive: true, force: true });
     }
 });
+
+function freePort(): Promise<number>
+{
+    return new Promise((resolve) =>
+    {
+        const server = createServer().listen(0, "127.0.0.1", () =>
+        {
+            const address = server.address();
+
+            server.close(() => resolve(typeof address === "object" && address !== null ? address.port : 0));
+        });
+    });
+}
 
 async function folder(): Promise<string>
 {
@@ -140,5 +154,44 @@ export default { plugins: [prerenderOnBuild({ entry: "entry.mjs", origin: "https
 
         expect(proof).toEqual({ origin: "https://site.example", hasMarker: true, runs: 1 });
         expect(await readdir(join(root, "dist"))).not.toContain(".prerender");
+    }, 30_000);
+
+    test("has vite preview serve a page's own file and the shell for every other page path", async () =>
+    {
+        const root = await folder();
+        const plugin = join(process.cwd(), "src/plugins/server/react/server.tsx");
+
+        await writeFile(join(root, "index.html"), "<html><head><!--kit-head--></head><body><!--kit-app--></body></html>");
+        await writeFile(join(root, "entry.mjs"), `import { mkdir, writeFile } from "node:fs/promises";
+export default async (output) => {
+    await mkdir(output.outDir + "/about", { recursive: true });
+    await writeFile(output.outDir + "/index.html", "home page");
+    await writeFile(output.outDir + "/about/index.html", "about page");
+    await writeFile(output.outDir + "/_shell.html", "the shell");
+};
+`);
+        await writeFile(join(root, "vite.config.mjs"), `import { prerenderOnBuild } from ${JSON.stringify(plugin)};
+export default { plugins: [prerenderOnBuild({ entry: "entry.mjs", origin: "https://site.example" })], logLevel: "silent" };
+`);
+        const vite = await import("vite");
+        await vite.build({ root, configFile: join(root, "vite.config.mjs"), logLevel: "silent" });
+        const port = await freePort();
+        const preview = await vite.preview({ root, configFile: join(root, "vite.config.mjs"), logLevel: "silent", preview: { port, strictPort: true, host: "127.0.0.1" } });
+        const read = async (path: string): Promise<string> => (await fetch(`http://127.0.0.1:${String(port)}${path}`)).text();
+
+        try
+        {
+            expect(await read("/about")).toBe("about page");
+            expect(await read("/items/7")).toBe("the shell");
+            expect(await read("/")).toBe("home page");
+            expect(await read("/%2e%2e/%2e%2e/etc")).toBe("the shell");
+        }
+        finally
+        {
+            await new Promise<void>((resolve) =>
+            {
+                preview.httpServer.close(() => resolve());
+            });
+        }
     }, 30_000);
 });

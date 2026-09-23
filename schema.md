@@ -1450,10 +1450,12 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 
 > A Vite plugin: once the client is built, builds `entry` for the server, runs its default export with the built
 > `index.html`, and removes the server build. Skips the nested server build it starts, and every command but `build`.
-> In a production build, an origin that is missing or not absolute http(s) stops the build.
-### prerenderOnBuild(options: PrerenderOnBuildOptions): { name: string; configResolved: (resolved: ResolvedBuildConfig) => void; closeBundle: () => Promise<void> }
+> In a production build, an origin that is missing or not absolute http(s) stops the build. `vite preview` then serves
+> as the documented host does: a page's own `index.html`, and `_shell.html` for every other page path.
+### prerenderOnBuild(options: PrerenderOnBuildOptions): { name: string; configResolved: (resolved: ResolvedBuildConfig) => void; configurePreviewServer: (server: PreviewServer) => void; closeBundle: () => Promise<void> }
     name: string
     configResolved: (resolved: ResolvedBuildConfig) => void
+    configurePreviewServer: (server: PreviewServer) => void
     closeBundle: () => Promise<void>
 
 > A `respond` for `handle` that renders `tree` into `template` (the built `_template.html`), as a prerender does: the router already stands at the path.

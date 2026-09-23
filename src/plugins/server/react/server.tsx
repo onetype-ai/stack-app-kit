@@ -1,5 +1,5 @@
-import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, parse, resolve } from "node:path";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { dirname, join, normalize, parse, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
@@ -402,10 +402,75 @@ type ResolvedBuildConfig = {
 
 type ViteBuild = { build: (config: Record<string, unknown>) => Promise<unknown> };
 
+type Middleware = (request: { method?: string | undefined; url?: string | undefined }, response: { setHeader: (name: string, value: string) => void; end: (body: Buffer) => void; statusCode: number }, next: () => void) => void;
+
+type PreviewServer = { middlewares: { use: (handle: Middleware) => void }; config: { root: string; build: { outDir: string } } };
+
+async function isFile(path: string): Promise<boolean>
+{
+    try
+    {
+        return (await stat(path)).isFile();
+    }
+    catch
+    {
+        return false;
+    }
+}
+
+function servingPages(outDir: string): Middleware
+{
+    return (request, response, next) =>
+    {
+        const method = request.method ?? "GET";
+        const pathname = new URL(request.url ?? "/", "http://preview").pathname;
+
+        if ((method !== "GET" && method !== "HEAD") || parse(pathname).ext !== "")
+        {
+            next();
+
+            return;
+        }
+
+        let decoded: string;
+
+        try
+        {
+            decoded = decodeURIComponent(pathname);
+        }
+        catch
+        {
+            next();
+
+            return;
+        }
+
+        const page = join(outDir, normalize(decoded), "index.html");
+        const inside = page.startsWith(outDir + sep);
+
+        void (async () =>
+        {
+            const file = inside && await isFile(page) ? page : join(outDir, "_shell.html");
+
+            if (!(await isFile(file)))
+            {
+                next();
+
+                return;
+            }
+
+            response.statusCode = 200;
+            response.setHeader("content-type", "text/html; charset=utf-8");
+            response.end(await readFile(file));
+        })();
+    };
+}
+
 /**
  * A Vite plugin: once the client is built, builds `entry` for the server, runs its default export with the built
  * `index.html`, and removes the server build. Skips the nested server build it starts, and every command but `build`.
- * In a production build, an origin that is missing or not absolute http(s) stops the build.
+ * In a production build, an origin that is missing or not absolute http(s) stops the build. `vite preview` then serves
+ * as the documented host does: a page's own `index.html`, and `_shell.html` for every other page path.
  */
 export function prerenderOnBuild(options: PrerenderOnBuildOptions)
 {
@@ -429,6 +494,11 @@ export function prerenderOnBuild(options: PrerenderOnBuildOptions)
             {
                 throw new SeoFault([`origin "${options.origin ?? ""}" must be an absolute http(s) address like https://shop.example, for canonical links and the sitemap`]);
             }
+        },
+
+        configurePreviewServer: (server: PreviewServer) =>
+        {
+            server.middlewares.use(servingPages(resolve(server.config.root, server.config.build.outDir)));
         },
 
         closeBundle: async () =>

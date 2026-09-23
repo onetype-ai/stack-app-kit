@@ -2,12 +2,12 @@
 
 ## Description
 
-Renders pages in Node from `./server`: routes declared `render: "prerender"`
-at build time, and `render: "server"` per request.
+Renders pages in Node from `./server`: `render: "prerender"` routes at build
+time, `render: "server"` ones per request.
 
 ## Purpose
 
-The first HTML carries the page and its head, for crawlers and first paint.
+The first HTML carries the page and its head: for crawlers, and first paint.
 
 ## Usage
 
@@ -27,13 +27,14 @@ const page = await handle(request, { respond: respondWith({ template, tree }), s
   `<outDir><path>/index.html`, writes `sitemap.xml`, `robots.txt`,
   `_shell.html` (served for paths without a file) and `_template.html`
   (markers kept: the template `respondWith` reads).
-- `prerenderOnBuild` builds the entry after the client, runs it, and skips
-  its own server build; the router needs `history: (path) => memory`.
+- `prerenderOnBuild` builds and runs the entry after the client (not in its
+  own server build); `vite preview` then serves like a host. The router
+  needs `history: (path) => memory`.
 - `handle` starts an app per request (only the cookie and the language
   forwarded), stands its router at the path, writes the head before
   `</head>`, and answers undefined unless a server route matches a GET.
-  Keep request state in the kernel; a `load` fills the cache that `state`
-  carries with `ctx.cache.prefetch(key, fetch)`.
+  Keep request state in the kernel; `load` fills what `state` carries
+  with `ctx.cache.prefetch(key, fetch)`.
 - The browser: `hydrate(client, state)` once `prerenderedState()` is
   narrowed, `start({ prerendered: true })`, then `hydrateRoot`.
 
