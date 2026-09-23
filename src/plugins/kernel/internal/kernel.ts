@@ -27,7 +27,7 @@ export type KernelOptions = {
     realtime?: Omit<Realtime, "reconnect"> & Partial<Pick<Realtime, "reconnect">>;
     permissions?: PermissionSource;
 
-    /** Which plugin may answer what the viewer holds; any other declaring `grants` is refused. */
+    /** Which plugin may answer what the viewer holds; any other declaring `grants` is refused. Left out, the one plugin declaring `grants` is that plugin, and may own permissions under its own name. */
     grantedBy?: string;
     log?: LogFn;
 };

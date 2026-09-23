@@ -351,9 +351,10 @@ function checkGrants(byName: ReadonlyMap<string, Plugin>, report: (code: KernelF
     alone("DUPLICATE_GRANTS", "grants", (plugin) => plugin.definition.grants !== undefined);
 
     // grants answers what the viewer holds, so any plugin declaring it decided
-    // the whole authorization model. The application names the one that may,
-    // and a plugin granting itself the permissions it declares is the case
-    // worth refusing whether or not anybody was named.
+    // the whole authorization model. When the application names the one that
+    // may, any other is refused. Left unnamed, the single granter is the
+    // nominee: DUPLICATE_GRANTS refuses a second, and its own permissions are
+    // held to its own prefix like any plugin's, so naming it adds nothing.
     for (const [name, plugin] of byName)
     {
         if (plugin.definition.grants === undefined)
@@ -364,16 +365,6 @@ function checkGrants(byName: ReadonlyMap<string, Plugin>, report: (code: KernelF
         if (grantedBy !== undefined && name !== grantedBy)
         {
             report("UNNOMINATED_GRANTS", name, `"${name}" declares grants, and this application named "${grantedBy}" as the one that may. A plugin granting itself permissions decides what every guard allows.`);
-
-            continue;
-        }
-
-        // One plugin holding the whole app is its own author's business. The
-        // case worth refusing is a plugin among others answering what the
-        // viewer holds while owning permissions those others guard on.
-        if (grantedBy === undefined && byName.size > 1 && plugin.definition.permissions !== undefined)
-        {
-            report("UNNOMINATED_GRANTS", name, `"${name}" answers what the viewer holds and owns permissions of its own, with no grantedBy naming who may. Name the granting plugin in grantedBy, or move these permissions to the plugins that guard on them.`);
         }
     }
     alone("DUPLICATE_FRAME", "a frame", (plugin) => plugin.definition.frame !== undefined);

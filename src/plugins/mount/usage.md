@@ -37,7 +37,8 @@ await app.stop();
   can hear it. Dropping it would sign a user out with nothing on screen.
 - `stop` unwinds the plugins, then the socket.
 - `grantedBy` names the one plugin that may declare `grants`; any other
-  declaring it is refused at startup.
+  declaring it is refused at startup. Left out, the one plugin declaring
+  `grants` is that plugin, and may own permissions under its own name.
 - A plugin declaring `grants` answers alone. An application with no such
   plugin passes `permissions` instead; passing both warns, naming the winner.
 
