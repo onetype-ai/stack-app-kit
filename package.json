@@ -1,6 +1,6 @@
 {
     "name": "@onetype/stack-app-kit",
-    "version": "6.2.0",
+    "version": "6.3.0",
     "type": "module",
     "sideEffects": false,
     "scripts": {
