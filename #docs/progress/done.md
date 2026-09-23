@@ -1,6 +1,6 @@
 # done
 
-Five plugins, 389 tests, each watched to fail before it was trusted.
+Five plugins, 433 tests, each watched to fail before it was trusted.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events
 - `kernel` plugin: `definePlugin`, `createKernel`, contract validation, events,
@@ -24,6 +24,20 @@ Five plugins, 389 tests, each watched to fail before it was trusted.
 - `findUnusedFields()` found a declared field nothing read
 - `fakeContext()` in `/testing`: one fake, answering as the transport does
 - `findPrivateComments()` refuses a comment that never reaches `dist`
+
+## 6.1.0: taken back from the first project on the kit
+
+Each was a patch the project carried against 6.0.2, and each mutation of it
+was watched to fail here.
+
+- the socket address follows the viewer, redials with jitter, waits after
+  4001 and closes a socket that opened too late; a socket request carries the
+  headers HTTP sends, and a refusal its body
+- `cache.clear()` resets what a view shows, since a plain clear left it on
+  the previous workspace's data
+- the single granter needs no nomination
+- a test names only the plugin under test (`configureTestKernels`)
+- a plugin's `usage.md` is measured
 
 ## Taken from the project that was writing it itself
 
