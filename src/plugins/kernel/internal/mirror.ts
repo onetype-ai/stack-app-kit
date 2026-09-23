@@ -4,12 +4,11 @@ import type { HttpClient, Realtime } from "./contract";
 
 const Snapshot = z.object({ version: z.number().int().nonnegative(), entries: z.array(z.unknown()) });
 
-const Frame = z.object({
-    version: z.number().int().nonnegative(),
-    op: z.enum(["set", "remove"]),
-    key: z.string().min(1),
-    entry: z.unknown().optional(),
-});
+// "skip" is a change to an entry this viewer may not see: the version moves, and neither key nor entry leaks.
+const Frame = z.union([
+    z.object({ version: z.number().int().nonnegative(), op: z.enum(["set", "remove"]), key: z.string().min(1), entry: z.unknown().optional() }),
+    z.object({ version: z.number().int().nonnegative(), op: z.literal("skip") }),
+]);
 
 type Mirrored = {
     feed: (entries: readonly unknown[]) => number;
@@ -76,7 +75,9 @@ export function mirror(remote: string, into: Mirrored, http: HttpClient, realtim
             return;
         }
 
-        if (read.data.version !== version + 1 || !into.patch(read.data.key, read.data.op === "remove" ? undefined : read.data.entry))
+        const frame = read.data;
+
+        if (frame.version !== version + 1 || (frame.op !== "skip" && !into.patch(frame.key, frame.op === "remove" ? undefined : frame.entry)))
         {
             void fetchSnapshot();
 

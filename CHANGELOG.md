@@ -14,7 +14,8 @@
   `useRegistry(name)` answer the entries by `order` and then key, without
   those whose `requires` the viewer lacks.
 - `remote: "<owner>.<name>"` mirrors an api kit registry: it loads
-  `GET /registries/<name>`, applies each next push on `registry.<name>`,
+  `GET /registries/<name>`, applies each next push on `registry.<name>` (`skip`: a
+  change this viewer may not see),
   reads the snapshot again after a gap or `transport.reconnected`, and
   empties on `ctx.session.changed()` before the next identity reads. Only
   the server adds to it. `declarationsOf` lists

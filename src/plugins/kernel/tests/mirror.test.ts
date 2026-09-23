@@ -114,6 +114,19 @@ describe("a registry mirroring the server", () =>
         expect(names(kernel)).toEqual(["mail"]);
     });
 
+    test("moves past a change this viewer may not see, without reading the snapshot again", async () =>
+    {
+        const server = serving({ version: 1, entries: [] });
+        const kernel = await mirrored(server);
+
+        server.push({ version: 2, op: "skip" });
+        server.push({ version: 3, op: "set", key: "mail", entry: { name: "mail", label: "Mail" } });
+        await settled();
+
+        expect(server.asked).toHaveLength(1);
+        expect(names(kernel)).toEqual(["mail"]);
+    });
+
     test("drops an entry its schema refuses, and says so", async () =>
     {
         const said: string[] = [];
