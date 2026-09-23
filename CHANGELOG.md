@@ -30,7 +30,8 @@
   `watch`), `start({ locale })` and `useLocale(plugin)`. A rendered page
   records its locale (`#kit-state` `data-locale`, `<html lang>`);
   `prerenderedLocale()` and `useLocaleAfterHydration(tag)` hydrate in it,
-  then turn to the viewer's; `KernelProvider` keeps `<html lang>` current;
+  then turn to the viewer's (`useLocale` reads the written locale for every
+  boundary it hydrates, however late); `KernelProvider` keeps `<html lang>` current;
   `kernel.locale` reads and changes it for the whole application.
 - `vite preview` answers 404 for a missing file rather than the home page.
 - `./react`: `AppBoundary` (a page with a retry instead of a blank screen,

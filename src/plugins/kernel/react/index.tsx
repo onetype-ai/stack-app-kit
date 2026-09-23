@@ -359,10 +359,9 @@ export function RouteGuard({ route, send, params = {} }: { route: RegisteredRout
 export function useLocale(plugin: string): PluginLocale
 {
     const locale = useKernel().context(plugin).locale;
+    const tag = useSyncExternalStore(locale.watch, locale.current, () => prerenderedLocale() ?? locale.current());
 
-    useSyncExternalStore(locale.watch, locale.current, locale.current);
-
-    return locale;
+    return useMemo(() => locale.at(tag), [locale, tag]);
 }
 
 /** The locale a prerendered page was written in (`#kit-state`'s `data-locale`), for `start` to hydrate in; undefined on a page the browser rendered first. */

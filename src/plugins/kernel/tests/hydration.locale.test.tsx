@@ -1,4 +1,5 @@
 import { act, cleanup } from "@testing-library/react";
+import { Suspense } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, test } from "vitest";
@@ -29,11 +30,16 @@ async function kernelIn(current: string): Promise<Kernel>
     return kernel;
 }
 
+function Heading(): React.ReactNode
+{
+    return <h1>{useLocale("home").text("title")}</h1>;
+}
+
 function Title({ viewer }: { viewer?: string }): React.ReactNode
 {
     useLocaleAfterHydration(viewer);
 
-    return <h1>{useLocale("home").text("title")}</h1>;
+    return <Suspense fallback={null}><Heading /></Suspense>;
 }
 
 describe("a page written in one locale for a viewer who reads another", () =>

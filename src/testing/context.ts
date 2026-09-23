@@ -344,6 +344,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
             },
             change: () => {},
             watch: () => () => {},
+            at: () => fake.ctx.locale,
         },
 
         session: {

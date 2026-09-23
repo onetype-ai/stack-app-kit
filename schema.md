@@ -509,6 +509,8 @@
     change: (tag: string) => void
     // Runs `notify` on every change. Returns a stop.
     watch: (notify: () => void) => () => void
+    // The same view read at a fixed tag, whatever the current one: what a component renders while hydrating a page written in another.
+    at: (tag: string) => PluginLocale
 
 > What a bundler's eager glob returns.
 ### PluginModules = Readonly<Record<string,

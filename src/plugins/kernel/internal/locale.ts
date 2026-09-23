@@ -29,6 +29,9 @@ export type PluginLocale = {
 
     /** Runs `notify` on every change. Returns a stop. */
     watch: (notify: () => void) => () => void;
+
+    /** The same view read at a fixed tag, whatever the current one: what a component renders while hydrating a page written in another. */
+    at: (tag: string) => PluginLocale;
 };
 
 function filled(message: string, values: LocaleValues): string
@@ -65,12 +68,13 @@ export function createLocale(options: LocaleOptions, refuse: (message: string) =
         }
     };
 
-    const forPlugin = (messages: Messages | undefined): PluginLocale => ({
-        current: () => current,
+    const forPlugin = (messages: Messages | undefined, fixed?: string): PluginLocale => ({
+        current: () => fixed ?? current,
 
         text: (key, values = {}) =>
         {
-            const message = messages?.[current]?.[key] ?? messages?.[options.fallback]?.[key];
+            const tag = fixed ?? current;
+            const message = messages?.[tag]?.[key] ?? messages?.[options.fallback]?.[key];
 
             if (message === undefined)
             {
@@ -83,7 +87,7 @@ export function createLocale(options: LocaleOptions, refuse: (message: string) =
             }
 
             const count = typeof values["count"] === "number" ? values["count"] : 0;
-            const form = new Intl.PluralRules(current).select(count);
+            const form = new Intl.PluralRules(tag).select(count);
 
             return filled(message[form] ?? message.other, values);
         },
@@ -91,8 +95,9 @@ export function createLocale(options: LocaleOptions, refuse: (message: string) =
         format: {
             number: (value, formatOptions = {}) =>
             {
-                const id = `${current}|${JSON.stringify(formatOptions)}`;
-                const formatter = numbers.get(id) ?? new Intl.NumberFormat(current, formatOptions);
+                const tag = fixed ?? current;
+                const id = `${tag}|${JSON.stringify(formatOptions)}`;
+                const formatter = numbers.get(id) ?? new Intl.NumberFormat(tag, formatOptions);
 
                 numbers.set(id, formatter);
 
@@ -101,8 +106,9 @@ export function createLocale(options: LocaleOptions, refuse: (message: string) =
 
             date: (value, formatOptions = {}) =>
             {
-                const id = `${current}|${JSON.stringify(formatOptions)}`;
-                const formatter = dates.get(id) ?? new Intl.DateTimeFormat(current, formatOptions);
+                const tag = fixed ?? current;
+                const id = `${tag}|${JSON.stringify(formatOptions)}`;
+                const formatter = dates.get(id) ?? new Intl.DateTimeFormat(tag, formatOptions);
 
                 dates.set(id, formatter);
 
@@ -121,6 +127,8 @@ export function createLocale(options: LocaleOptions, refuse: (message: string) =
                 watchers.delete(notify);
             };
         },
+
+        at: (tag) => forPlugin(messages, options.supported.find((one) => one.toLowerCase() === tag.toLowerCase()) ?? options.fallback),
     });
 
     return { forPlugin };
