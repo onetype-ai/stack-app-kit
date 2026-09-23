@@ -7,7 +7,7 @@ head, plus `sitemap.xml` and `robots.txt`. Other routes stay client pages.
 
 ## Purpose
 
-A crawler and a link preview read the first HTML, not what a script renders.
+A crawler and a link preview read the first HTML, not what a script draws.
 
 ## Usage
 
@@ -28,12 +28,13 @@ await prerender({ app, origin: "https://shop.example", outDir: "dist", template,
 - `template` holds `<!--kit-head-->` and `<!--kit-app-->`; a page lands at
   `<outDir><path>/index.html`, the untouched template at `_shell.html`
   (`fallback`): serve files by path, the shell for every other path.
-- `head` is validated and escaped; `title` falls back to the route's.
-- The browser: `hydrate(queryClient, prerenderedState())`, then
+- `head` is validated and escaped; `title` defaults to the route's.
+- The browser: `hydrate(queryClient, state)` when `prerenderedState()` is
+  an object (it is `unknown`: narrow it), then
   `start({ prerendered: prerenderedState() !== undefined, … })` loads the
   router first, then `hydrateRoot` with the same tree `render` returned
   (StrictMode and providers included).
-- A page with `robots: { index: false }` stays out of the sitemap.
+- `robots: { index: false }` keeps a page out of the sitemap.
 - `RouteGuard` replaces the prerendered head on each navigation, never a tag
   it did not write; pass it the router's `params`.
 
