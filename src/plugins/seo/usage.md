@@ -38,8 +38,8 @@ await prerender({
   client to hydrate from.
 - A page with `robots: { index: false }` stays out of the sitemap; alternates
   become hreflang links in both.
-- In the browser, `RouteGuard` applies the same head on every navigation and
-  removes only the tags it wrote.
+- In the browser, `RouteGuard` applies the same head on each navigation and
+  removes only the tags it wrote; pass it the router's `params`.
 
 ## Refuses
 

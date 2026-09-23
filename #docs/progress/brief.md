@@ -1,6 +1,6 @@
 # brief
 
-Seven plugins work. 482 tests, every one watched to fail. `done.md` logs the
+Eight plugins work. 505 tests, every one watched to fail. `done.md` logs the
 guarantees one by one.
 
 An application declares plugins with `definePlugin` and brings them up with

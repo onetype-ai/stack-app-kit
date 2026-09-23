@@ -46,6 +46,9 @@
 > Turns the routes plugins declared into a router the application renders.
 ### routerPlugin(building: RouterOptions): HostPlugin
 
+> Offers what writes a site's sitemap and robots.txt; `./server` holds the prerender.
+### seoPlugin(): HostPlugin
+
 > Where an application listens, and which server `/api` reaches.
 > `strictPort` is the point: a port already taken is refused rather than
 > quietly moved to, so two people running their own never share one by
@@ -278,6 +281,12 @@
     // What renders at `/` when no plugin declares it: a redirect to the first route there is.
     landing: (to: string) => ComponentType
 
+> What a page says about itself to a search engine and a link preview. Every field is optional; `title` falls back to the route's.
+### Head = z.input<typeof headSchema>
+
+> One element of `<head>`, as data: rendered to a string on a server, created as a node in a browser.
+### HeadTag = { tag: "title"; text: string } | { tag: "meta"; attributes: Readonly<Record<string, string>> } | { tag: "link"; attributes: Readonly<Record<string, string>> } | { tag: "script"; attributes: Readonly<Record<string, string>>; text: string }
+
 > A point where a plugin may refuse what is about to happen.
 ### Hook
     describe: string
@@ -467,6 +476,17 @@
     search?: z.ZodType | undefined
     // Where the viewer belongs instead, when this page is not it: asked before `requires`.
     instead?: ((ctx: Context<Config, Services>) => string | undefined) | undefined
+    // "prerender" writes this page as HTML at build time, for search engines and first paint; "client" (the default) renders it in the browser only. A prerendered page may hold no `requires` or `instead`.
+    render?: "client" | "prerender" | undefined
+    // Every set of parameters to prerender, for a path holding `$name` segments: `[{ id: "1" }]` for `/items/$id`.
+    paths?: ((ctx: Context<Config, Services>) => readonly RouteParams[] | Promise<readonly RouteParams[]>) | undefined
+    // Fetches what the page reads before it renders on a server, filling the cache the page reads from.
+    load?: ((ctx: Context<Config, Services>, params: RouteParams) => void | Promise<void>) | undefined
+    // What the page says to search engines and link previews, validated before it is written; `title` falls back to the route's.
+    head?: ((ctx: Context<Config, Services>, params: RouteParams) => Head | Promise<Head>) | undefined
+
+> A path's `$name` segments and what they matched.
+### RouteParams = Readonly<Record<string, string>>
 
 > What the router plugin offers: the tree, built from what plugins declared.
 ### Router
@@ -661,51 +681,40 @@ Imported whole, then reached through the name: `import { logs } from "@onetype/s
 
 ### logs.toConsole: LogWriter
 
-## router
+## seo
 
-Imported whole, then reached through the name: `import { router } from "@onetype/stack-app-kit";`. Its members have no import of their own.
+Imported whole, then reached through the name: `import { seo } from "@onetype/stack-app-kit";`. Its members have no import of their own.
 
-> A child route, deliberately `unknown`: it constrains nothing, and whatever your router library returns passes.
-### router.Child = unknown
-
-> What the frame around every page needs.
-### router.Frame
-    shell: ComponentType
-    missing: ComponentType
-    // What renders at `/` when no plugin declares it: a redirect to the first route there is.
-    landing: (to: string) => ComponentType
-
-> The router, for a plugin that declared "router" in needs.
-### router.from(host: Host): Router | undefined
+> The seo helpers, for a plugin that declared "seo" in needs.
+### seo.from(host: Host): Seo | undefined
 
 > What this plugin offers itself as.
-### router.NAME = "router"
+### seo.NAME = "seo"
 
-> The route-tree root your router library returned, which takes the pages plugins declared.
-### router.Root
-    addChildren: (children: Child[]) => Root
+### seo.robotsTxt(origin: string, disallow?: readonly string[]): string
 
-> What the router plugin offers: the tree, built from what plugins declared.
-### router.Router
-    build: (kernel: Kernel, frame: Frame, guard: (route: RegisteredRoute) => ComponentType) => unknown
+> What `seo.from(host)` answers.
+### seo.Seo
+    // A sitemap of every indexed page, with hreflang alternates.
+    sitemapXml: typeof sitemapXml
+    // A robots.txt allowing everything but `disallow`, naming the sitemap.
+    robotsTxt: typeof robotsTxt
 
-> The part of a router library this plugin drives.
-### router.RouterOptions
-    createRootRoute: (options: {
-    component: ComponentType
-    notFoundComponent: ComponentType
-    }) => Root
-    createRoute: (options: {
-    getParentRoute: () => Root
+> Every problem a prerender found, before it wrote anything.
+### seo.SeoFault extends Error
+    readonly code = "REFUSED_PRERENDER"
+    readonly problems: readonly string[]
+    constructor(problems: readonly string[])
+
+### seo.SitemapPage
     path: string
-    component: ComponentType
-    validateSearch?: (query: Record<string, unknown>) => unknown
-    }) => Child
-    createRouter: (options: {
-    routeTree: Root
-    }) => unknown
+    isIndexed: boolean
+    alternates: readonly {
+    locale: string
+    href: string
+    }[]
 
-### router.tree(kernel: Kernel, building: RouterOptions, frame: Frame, guard: (route: RegisteredRoute) => ComponentType): unknown
+### seo.sitemapXml(origin: string, pages: readonly SitemapPage[]): string
 
 ## settings
 
@@ -713,7 +722,7 @@ Imported whole, then reached through the name: `import { settings } from "@onety
 
 ### settings.BuildGuard
     name: string
-    configResolved: () => void
+    configResolved: (config: ResolvedBuild) => void
 
 ### settings.configFor(plugins: readonly Plugin[], environment: Readonly<Record<string, unknown>>): PluginConfig
 
@@ -729,7 +738,11 @@ Imported whole, then reached through the name: `import { settings } from "@onety
 
 ### settings.PublicOptions = Partial<PublicRule>
 
-### settings.refusingSecrets(names: readonly string[], options?: PublicOptions): BuildGuard
+### settings.refusingSecrets(options?: Omit<PublicOptions, "prefixes">): BuildGuard
+
+### settings.ResolvedBuild
+    env: Readonly<Record<string, unknown>>
+    envPrefix?: string | readonly string[] | undefined
 
 > What `settings.from(host)` answers.
 ### settings.Settings
@@ -744,118 +757,6 @@ Imported whole, then reached through the name: `import { settings } from "@onety
     readonly problems: readonly string[]
     constructor(what: string, problems: readonly string[])
 
-## transport
-
-Imported whole, then reached through the name: `import { transport } from "@onetype/stack-app-kit";`. Its members have no import of their own.
-
-> Joins `baseUrl`, `path` and `query` into one URL, dropping null and undefined values; a relative `baseUrl` stays relative.
-### transport.address(baseUrl: string, path: string, query?: Readonly<Record<string, string | number | boolean | null | undefined>>): string
-
-> Which channel is carrying requests now.
-### transport.Channel = "ws" | "http"
-
-> The transport, for a plugin that declared "transport" in needs.
-### transport.from(host: Host): Transport | undefined
-
-> The five verbs this transport sends: GET, POST, PUT, PATCH and DELETE.
-### transport.HttpMethod = (typeof METHODS)[number]
-
-> One request. Everything a caller may say about what it wants.
-### transport.HttpRequest
-    method: HttpMethod
-    path: string
-    query?: Readonly<Record<string, string | number | boolean | null | undefined>> | undefined
-    body?: unknown
-    headers?: Readonly<Record<string, string>> | undefined
-    signal?: AbortSignal | undefined
-
-> What this plugin offers itself as.
-### transport.NAME = "transport"
-
-> The socket shape this plugin drives.
-### transport.Socket
-    send: (data: string) => void
-    close: () => void
-    addEventListener: (kind: string, run: (event: unknown) => void) => void
-
-> What a caller holds to stop receiving.
-### transport.Subscription
-    close: () => void
-
-> The one HTTP boundary.
-### transport.Transport
-    // Tries the socket once and answers which channel is live.
-    connect: () => Promise<Channel>
-    // Which channel is carrying now.
-    channel: () => Channel
-    // One request. The body comes back as unknown, so the caller validates.
-    request: (request: HttpRequest) => Promise<unknown>
-    // Server-pushed messages. With no socket this succeeds and delivers nothing. `refused` hears the server decline the channel (unknown and forbidden read alike).
-    subscribe: (topic: string, receive: (message: unknown) => void, refused?: (code: string) => void) => Subscription
-    // Closes the socket and dials again with the address as it reads now, keeping every subscription; a socket closed as signed out (4001) waits for this.
-    reconnect: () => void
-    // Stops the socket for good.
-    close: () => void
-
-> A refused request, carrying what it was and what came back.
-### transport.TransportFault extends Error
-    readonly code: TransportFaultCode
-    readonly status: number | undefined
-    readonly method: string
-    readonly path: string
-    readonly retryable: boolean
-    readonly body: unknown
-    constructor(code: TransportFaultCode, message: string, about: FaultDetail)
-    static fromStatus(status: number, about: {
-    method: string
-    path: string
-    body?: unknown
-    }): TransportFault
-    toString(): string
-
-> What a request was refused for. A closed union, so a caller can branch.
-### transport.TransportFaultCode
-    | "NETWORK"
-    | "TIMEOUT"
-    | "ABORTED"
-    | "UNAUTHORIZED"
-    | "FORBIDDEN"
-    | "NOT_FOUND"
-    | "CONFLICT"
-    | "RATE_LIMITED"
-    | "SERVER"
-    | "CLIENT"
-    | "MALFORMED"
-    | "OFF_BASE"
-
-> What the plugin needs before it can dial anything.
-### transport.TransportOptions
-    baseUrl: string
-    // Where the socket dials. A function is read on every dial and redial with the headers a request would carry now
-    // (`headers` and every plugin's), so the address can follow the viewer; answering undefined keeps the socket closed until `reconnect()`.
-    wsUrl?: string | ((sent: Readonly<Record<string, string>>) => string | undefined) | undefined
-    // "requests" (the default) sends requests over the socket while it is open; "push" keeps every request on HTTP and the socket for pushes only.
-    socketFor?: "requests" | "push" | undefined
-    openSocket?: ((url: string) => Socket) | undefined
-    headers?: (() => Readonly<Record<string, string>>) | undefined
-    onUnauthorized?: ((path: string) => void) | undefined
-    timeoutMs?: number
-    retries?: number
-    retryBaseMs?: number
-    connectTimeoutMs?: number
-    reconnectBaseMs?: number
-    sleep?: ((ms: number) => Promise<void>) | undefined
-    // Spreads every retry and redial between half and all of its backoff, so the tabs of a restarted server do not return in the same instant.
-    random?: (() => number) | undefined
-    // Once the server has sent `$ping`, a socket silent this long is closed and dialled again (60 s by default). A server that never pings is never timed.
-    silenceMs?: number | undefined
-    // Hands a listener to whatever says the device is back (online, a tab shown again); the socket then redials at once rather than waiting its backoff. Answers a stop.
-    wake?: ((listener: () => void) => () => void) | undefined
-    // Runs once a socket after the first is settled: the server said `$ready` and answered every subscription, or said nothing within `connectTimeoutMs`. Pushes sent while it was down are lost, so this is when to fetch again.
-    onReconnected?: ((about: {
-    downMs: number
-    }) => void) | undefined
-
 # @onetype/stack-app-kit/react
 
 ## Functions
@@ -868,10 +769,11 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 > The 404, for a path nothing declared.
 ### NotFound(): ReactNode
 
-> A page, and what it takes to see it.
-### RouteGuard({ route, send }: { route: RegisteredRoute; send?: (to: string) => ReactNode }): ReactNode
+> A page, and what it takes to see it; `params` are what the path matched, for the route's `head`.
+### RouteGuard({ route, send, params }: { route: RegisteredRoute; send?: (to: string) => ReactNode; params?: RouteParams }): ReactNode
     route: RegisteredRoute
     send?: (to: string) => ReactNode
+    params?: RouteParams
 
 > Renders every contribution to a slot.
 ### Slot({ name, payload }: { name: string; payload?: unknown }): ReactNode
@@ -1222,3 +1124,36 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 ### Unwatched
     file: string
     shape: string
+
+# @onetype/stack-app-kit/server
+
+## Functions
+
+> Writes every route declared `render: "prerender"`, once per set its `paths` answer, as `<outDir><path>/index.html`,
+> then `sitemap.xml` and `robots.txt`. Every head is validated and every path checked before anything is written;
+> a problem anywhere throws `SeoFault` naming them all.
+### prerender(options: PrerenderOptions): Promise<readonly PrerenderedPage[]>
+
+## Types
+
+> One page written, and what it said about itself.
+### PrerenderedPage
+    path: string
+    file: string
+
+> What `prerender` needs: a started app, how to render one path, and where the pages go.
+### PrerenderOptions
+    app: StartedApp
+    // The same tree the browser renders, for one path: typically a router on memory history, loaded.
+    render: (path: string) => ReactNode | Promise<ReactNode>
+    // The built `index.html`, holding `<!--kit-head-->` and `<!--kit-app-->`.
+    template: string
+    // Where the site is served, for the sitemap: `https://shop.example`.
+    origin: string
+    outDir: string
+    // What the client hydrates its cache from, read after every page loaded: `() => dehydrate(queryClient)`.
+    state?: (() => unknown) | undefined
+    // Paths robots.txt asks crawlers to leave alone: the client-only part of the site.
+    disallow?: readonly string[] | undefined
+    // Writes one file; the file system by default, a map in a test.
+    write?: ((file: string, contents: string) => Promise<void>) | undefined

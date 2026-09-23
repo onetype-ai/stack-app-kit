@@ -1,6 +1,6 @@
 # done
 
-Seven plugins, 482 tests, each watched to fail before it was trusted.
+Eight plugins, 505 tests, each watched to fail before it was trusted.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events
 - `kernel` plugin: `definePlugin`, `createKernel`, contract validation, events,
@@ -24,6 +24,13 @@ Seven plugins, 482 tests, each watched to fail before it was trusted.
 - `findUnusedFields()` found a declared field nothing read
 - `fakeContext()` in `/testing`: one fake, answering as the transport does
 - `findPrivateComments()` refuses a comment that never reaches `dist`
+
+## seo: pages a crawler can read
+
+A route may be `render: "prerender"`, with `paths`, `load` and `head`; start
+refuses a guarded one. `./server` writes each page from the built template
+with its validated, escaped head, then `sitemap.xml` and `robots.txt`;
+`RouteGuard` applies the same head in the browser.
 
 ## logs: what a browser logged, sent home
 

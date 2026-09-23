@@ -28,6 +28,7 @@ describe("a head", () =>
     {
         expect(refused({ canonical: "javascript:alert(1)" })).toEqual(["canonical"]);
         expect(refused({ canonical: "/items" })).toEqual(["canonical"]);
+        expect(refused({ canonical: "ftp://shop.example/items" })).toEqual(["canonical"]);
         expect(refused({ openGraph: { image: "data:image/png;base64,AAAA" } })).toEqual(["openGraph.image"]);
     });
 
