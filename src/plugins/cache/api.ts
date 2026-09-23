@@ -11,6 +11,7 @@ export type Queries = {
     cancelQueries?: () => unknown;
     removeQueries?: (filters: { type: "inactive" }) => void;
     resetQueries?: () => unknown;
+    prefetchQuery?: (options: { queryKey: unknown[]; queryFn: () => Promise<unknown> }) => Promise<void>;
 };
 
 export type { Cache };
@@ -34,6 +35,16 @@ export function fromQueries(client: Queries): Cache
             void client.cancelQueries();
             client.removeQueries({ type: "inactive" });
             void client.resetQueries();
+        },
+
+        prefetch: (key, fetch) =>
+        {
+            if (client.prefetchQuery === undefined)
+            {
+                throw new KernelFault("INVALID_CONFIG", "cache: prefetch needs prefetchQuery on the query client. Pass the client itself.");
+            }
+
+            return client.prefetchQuery({ queryKey: [...key], queryFn: fetch });
         },
     };
 }

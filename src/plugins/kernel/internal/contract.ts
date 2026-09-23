@@ -136,6 +136,9 @@ export type Cache = {
 
     /** Cancels what is still loading, drops every entry no view shows, and resets the ones a view shows so they fetch again: when the data's owner changed (a workspace switch, sign-out), not when some of it went stale. */
     clear: () => void;
+
+    /** Fetches `key` into the cache before a page renders, so the page reads it without a request and a server's state carries it. */
+    prefetch: (key: readonly unknown[], fetch: () => Promise<unknown>) => Promise<void>;
 };
 
 /** What the kernel needs to hear a server push. */

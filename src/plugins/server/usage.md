@@ -19,7 +19,7 @@ plugins: [prerenderOnBuild({ entry: "src/prerender.tsx", origin: SITE_ORIGIN })]
 export default prerenderApp({ start, tree: (app) => <Tree app={app} />, state: () => dehydrate(client) });
 
 // a Node server
-const page = await handle(request, { respond, state,
+const page = await handle(request, { respond: respondWith({ template, tree }), state,
     start: (session) => start({ …, transport: { baseUrl, headers: () => session.headers } }) });
 ```
 
@@ -29,8 +29,10 @@ const page = await handle(request, { respond, state,
 - `prerenderOnBuild` builds the entry after the client, runs it, and skips
   its own server build; the router needs `history: (path) => memory`.
 - `handle` starts an app per request (only the cookie and the language
-  forwarded), writes the head before `</head>`, and answers undefined unless
-  a server route matches a GET. Keep request state in the kernel.
+  forwarded), stands its router at the path, writes the head before
+  `</head>`, and answers undefined unless a server route matches a GET.
+  Keep request state in the kernel; a `load` fills the cache that `state`
+  carries with `ctx.cache.prefetch(key, fetch)`.
 - The browser: `hydrate(client, state)` once `prerenderedState()` is
   narrowed, `start({ prerendered: true })`, then `hydrateRoot`.
 

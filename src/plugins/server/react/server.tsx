@@ -305,6 +305,13 @@ export async function handle(request: Request, options: HandleOptions): Promise<
         }
 
         const head = `${renderTags(tags)}\n${stateScript(options.state?.(app))}`;
+        if (app.router !== undefined)
+        {
+            const url = new URL(request.url);
+
+            await app.visit(url.pathname + url.search);
+        }
+
         const response = await options.respond(app, request);
 
         if (response.body === null)
@@ -472,5 +479,17 @@ export function prerenderOnBuild(options: PrerenderOnBuildOptions)
                 await rm(serverDir, { recursive: true, force: true });
             }
         },
+    };
+}
+
+/** A `respond` for `handle` that renders `tree` into `template`, as a prerender does: the router already stands at the path. */
+export function respondWith(options: { template: string; tree: (app: StartedApp) => ReactNode }): (app: StartedApp) => Promise<Response>
+{
+    return (app) =>
+    {
+        const markup = renderToString(options.tree(app));
+        const page = options.template.replace(headMarker, () => "").replace(appMarker, () => markup);
+
+        return Promise.resolve(new Response(page, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }));
     };
 }

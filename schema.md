@@ -118,6 +118,8 @@
     invalidate: (key: readonly unknown[]) => void
     // Cancels what is still loading, drops every entry no view shows, and resets the ones a view shows so they fetch again: when the data's owner changed (a workspace switch, sign-out), not when some of it went stale.
     clear: () => void
+    // Fetches `key` into the cache before a page renders, so the page reads it without a request and a server's state carries it.
+    prefetch: (key: readonly unknown[], fetch: () => Promise<unknown>) => Promise<void>
 
 > One request, as a plugin makes it.
 ### CallOptions
@@ -387,7 +389,7 @@
     config?: Readonly<Record<string, unknown>>
     http?: HttpClient
     // Without `clear`, ctx.cache.clear() refuses, naming what to give.
-    cache?: Omit<Cache, "clear"> & Partial<Pick<Cache, "clear">>
+    cache?: Omit<Cache, "clear" | "prefetch"> & Partial<Pick<Cache, "clear" | "prefetch">>
     // Without `reconnect`, the kernel answers one that does nothing.
     realtime?: Omit<Realtime, "reconnect"> & Partial<Pick<Realtime, "reconnect">>
     permissions?: PermissionSource
@@ -603,6 +605,8 @@ Imported whole, then reached through the name: `import { cache } from "@onetype/
     invalidate: (key: readonly unknown[]) => void
     // Cancels what is still loading, drops every entry no view shows, and resets the ones a view shows so they fetch again: when the data's owner changed (a workspace switch, sign-out), not when some of it went stale.
     clear: () => void
+    // Fetches `key` into the cache before a page renders, so the page reads it without a request and a server's state carries it.
+    prefetch: (key: readonly unknown[], fetch: () => Promise<unknown>) => Promise<void>
 
 > The cache, for a plugin that declared "cache" in needs.
 ### cache.from(host: Host): Cache | undefined
@@ -623,6 +627,10 @@ Imported whole, then reached through the name: `import { cache } from "@onetype/
     type: "inactive"
     }) => void
     resetQueries?: () => unknown
+    prefetchQuery?: (options: {
+    queryKey: unknown[]
+    queryFn: () => Promise<unknown>
+    }) => Promise<void>
 
 ## logs
 
@@ -1158,6 +1166,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     reconnected: number
     // How many times the plugin dropped the whole cache.
     cleared: number
+    // Every key the plugin fetched ahead, in order.
+    prefetched: unknown[][]
     // What `ctx.hooks.run` answers next. Set it to refuse.
     refusal: string | undefined
     // Sends a message on a channel, as a server would.
@@ -1334,6 +1344,11 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     name: string
     configResolved: (resolved: ResolvedBuildConfig) => void
     closeBundle: () => Promise<void>
+
+> A `respond` for `handle` that renders `tree` into `template`, as a prerender does: the router already stands at the path.
+### respondWith(options: { template: string; tree: (app: StartedApp) => ReactNode }): (app: StartedApp) => Promise<Response>
+    template: string
+    tree: (app: StartedApp) => ReactNode
 
 ## Types
 

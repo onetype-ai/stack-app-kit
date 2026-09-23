@@ -37,6 +37,8 @@ listens: {
 - `invalidate` marks one key stale; `clear` is for when the data's owner
   changed (sign-out, a workspace switch): it cancels what is loading, drops
   what no view shows, and resets what a view shows so it fetches again.
+- `prefetch(key, fetch)` fills a key before a page renders: a route's
+  `load` uses it, so the server's state and the page read the same entry.
 - `invalidate` takes a key as an array, and passes it on unchanged.
 - The key is copied before it is handed over, so a caller holding the array
   cannot change what was invalidated.

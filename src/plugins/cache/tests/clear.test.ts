@@ -118,3 +118,29 @@ describe("ctx.cache.clear", () =>
         expect(() => kernel.context("probe").cache.clear()).toThrow("no cache was given");
     });
 });
+
+describe("prefetching", () =>
+{
+    test("fills the cache under the key before a page reads it", async () =>
+    {
+        const client = new QueryClient();
+
+        await fromQueries(client).prefetch(["items", "1"], () => Promise.resolve({ id: "1" }));
+
+        expect(client.getQueryData(["items", "1"])).toEqual({ id: "1" });
+    });
+
+    test("reaches the plugin through ctx.cache, and refuses where the cache cannot", async () =>
+    {
+        const client = new QueryClient();
+        const kernel = createKernel({ plugins: [probe], cache: fromQueries(client) });
+        const bare = createKernel({ plugins: [probe], cache: { invalidate: () => {} } });
+        await kernel.start();
+        await bare.start();
+
+        await kernel.context("probe").cache.prefetch(["tags"], () => Promise.resolve(["a"]));
+
+        expect(client.getQueryData(["tags"])).toEqual(["a"]);
+        expect(() => bare.context("probe").cache.prefetch(["tags"], () => Promise.resolve([]))).toThrow("has no prefetch");
+    });
+});

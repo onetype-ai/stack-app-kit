@@ -13,7 +13,10 @@
   build), and `prerenderApp({ start, tree, state })` as that entry's default
   export.
 - `router.history` and `StartedApp.visit(path)`, which stand the router at a
-  path and load it.
+  path and load it; `handle` visits the requested path before `respond`.
+- `respondWith({ template, tree })`, a `respond` rendering into the template.
+- `ctx.cache.prefetch(key, fetch)` (`cache.fromQueries` implements it), so a
+  route's `load` fills what its page and the dehydrated state read.
 - A `server` plugin now owns rendering in Node; `seo` keeps the head, the
   sitemap and robots.txt. `./server` and `SeoFault` are unchanged.
 

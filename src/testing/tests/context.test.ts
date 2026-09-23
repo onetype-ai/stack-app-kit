@@ -283,6 +283,24 @@ describe("a channel a fake server declines", () =>
     });
 });
 
+describe("a plugin fetching ahead", () =>
+{
+    test("records the key and runs the fetch, as the real cache would", async () =>
+    {
+        const fake = fakeContext({});
+        let fetched = 0;
+
+        await fake.ctx.cache.prefetch(["items"], () =>
+        {
+            fetched += 1;
+
+            return Promise.resolve([]);
+        });
+
+        expect([fake.prefetched, fetched]).toEqual([[["items"]], 1]);
+    });
+});
+
 describe("a plugin dropping the whole cache", () =>
 {
     test("counts it, so a test can prove the plugin cleared after a switch", () =>

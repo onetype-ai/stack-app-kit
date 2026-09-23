@@ -80,6 +80,9 @@ export type Fake<Config = unknown, Services = unknown> = {
     /** How many times the plugin dropped the whole cache. */
     cleared: number;
 
+    /** Every key the plugin fetched ahead, in order. */
+    prefetched: unknown[][];
+
     /** What `ctx.hooks.run` answers next. Set it to refuse. */
     refusal: string | undefined;
 
@@ -122,6 +125,7 @@ export function fakeContext<Config = unknown, Services = unknown>(
         regranted: 0,
         reconnected: 0,
         cleared: 0,
+        prefetched: [],
         refusal: faking.refusal,
 
         push: (topic: string, message: unknown): void =>
@@ -203,6 +207,12 @@ export function fakeContext<Config = unknown, Services = unknown>(
         clear: () =>
         {
             fake.cleared += 1;
+        },
+
+        prefetch: async (key, fetch) =>
+        {
+            fake.prefetched.push([...key]);
+            await fetch();
         },
     };
 

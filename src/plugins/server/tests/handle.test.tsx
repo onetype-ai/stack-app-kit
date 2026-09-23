@@ -4,7 +4,7 @@ import { definePlugin } from "../../kernel/api";
 import type { Route } from "../../kernel/api";
 import { start } from "../../mount/api";
 import type { StartedApp } from "../../mount/api";
-import { handle } from "../react/server";
+import { handle, respondWith } from "../react/server";
 import type { Session } from "../react/server";
 
 afterEach(() =>
@@ -200,5 +200,38 @@ describe("rendering a request on the server", () =>
         expect(response?.status).toBe(200);
         expect(html).toContain("<title>Me</title>\n<script");
         expect(logged).toEqual([expect.stringContaining("head of \"/me\" was refused")]);
+    });
+});
+
+describe("a server route with a router", () =>
+{
+    test("stands the router at the requested path before the page renders, and renders it into the template", async () =>
+    {
+        answering();
+        const visited: string[] = [];
+        const withRouter = (session: Session): Promise<StartedApp> => start({
+            plugins: [profiles(() => [{ path: "/items/$id", title: "Item", component: () => null, render: "server" }])],
+            transport: { baseUrl: "http://api.test", headers: () => session.headers },
+            router: {
+                building: {
+                    createRootRoute: () => ({ addChildren: function addChildren() { return this; } }),
+                    createRoute: () => ({ addChildren: function addChildren() { return this; } }),
+                    createRouter: () => ({ update: ({ history }: { history: unknown }) => visited.push(String(history)), load: async () => {} }),
+                },
+                missing: () => null,
+                outlet: () => null,
+                wrap: (_frame, outlet) => outlet,
+                landing: () => () => null,
+                guard: () => () => null,
+                history: (path) => `memory:${path}`,
+            },
+        });
+        const intoTemplate = respondWith({ template: "<html><head><!--kit-head--></head><body><!--kit-app--></body></html>", tree: () => "the item" });
+
+        const html = await (await handle(requestFor("/items/7?tab=specs"), { start: withRouter, respond: intoTemplate }))?.text();
+
+        expect(visited).toEqual(["memory:/items/7?tab=specs"]);
+        expect(html).toContain("<title>Item</title>");
+        expect(html).toContain("<body>the item</body>");
     });
 });

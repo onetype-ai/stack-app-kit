@@ -22,7 +22,7 @@ export type KernelOptions = {
     config?: Readonly<Record<string, unknown>>;
     http?: HttpClient;
     /** Without `clear`, ctx.cache.clear() refuses, naming what to give. */
-    cache?: Omit<Cache, "clear"> & Partial<Pick<Cache, "clear">>;
+    cache?: Omit<Cache, "clear" | "prefetch"> & Partial<Pick<Cache, "clear" | "prefetch">>;
     /** Without `reconnect`, the kernel answers one that does nothing. */
     realtime?: Omit<Realtime, "reconnect"> & Partial<Pick<Realtime, "reconnect">>;
     permissions?: PermissionSource;
@@ -112,6 +112,11 @@ const noCache: Cache = {
     {
         return missing("cache", "cache");
     },
+
+    prefetch: () =>
+    {
+        return missing("cache", "cache");
+    },
 };
 
 const noRealtime: Realtime = {
@@ -149,6 +154,15 @@ export function createKernel(options: KernelOptions): Kernel
             }
 
             givenCache.clear();
+        },
+        prefetch: (key, fetch) =>
+        {
+            if (givenCache.prefetch === undefined)
+            {
+                throw new KernelFault("NOT_STARTED", "A plugin used ctx.cache.prefetch(), and the cache given to createKernel has no prefetch. Give one that fetches into itself, as cache.fromQueries does.");
+            }
+
+            return givenCache.prefetch(key, fetch);
         },
     };
     const givenRealtime = options.realtime ?? noRealtime;
