@@ -167,6 +167,11 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, report: (code: Ker
 
         const holdsParameters = /\$[A-Za-z_]/.test(route.path);
 
+        if (route.frame !== undefined && route.frame !== false)
+        {
+            report("INVALID_ROUTE", name, `Route "${route.path}" gives frame ${String(route.frame)}; only false is meaningful, and leaving it out keeps the frame.`);
+        }
+
         if (route.render !== undefined && route.render !== "client" && route.render !== "prerender" && route.render !== "server")
         {
             report("INVALID_ROUTE", name, `Route "${route.path}" asks to render "${String(route.render)}", which is not "client", "prerender" or "server".`);

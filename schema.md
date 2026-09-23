@@ -283,6 +283,9 @@
 ### Frame
     shell: ComponentType
     missing: ComponentType
+    // The bare outlet, for pages declared `frame: false`; and the 404 inside the frame. Both are needed only when a page opts out.
+    outlet?: ComponentType | undefined
+    framedMissing?: ComponentType | undefined
     // What renders at `/` when no plugin declares it: a redirect to the first route there is.
     landing: (to: string) => ComponentType
 
@@ -483,6 +486,8 @@
     instead?: ((ctx: Context<Config, Services>) => string | undefined) | undefined
     // "prerender" writes this page as HTML at build time; "server" renders it per request with the viewer's session; "client" (the default) renders it in the browser only. A prerendered page may hold no `requires` or `instead`.
     render?: "client" | "prerender" | "server" | undefined
+    // false renders this page without the application's frame: a landing, sign-in or legal page. A prerendered page defaults to false.
+    frame?: false | undefined
     // Every set of parameters to prerender, for a path holding `$name` segments: `[{ id: "1" }]` for `/items/$id`.
     paths?: ((ctx: Context<Config, Services>) => readonly RouteParams[] | Promise<readonly RouteParams[]>) | undefined
     // Fetches what the page reads before it renders on a server, filling the cache the page reads from.
@@ -524,7 +529,8 @@
     }) => Root
     createRoute: (options: {
     getParentRoute: () => Root
-    path: string
+    path?: string
+    id?: string
     component: ComponentType
     validateSearch?: (query: Record<string, unknown>) => unknown
     }) => Child
@@ -709,6 +715,9 @@ Imported whole, then reached through the name: `import { router } from "@onetype
 ### router.Frame
     shell: ComponentType
     missing: ComponentType
+    // The bare outlet, for pages declared `frame: false`; and the 404 inside the frame. Both are needed only when a page opts out.
+    outlet?: ComponentType | undefined
+    framedMissing?: ComponentType | undefined
     // What renders at `/` when no plugin declares it: a redirect to the first route there is.
     landing: (to: string) => ComponentType
 
@@ -734,7 +743,8 @@ Imported whole, then reached through the name: `import { router } from "@onetype
     }) => Root
     createRoute: (options: {
     getParentRoute: () => Root
-    path: string
+    path?: string
+    id?: string
     component: ComponentType
     validateSearch?: (query: Record<string, unknown>) => unknown
     }) => Child

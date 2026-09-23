@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { Kernel, RegisteredRoute } from "../../kernel/api";
-import type { RouterOptions, Frame } from "../api";
+import type { RouterOptions, Frame, Root } from "../api";
 
 export function tree(
     kernel: Kernel,
@@ -10,34 +10,49 @@ export function tree(
     guard: (route: RegisteredRoute) => ComponentType,
 ): unknown
 {
+    const declared = kernel.routes();
+    const isFrameless = (route: RegisteredRoute): boolean => route.frame === false || (route.frame === undefined && route.render === "prerender");
+    const frameless = frame.outlet === undefined ? [] : declared.filter(isFrameless);
+    const splits = frameless.length > 0;
+
     const root = building.createRootRoute({
-        component: frame.shell,
-        notFoundComponent: frame.missing,
+        component: splits && frame.outlet !== undefined ? frame.outlet : frame.shell,
+        notFoundComponent: splits ? frame.framedMissing ?? frame.missing : frame.missing,
     });
 
-    const declared = kernel.routes();
+    const framed = splits
+        ? building.createRoute({ getParentRoute: () => root, id: "framed", component: frame.shell }) as Root
+        : root;
+
     const landing = declared[0];
 
     const toLanding = landing === undefined || declared.some((route) => route.path === "/")
         ? []
         : [building.createRoute({
-            getParentRoute: () => root,
+            getParentRoute: () => framed,
             path: "/",
             component: frame.landing(landing.path),
         })];
 
-    const children = declared.map((route) =>
-        building.createRoute({
-            getParentRoute: () => root,
-            path: route.path,
-            component: guard(route),
+    const child = (route: RegisteredRoute, parent: Root) => building.createRoute({
+        getParentRoute: () => parent,
+        path: route.path,
+        component: guard(route),
 
-            validateSearch: (query) =>
-            {
-                return route.search === undefined ? {} : route.search.parse(query);
-            },
-        }),
-    );
+        validateSearch: (query) =>
+        {
+            return route.search === undefined ? {} : route.search.parse(query);
+        },
+    });
 
-    return building.createRouter({ routeTree: root.addChildren([...toLanding, ...children]) });
+    const inFrame = declared.filter((route) => !frameless.includes(route)).map((route) => child(route, framed));
+
+    if (!splits)
+    {
+        return building.createRouter({ routeTree: root.addChildren([...toLanding, ...inFrame]) });
+    }
+
+    return building.createRouter({
+        routeTree: root.addChildren([framed.addChildren([...toLanding, ...inFrame]), ...frameless.map((route) => child(route, root))]),
+    });
 }

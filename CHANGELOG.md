@@ -1,5 +1,18 @@
 # Changelog
 
+## 6.4.0 (unreleased)
+
+### Added
+
+- `route.frame: false` renders a page without the application frame (a
+  landing, sign-in or legal page); a prerendered route defaults to it.
+
+### Changed
+
+- `RouterOptions.createRoute` may be called with an `id` and no `path`, for
+  the layout route holding the frame. A router adapter written for 6.3
+  types its `path` as optional.
+
 ## 6.3.0
 
 ### Added

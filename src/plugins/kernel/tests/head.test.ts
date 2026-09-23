@@ -109,6 +109,11 @@ describe("a prerendered route", () =>
         expect(await refusal({ path: "/items", component: page, title: "Items", render: "edge" as "client" })).toMatchObject({ message: expect.stringContaining("not \"client\", \"prerender\" or \"server\"") });
     });
 
+    test("takes only false for its frame", async () =>
+    {
+        expect(await refusal({ path: "/items", component: page, title: "Items", frame: true as unknown as false })).toMatchObject({ message: expect.stringContaining("only false is meaningful") });
+    });
+
     test("starts when it holds no guard and says which paths to write", async () =>
     {
         expect(await refusal({ path: "/items/$id", component: page, title: "Item", render: "prerender", paths: () => [{ id: "1" }] })).toBeUndefined();

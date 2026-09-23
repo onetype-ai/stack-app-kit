@@ -31,7 +31,7 @@ function recording()
             },
             createRoute: (options) =>
             {
-                built.push(options.path);
+                built.push(options.path ?? `#${options.id ?? ""}`);
 
                 return options;
             },

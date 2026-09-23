@@ -78,6 +78,9 @@ export type Route<Config = unknown, Services = unknown> = {
     /** "prerender" writes this page as HTML at build time; "server" renders it per request with the viewer's session; "client" (the default) renders it in the browser only. A prerendered page may hold no `requires` or `instead`. */
     render?: "client" | "prerender" | "server" | undefined;
 
+    /** false renders this page without the application's frame: a landing, sign-in or legal page. A prerendered page defaults to false. */
+    frame?: false | undefined;
+
     /** Every set of parameters to prerender, for a path holding `$name` segments: `[{ id: "1" }]` for `/items/$id`. */
     paths?: ((ctx: Context<Config, Services>) => readonly RouteParams[] | Promise<readonly RouteParams[]>) | undefined;
 

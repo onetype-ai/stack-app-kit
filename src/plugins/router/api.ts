@@ -15,7 +15,8 @@ export type RouterOptions = {
     }) => Root;
     createRoute: (options: {
         getParentRoute: () => Root;
-        path: string;
+        path?: string;
+        id?: string;
         component: ComponentType;
         validateSearch?: (query: Record<string, unknown>) => unknown;
     }) => Child;
@@ -32,6 +33,10 @@ export type Child = unknown;
 export type Frame = {
     shell: ComponentType;
     missing: ComponentType;
+
+    /** The bare outlet, for pages declared `frame: false`; and the 404 inside the frame. Both are needed only when a page opts out. */
+    outlet?: ComponentType | undefined;
+    framedMissing?: ComponentType | undefined;
 
     /** What renders at `/` when no plugin declares it: a redirect to the first route there is. */
     landing: (to: string) => ComponentType;

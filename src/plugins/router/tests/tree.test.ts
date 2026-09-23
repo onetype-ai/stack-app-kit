@@ -14,10 +14,12 @@ import type { RouterOptions, Frame } from "../api";
 const Page = (() => null) as ComponentType;
 const Shell = (() => null) as ComponentType;
 const Missing = (() => null) as ComponentType;
+const Outlet = (() => null) as ComponentType;
+const FramedMissing = (() => null) as ComponentType;
 
-function registered(path: string, plugin = "demo"): RegisteredRoute
+function registered(path: string, plugin = "demo", extra: Partial<RegisteredRoute> = {}): RegisteredRoute
 {
-    return { path, title: "A page", component: Page, plugin, fallback: undefined };
+    return { path, title: "A page", component: Page, plugin, fallback: undefined, ...extra };
 }
 
 function recordRouter(routes: readonly RegisteredRoute[])
@@ -36,9 +38,11 @@ function recordRouter(routes: readonly RegisteredRoute[])
         },
         createRoute: (options) =>
         {
-            built.push(options);
+            const route = Object.assign(options, { addChildren: (children: unknown[]) => ({ layout: options, children }) });
 
-            return options;
+            built.push(route);
+
+            return route;
         },
         createRouter: (options) =>
         {
@@ -53,7 +57,7 @@ function recordRouter(routes: readonly RegisteredRoute[])
     const frame: Frame = { shell: Shell, missing: Missing, landing: (to) => { sentTo.push(to); return Page; } };
 
     const at = (path: string): Record<string, unknown> | undefined =>
-        built.find((route) => route["path"] === path);
+        built.find((route) => route["path"] === path || route["id"] === path);
 
     return { building, kernel, frame, built, roots, sentTo, at, router: () => router };
 }
@@ -212,5 +216,53 @@ describe("the root of an application", () =>
 
         expect(spy.built).toEqual([]);
         expect(spy.sentTo).toEqual([]);
+    });
+});
+
+describe("a page without the frame", () =>
+{
+    function withOutlet(routes: readonly RegisteredRoute[])
+    {
+        const record = recordRouter(routes);
+
+        tree(record.kernel, record.building, { ...record.frame, outlet: Outlet, framedMissing: FramedMissing }, () => Page);
+
+        const parentOf = (path: string): unknown => (record.at(path)?.["getParentRoute"] as (() => unknown) | undefined)?.();
+
+        return { ...record, parentOf };
+    }
+
+    test("hangs off the bare root, while framed pages hang off a layout that holds the shell", () =>
+    {
+        const record = withOutlet([registered("/app"), registered("/pricing", "demo", { frame: false })]);
+
+        expect(record.roots[0]?.["component"]).toBe(Outlet);
+        expect(record.at("framed")?.["component"]).toBe(Shell);
+        expect(record.parentOf("/app")).toBe(record.at("framed"));
+        expect(record.parentOf("/pricing")).not.toBe(record.at("framed"));
+    });
+
+    test("is every prerendered page unless it asks for the frame", () =>
+    {
+        const record = withOutlet([registered("/app"), registered("/landing", "demo", { render: "prerender" })]);
+
+        expect(record.at("framed")).toBeDefined();
+        expect(record.parentOf("/landing")).not.toBe(record.at("framed"));
+        expect(record.parentOf("/app")).toBe(record.at("framed"));
+    });
+
+    test("keeps the 404 inside the frame", () =>
+    {
+        const record = withOutlet([registered("/app"), registered("/pricing", "demo", { frame: false })]);
+
+        expect(record.roots[0]?.["notFoundComponent"]).toBe(FramedMissing);
+    });
+
+    test("changes nothing where no page opts out", () =>
+    {
+        const record = withOutlet([registered("/app")]);
+
+        expect(record.roots[0]?.["component"]).toBe(Shell);
+        expect(record.at("framed")).toBeUndefined();
     });
 });

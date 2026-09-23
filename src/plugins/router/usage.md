@@ -31,6 +31,10 @@ Or through `mount`, which passes all of it for you.
   and the plugin's own fallback happen.
 - The frame is one component around every page, and the 404 for a path nothing
   declared.
+- A route with `frame: false` (a prerendered one by default) renders without
+  it, off a bare root; framed pages hang off a layout route holding the
+  frame, so it stays mounted between them. Nothing changes until a route
+  opts out.
 
 ## Refuses
 

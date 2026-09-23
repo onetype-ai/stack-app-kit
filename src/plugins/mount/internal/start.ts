@@ -137,6 +137,8 @@ export async function start(given: StartOptions): Promise<StartedApp>
         : tree(kernel, building.building, {
             shell: building.wrap(kernel.frame(), building.outlet),
             missing: building.missing,
+            outlet: building.outlet,
+            framedMissing: building.wrap(kernel.frame(), building.missing),
             landing: building.landing,
         }, building.guard);
 
