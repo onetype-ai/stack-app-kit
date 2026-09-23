@@ -14,9 +14,9 @@ const folders: string[] = [];
 
 afterEach(async () =>
 {
-    for (const folder of folders.splice(0))
+    for (const made of folders.splice(0))
     {
-        await rm(folder, { recursive: true, force: true });
+        await rm(made, { recursive: true, force: true });
     }
 });
 
