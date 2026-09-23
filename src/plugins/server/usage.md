@@ -24,8 +24,9 @@ const page = await handle(request, { respond: respondWith({ template, tree }), s
 ```
 
 - A prerender fills `<!--kit-head-->` and `<!--kit-app-->` into
-  `<outDir><path>/index.html` and writes `sitemap.xml`, `robots.txt` and
-  `_shell.html`, served for every path without a file.
+  `<outDir><path>/index.html`, writes `sitemap.xml`, `robots.txt`,
+  `_shell.html` (served for paths without a file) and `_template.html`
+  (markers kept: the template `respondWith` reads).
 - `prerenderOnBuild` builds the entry after the client, runs it, and skips
   its own server build; the router needs `history: (path) => memory`.
 - `handle` starts an app per request (only the cookie and the language

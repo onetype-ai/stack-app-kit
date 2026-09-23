@@ -62,7 +62,7 @@ describe("prerendering", () =>
             { path: "/account", title: "Account", component: page },
         ]);
 
-        expect([...files.keys()].sort()).toEqual(["dist/_shell.html", "dist/index.html", "dist/robots.txt", "dist/sitemap.xml"]);
+        expect([...files.keys()].sort()).toEqual(["dist/_shell.html", "dist/_template.html", "dist/index.html", "dist/robots.txt", "dist/sitemap.xml"]);
         expect(files.get("dist/index.html")).toContain("<title>Shop</title>\n<meta name=\"description\" content=\"Chairs\" data-kit-head>");
         expect(files.get("dist/index.html")).toContain("<script type=\"application/json\" id=\"kit-state\">null</script>");
         expect(files.get("dist/index.html")).toContain("<div id=\"root\"><p>page at <!-- -->/</p></div>");
@@ -74,6 +74,7 @@ describe("prerendering", () =>
 
         expect(files.get("dist/_shell.html")).toBe("<html><head></head><body><div id=\"root\"></div></body></html>");
         expect(files.get("dist/index.html")).toContain("page at");
+        expect(files.get("dist/_template.html")).toBe(template);
     });
 
     test("writes one page per set of parameters, loading each before it renders", async () =>

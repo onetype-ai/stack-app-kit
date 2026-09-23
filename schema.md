@@ -1345,7 +1345,7 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     configResolved: (resolved: ResolvedBuildConfig) => void
     closeBundle: () => Promise<void>
 
-> A `respond` for `handle` that renders `tree` into `template`, as a prerender does: the router already stands at the path.
+> A `respond` for `handle` that renders `tree` into `template` (the built `_template.html`), as a prerender does: the router already stands at the path.
 ### respondWith(options: { template: string; tree: (app: StartedApp) => ReactNode }): (app: StartedApp) => Promise<Response>
     template: string
     tree: (app: StartedApp) => ReactNode

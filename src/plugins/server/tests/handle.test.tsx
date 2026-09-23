@@ -205,6 +205,11 @@ describe("rendering a request on the server", () =>
 
 describe("a server route with a router", () =>
 {
+    test("refuses a template without both markers when respond is made, rather than answering an empty page", () =>
+    {
+        expect(() => respondWith({ template: "<html><head></head><body><div id=\"root\"></div></body></html>", tree: () => null })).toThrow("_template.html");
+    });
+
     test("stands the router at the requested path before the page renders, and renders it into the template", async () =>
     {
         answering();

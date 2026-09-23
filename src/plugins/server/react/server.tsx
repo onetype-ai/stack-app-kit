@@ -142,6 +142,7 @@ export async function prerender(options: PrerenderOptions): Promise<readonly Pre
     const written: PrerenderedPage[] = [];
 
     await write(join(options.outDir, fallback), options.template.replace(headMarker, "").replace(appMarker, ""));
+    await write(join(options.outDir, "_template.html"), options.template);
 
     for (const page of planned)
     {
@@ -482,9 +483,14 @@ export function prerenderOnBuild(options: PrerenderOnBuildOptions)
     };
 }
 
-/** A `respond` for `handle` that renders `tree` into `template`, as a prerender does: the router already stands at the path. */
+/** A `respond` for `handle` that renders `tree` into `template` (the built `_template.html`), as a prerender does: the router already stands at the path. */
 export function respondWith(options: { template: string; tree: (app: StartedApp) => ReactNode }): (app: StartedApp) => Promise<Response>
 {
+    if (!options.template.includes(headMarker) || !options.template.includes(appMarker))
+    {
+        throw new SeoFault([`the template must hold both ${headMarker} and ${appMarker}: read the built _template.html, not _shell.html or a prerendered page`]);
+    }
+
     return (app) =>
     {
         const markup = renderToString(options.tree(app));

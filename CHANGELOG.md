@@ -14,7 +14,9 @@
   export.
 - `router.history` and `StartedApp.visit(path)`, which stand the router at a
   path and load it; `handle` visits the requested path before `respond`.
-- `respondWith({ template, tree })`, a `respond` rendering into the template.
+- `respondWith({ template, tree })`, a `respond` rendering into the template
+  a prerender keeps as `_template.html`; a template without both markers is
+  refused when it is made.
 - `ctx.cache.prefetch(key, fetch)` (`cache.fromQueries` implements it), so a
   route's `load` fills what its page and the dehydrated state read.
 - A `server` plugin now owns rendering in Node; `seo` keeps the head, the
