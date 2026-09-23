@@ -1,6 +1,6 @@
 # done
 
-Five plugins, 433 tests, each watched to fail before it was trusted.
+Five plugins, 453 tests, each watched to fail before it was trusted.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events
 - `kernel` plugin: `definePlugin`, `createKernel`, contract validation, events,
@@ -24,6 +24,14 @@ Five plugins, 433 tests, each watched to fail before it was trusted.
 - `findUnusedFields()` found a declared field nothing read
 - `fakeContext()` in `/testing`: one fake, answering as the transport does
 - `findPrivateComments()` refuses a comment that never reaches `dist`
+
+## 6.2.0: a socket that knows its state
+
+Agreed with the api kit's `/ws`: 4003 waits for `reconnect()`, `$backoff` is
+waited out, a server that pings is timed for silence, `wake` redials at once,
+a declined channel calls `refused`, and `transport.reconnected` fires once the
+server is `$ready` and every channel answered. `session.changed()` clears,
+regrants and redials, in that order.
 
 ## 6.1.0: taken back from the first project on the kit
 
