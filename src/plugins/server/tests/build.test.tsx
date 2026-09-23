@@ -33,7 +33,7 @@ function standingRouter(visited: string[]): RouterOptions
 {
     return {
         createRootRoute: () => ({ addChildren: function addChildren() { return this; } }),
-        createRoute: () => ({}),
+        createRoute: () => ({ addChildren: function addChildren() { return this; } }),
         createRouter: () =>
         {
             let at = "";

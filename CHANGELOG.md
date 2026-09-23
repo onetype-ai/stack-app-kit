@@ -6,6 +6,13 @@
 
 - `route.frame: false` renders a page without the application frame (a
   landing, sign-in or legal page); a prerendered route defaults to it.
+- `ctx.http.upload(path, body, { onProgress, signal, method })` and
+  `transport.upload`: a `Blob` as is or a `FormData` as multipart, with
+  progress and abort, never retried; `transport.uploader` replaces
+  `XMLHttpRequest`. A client given to `createKernel` without `upload` is
+  accepted, and `ctx.http.upload` then refuses.
+- The package ships every plugin's `usage.md`, for an agent reading
+  `node_modules`.
 
 ### Changed
 

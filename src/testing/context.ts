@@ -196,6 +196,11 @@ export function fakeContext<Config = unknown, Services = unknown>(
         put: send("PUT"),
         patch: send("PATCH"),
         delete: send("DELETE"),
+        upload: (path, body, request = {}) => send(request.method ?? "POST")(path, {
+            body,
+            ...(request.query !== undefined && { query: request.query }),
+            ...(request.headers !== undefined && { headers: request.headers }),
+        }),
     };
 
     const cache: Cache = {

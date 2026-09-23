@@ -323,6 +323,8 @@
     put: (path: string, request?: CallOptions) => Promise<unknown>
     patch: (path: string, request?: CallOptions) => Promise<unknown>
     delete: (path: string, request?: CallOptions) => Promise<unknown>
+    // A `Blob` sent as it is, or a `FormData` as multipart, with progress and abort; never retried.
+    upload: (path: string, body: Blob | FormData, options?: UploadOptions) => Promise<unknown>
 
 > What the application holds after createKernel.
 ### Kernel
@@ -390,7 +392,8 @@
 ### KernelOptions
     plugins: readonly Plugin[]
     config?: Readonly<Record<string, unknown>>
-    http?: HttpClient
+    // Without `upload`, ctx.http.upload refuses, naming what to give.
+    http?: Omit<HttpClient, "upload"> & Partial<Pick<HttpClient, "upload">>
     // Without `clear`, ctx.cache.clear() refuses, naming what to give.
     cache?: Omit<Cache, "clear" | "prefetch"> & Partial<Pick<Cache, "clear" | "prefetch">>
     // Without `reconnect`, the kernel answers one that does nothing.
@@ -601,6 +604,15 @@
     cache?: Cache | undefined
     // The router library and the frame around every page. Omit and `router` is undefined, for an application rendering its own.
     router?: RouterBuilding | undefined
+
+> What an upload takes besides its path and body.
+### UploadOptions
+    method?: "POST" | "PUT" | undefined
+    query?: Readonly<Record<string, string | number | boolean | null | undefined>> | undefined
+    headers?: Readonly<Record<string, string>> | undefined
+    signal?: AbortSignal | undefined
+    // Bytes sent so far, and the total (0 when the browser cannot tell).
+    onProgress?: ((sent: number, total: number) => void) | undefined
 
 ## cache
 
@@ -891,6 +903,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     channel: () => Channel
     // One request. The body comes back as unknown, so the caller validates.
     request: (request: HttpRequest) => Promise<unknown>
+    // One upload, with progress; the body comes back as unknown. It carries the headers every request carries.
+    upload: (request: UploadRequest) => Promise<unknown>
     // Server-pushed messages. With no socket this succeeds and delivers nothing. `refused` hears the server decline the channel (unknown and forbidden read alike).
     subscribe: (topic: string, receive: (message: unknown) => void, refused?: (code: string) => void) => Subscription
     // Closes the socket and dials again with the address as it reads now, keeping every subscription; a socket closed as signed out (4001) waits for this.
@@ -948,6 +962,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     sleep?: ((ms: number) => Promise<void>) | undefined
     // Spreads every retry and redial between half and all of its backoff, so the tabs of a restarted server do not return in the same instant.
     random?: (() => number) | undefined
+    // How uploads leave; `XMLHttpRequest` when left out.
+    uploader?: Uploader | undefined
     // Once the server has sent `$ping`, a socket silent this long is closed and dialled again (60 s by default). A server that never pings is never timed.
     silenceMs?: number | undefined
     // Hands a listener to whatever says the device is back (online, a tab shown again); the socket then redials at once rather than waiting its backoff. Answers a stop.
@@ -956,6 +972,29 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     onReconnected?: ((about: {
     downMs: number
     }) => void) | undefined
+
+> How an upload leaves: `XMLHttpRequest` by default, since only it reports upload progress; a test or a server passes its own.
+### transport.Uploader = (upload:
+    url: string
+    method: "POST" | "PUT"
+    headers: Readonly<Record<string, string>>
+    body: Blob | FormData
+    signal?: AbortSignal
+    onProgress?: (sent: number, total: number) => void
+    }) => Promise<{
+    status: number
+    body: unknown
+
+> One upload: a file sent as it is, or a form sent as multipart. Never retried, and never over the socket.
+### transport.UploadRequest
+    path: string
+    body: Blob | FormData
+    method?: "POST" | "PUT" | undefined
+    query?: Readonly<Record<string, string | number | boolean | null | undefined>> | undefined
+    headers?: Readonly<Record<string, string>> | undefined
+    signal?: AbortSignal | undefined
+    // Bytes sent so far, and the total (0 when the browser cannot tell).
+    onProgress?: ((sent: number, total: number) => void) | undefined
 
 # @onetype/stack-app-kit/react
 

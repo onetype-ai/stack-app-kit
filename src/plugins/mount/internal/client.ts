@@ -20,5 +20,16 @@ export function client(transport: Transport): HttpClient
         put: send("PUT"),
         patch: send("PATCH"),
         delete: send("DELETE"),
+
+        upload: (path, body, request = {}) =>
+            transport.upload({
+                path,
+                body,
+                ...(request.method !== undefined && { method: request.method }),
+                ...(request.query !== undefined && { query: request.query }),
+                ...(request.headers !== undefined && { headers: request.headers }),
+                ...(request.signal !== undefined && { signal: request.signal }),
+                ...(request.onProgress !== undefined && { onProgress: request.onProgress }),
+            }),
     };
 }

@@ -20,7 +20,8 @@ export type LogFn = (
 export type KernelOptions = {
     plugins: readonly Plugin[];
     config?: Readonly<Record<string, unknown>>;
-    http?: HttpClient;
+    /** Without `upload`, ctx.http.upload refuses, naming what to give. */
+    http?: Omit<HttpClient, "upload"> & Partial<Pick<HttpClient, "upload">>;
     /** Without `clear`, ctx.cache.clear() refuses, naming what to give. */
     cache?: Omit<Cache, "clear" | "prefetch"> & Partial<Pick<Cache, "clear" | "prefetch">>;
     /** Without `reconnect`, the kernel answers one that does nothing. */
@@ -100,6 +101,10 @@ const noClient: HttpClient = {
     {
         return missing("http client", "http");
     },
+    upload: () =>
+    {
+        return missing("http client", "http");
+    },
 };
 
 const noCache: Cache = {
@@ -139,7 +144,23 @@ export function createKernel(options: KernelOptions): Kernel
 {
     const config = options.config ?? {};
     const log = options.log ?? quiet;
-    const http = options.http ?? noClient;
+    const givenHttp = options.http ?? noClient;
+    const http: HttpClient = {
+        get: (path, request) => givenHttp.get(path, request),
+        post: (path, request) => givenHttp.post(path, request),
+        put: (path, request) => givenHttp.put(path, request),
+        patch: (path, request) => givenHttp.patch(path, request),
+        delete: (path, request) => givenHttp.delete(path, request),
+        upload: (path, body, request) =>
+        {
+            if (givenHttp.upload === undefined)
+            {
+                throw new KernelFault("NOT_STARTED", "A plugin used ctx.http.upload(), and the http client given to createKernel has no upload. Give one that uploads, as start does.");
+            }
+
+            return givenHttp.upload(path, body, request);
+        },
+    };
     const givenCache = options.cache ?? noCache;
     const cache: Cache = {
         invalidate: (key) =>

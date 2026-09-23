@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createKernel, definePlugin } from "../api";
-import type { HttpClient, KernelOptions } from "../api";
+import type { KernelOptions } from "../api";
 
-const answering: HttpClient = {
+const answering: NonNullable<KernelOptions["http"]> = {
     get: () => Promise.resolve({}),
     post: () => Promise.resolve({}),
     put: () => Promise.resolve({}),
@@ -119,5 +119,27 @@ describe("a session that changed", () =>
         ctx.session.changed();
 
         expect(steps).toEqual(["guards asked", "dialled"]);
+    });
+});
+
+describe("an upload", () =>
+{
+    it("reaches the client that can upload", async () =>
+    {
+        const upload = vi.fn(() => Promise.resolve({ stored: true }));
+        const kernel = createKernel({ plugins: [probe], http: { ...answering, upload } });
+        await kernel.start();
+
+        const answered = await kernel.context("probe").http.upload("/files", new Blob(["x"]));
+
+        expect(answered).toEqual({ stored: true });
+    });
+
+    it("refuses, naming what to give, when the given client cannot upload", async () =>
+    {
+        const kernel = createKernel({ plugins: [probe], http: answering });
+        await kernel.start();
+
+        expect(() => kernel.context("probe").http.upload("/files", new Blob(["x"]))).toThrow("has no upload");
     });
 });

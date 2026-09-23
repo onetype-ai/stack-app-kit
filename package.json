@@ -79,6 +79,8 @@
         "CHANGELOG.md",
         "README.md",
         "#docs",
+        "src/kernel/usage.md",
+        "src/plugins/*/usage.md",
         "!#docs/progress"
     ],
     "keywords": [

@@ -29,6 +29,7 @@ export type {
     Plugin,
     Realtime,
     CallOptions,
+    UploadOptions,
     Route,
     RouteParams,
     DescribableWithSchema,

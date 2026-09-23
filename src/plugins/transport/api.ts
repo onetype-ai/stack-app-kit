@@ -17,6 +17,29 @@ export type HttpRequest = {
     signal?: AbortSignal | undefined;
 };
 
+/** One upload: a file sent as it is, or a form sent as multipart. Never retried, and never over the socket. */
+export type UploadRequest = {
+    path: string;
+    body: Blob | FormData;
+    method?: "POST" | "PUT" | undefined;
+    query?: Readonly<Record<string, string | number | boolean | null | undefined>> | undefined;
+    headers?: Readonly<Record<string, string>> | undefined;
+    signal?: AbortSignal | undefined;
+
+    /** Bytes sent so far, and the total (0 when the browser cannot tell). */
+    onProgress?: ((sent: number, total: number) => void) | undefined;
+};
+
+/** How an upload leaves: `XMLHttpRequest` by default, since only it reports upload progress; a test or a server passes its own. */
+export type Uploader = (upload: {
+    url: string;
+    method: "POST" | "PUT";
+    headers: Readonly<Record<string, string>>;
+    body: Blob | FormData;
+    signal?: AbortSignal;
+    onProgress?: (sent: number, total: number) => void;
+}) => Promise<{ status: number; body: unknown }>;
+
 /** Which channel is carrying requests now. */
 export type Channel = "ws" | "http";
 
@@ -50,6 +73,9 @@ export type TransportOptions = {
     /** Spreads every retry and redial between half and all of its backoff, so the tabs of a restarted server do not return in the same instant. */
     random?: (() => number) | undefined;
 
+    /** How uploads leave; `XMLHttpRequest` when left out. */
+    uploader?: Uploader | undefined;
+
     /** Once the server has sent `$ping`, a socket silent this long is closed and dialled again (60 s by default). A server that never pings is never timed. */
     silenceMs?: number | undefined;
 
@@ -77,6 +103,9 @@ export type Transport = {
 
     /** One request. The body comes back as unknown, so the caller validates. */
     request: (request: HttpRequest) => Promise<unknown>;
+
+    /** One upload, with progress; the body comes back as unknown. It carries the headers every request carries. */
+    upload: (request: UploadRequest) => Promise<unknown>;
 
     /** Server-pushed messages. With no socket this succeeds and delivers nothing. `refused` hears the server decline the channel (unknown and forbidden read alike). */
     subscribe: (topic: string, receive: (message: unknown) => void, refused?: (code: string) => void) => Subscription;

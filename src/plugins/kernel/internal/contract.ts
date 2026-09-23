@@ -124,6 +124,17 @@ export type CallOptions = {
     signal?: AbortSignal | undefined;
 };
 
+/** What an upload takes besides its path and body. */
+export type UploadOptions = {
+    method?: "POST" | "PUT" | undefined;
+    query?: Readonly<Record<string, string | number | boolean | null | undefined>> | undefined;
+    headers?: Readonly<Record<string, string>> | undefined;
+    signal?: AbortSignal | undefined;
+
+    /** Bytes sent so far, and the total (0 when the browser cannot tell). */
+    onProgress?: ((sent: number, total: number) => void) | undefined;
+};
+
 /** What the kernel needs to reach a server: every method answers the bare body, a 2xx parsed, a 204 `undefined`, anything else thrown. */
 export type HttpClient = {
     get: (path: string, request?: CallOptions) => Promise<unknown>;
@@ -131,6 +142,9 @@ export type HttpClient = {
     put: (path: string, request?: CallOptions) => Promise<unknown>;
     patch: (path: string, request?: CallOptions) => Promise<unknown>;
     delete: (path: string, request?: CallOptions) => Promise<unknown>;
+
+    /** A `Blob` sent as it is, or a `FormData` as multipart, with progress and abort; never retried. */
+    upload: (path: string, body: Blob | FormData, options?: UploadOptions) => Promise<unknown>;
 };
 
 /** What the kernel needs to drop what a view is holding. */

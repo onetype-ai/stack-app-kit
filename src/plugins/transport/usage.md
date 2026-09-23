@@ -7,36 +7,36 @@ plus a websocket when the server has one.
 
 ## Purpose
 
-A failure reads the same everywhere. **This layer owns retrying**: retrying
+A failure reads the same everywhere. **This layer owns retrying**: a retry
 above it turned three attempts into nine.
 
 ## Usage
 
 ```ts
-const client = transport.from(booted.host);
 const items = await client.request({ method: "GET", path: "/items" });
 client.subscribe("items.changed", (item) => { … }, (code) => { … });
+await client.upload({ path: "/items/1/files", body: file, onProgress, signal });
 ```
 
-- `request` answers the body as `unknown`: validate it. Idempotent requests
-  retry with jittered backoff; `POST`/`PATCH` never retry or move channel.
-  Both channels send the same headers.
-- `wsUrl` may be a function of the headers sent now, read on every dial;
-  `undefined` means no socket yet. `reconnect()` dials again, keeping every
-  subscription. `socketFor: "push"` keeps requests on HTTP.
-- A drop fails in-flight requests as `NETWORK` and redials after half to all
-  of `reconnectBaseMs · 2ⁿ` (≤ 30 s), or longer if the server sent
-  `$backoff`. Close 4001/4003 waits for `reconnect()`; 4000 redials at once.
-- Once the server sent `$ping`, `silenceMs` without a frame redials.
-- `wake(listener)` redials at once when the device is back.
-- `onReconnected({ downMs })` runs after `$ready` and every channel answered
-  (or `connectTimeoutMs` on older servers): pushes missed meanwhile are gone.
-- With no socket, `subscribe` succeeds and delivers nothing.
+- `request` answers `unknown`: validate it. Idempotent requests retry with
+  jittered backoff; `POST`/`PATCH` never retry or change channel. Both
+  channels send one set of headers.
+- `upload` sends a `Blob` as is or a `FormData` as multipart, through
+  `XMLHttpRequest` (or `uploader`), with progress; never retried.
+- `wsUrl` may be a function of the headers sent now (`undefined`: no
+  socket yet); `reconnect()` redials, keeping subscriptions.
+  `socketFor: "push"` keeps requests on HTTP.
+- A drop fails in-flight requests (`NETWORK`) and redials after half to all
+  of `reconnectBaseMs · 2ⁿ` (≤ 30 s) or a server `$backoff`. 4001/4003
+  wait for `reconnect()`; 4000 redials at once. After a `$ping`,
+  `silenceMs` of quiet redials; `wake(listener)` redials at once.
+- `onReconnected({ downMs })` runs once `$ready` and every channel answered
+  (or after `connectTimeoutMs`): pushes missed meanwhile are lost.
+- No socket: `subscribe` succeeds, delivering nothing.
 
 ## Refuses
 
-A non-2xx throws a `TransportFault` (code, status, method, path, the server's
-body) on either channel: `NETWORK`, `TIMEOUT`, `ABORTED`, `UNAUTHORIZED`,
-`FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `SERVER`, `CLIENT`,
-`MALFORMED`. An unknown `socketFor` is refused at boot. A declined channel
-calls `refused` with its code.
+A non-2xx throws a `TransportFault` with the server's body: `NETWORK`,
+`TIMEOUT`, `ABORTED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`,
+`RATE_LIMITED`, `SERVER`, `CLIENT`, `MALFORMED`, `OFF_BASE` (off the base
+URL). An unknown `socketFor` at boot; a declined channel calls `refused`.

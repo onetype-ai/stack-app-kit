@@ -5,6 +5,7 @@ import { http } from "./http";
 import { methods } from "./method";
 import { retry } from "./retry";
 import { socket } from "./socket";
+import { sendUpload } from "./upload";
 
 type HostLog = (line: string, about?: Readonly<Record<string, unknown>>) => void;
 
@@ -142,6 +143,11 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
             }
 
             throw refusal;
+        },
+
+        upload: (request) =>
+        {
+            return sendUpload({ baseUrl: settings.baseUrl, headers: sent, uploader: settings.uploader, onUnauthorized: settings.onUnauthorized }, request);
         },
 
         subscribe: (topic: string, receive: (message: unknown) => void, refused?: (code: string) => void): Subscription =>

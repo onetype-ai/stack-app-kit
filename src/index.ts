@@ -41,6 +41,7 @@ export type {
     Realtime,
     RegisteredRoute,
     CallOptions,
+    UploadOptions,
     Route,
     RouteParams,
     Head,
