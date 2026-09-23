@@ -64,7 +64,7 @@ describe("prerendering", () =>
 
         expect([...files.keys()].sort()).toEqual(["dist/_shell.html", "dist/_template.html", "dist/index.html", "dist/robots.txt", "dist/sitemap.xml"]);
         expect(files.get("dist/index.html")).toContain("<title>Shop</title>\n<meta name=\"description\" content=\"Chairs\" data-kit-head>");
-        expect(files.get("dist/index.html")).toContain("<script type=\"application/json\" id=\"kit-state\">null</script>");
+        expect(files.get("dist/index.html")).toContain("<script type=\"application/json\" id=\"kit-state\" data-locale=\"en\">null</script>");
         expect(files.get("dist/index.html")).toContain("<div id=\"root\"><p>page at <!-- -->/</p></div>");
     });
 
@@ -75,6 +75,7 @@ describe("prerendering", () =>
         expect(files.get("dist/_shell.html")).toBe("<html><head></head><body><div id=\"root\"></div></body></html>");
         expect(files.get("dist/index.html")).toContain("page at");
         expect(files.get("dist/_template.html")).toBe(template);
+        expect(files.get("dist/index.html")).toMatch(/^<html lang="en">/);
     });
 
     test("writes one page per set of parameters, loading each before it renders", async () =>
@@ -138,7 +139,7 @@ describe("prerendering", () =>
             { state: () => ({ note: "</script><script>alert(1)</script>" }) },
         );
 
-        expect(files.get("dist/index.html")).toContain("<script type=\"application/json\" id=\"kit-state\">{\"note\":\"\\u003c/script>\\u003cscript>alert(1)\\u003c/script>\"}</script>");
+        expect(files.get("dist/index.html")).toContain("<script type=\"application/json\" id=\"kit-state\" data-locale=\"en\">{\"note\":\"\\u003c/script>\\u003cscript>alert(1)\\u003c/script>\"}</script>");
     });
 
     test("places markup that holds a replacement pattern as written", async () =>

@@ -59,11 +59,24 @@ async function toDisk(file: string, contents: string): Promise<void>
     await writeFile(file, contents);
 }
 
-function stateScript(state: unknown): string
+function stateScript(state: unknown, locale: string): string
 {
     const json = JSON.stringify(state ?? null).replace(/</g, "\\u003c");
+    const tag = locale.replace(/[^A-Za-z0-9-]/g, "");
 
-    return `<script type="application/json" id="kit-state">${json}</script>`;
+    return `<script type="application/json" id="kit-state" data-locale="${tag}">${json}</script>`;
+}
+
+function withLang(page: string, locale: string): string
+{
+    const tag = locale.replace(/[^A-Za-z0-9-]/g, "");
+
+    return page.replace(/<html(\s[^>]*)?>/i, (_whole, attributes: string | undefined) =>
+    {
+        const rest = (attributes ?? "").replace(/\slang=("[^"]*"|'[^']*'|\S+)/i, "");
+
+        return `<html lang="${tag}"${rest}>`;
+    });
 }
 
 async function plan(app: StartedApp, problems: string[]): Promise<Planned[]>
@@ -149,10 +162,10 @@ export async function prerender(options: PrerenderOptions): Promise<readonly Pre
         await page.load();
 
         const markup = renderToString(await options.render(page.path));
-        const head = `${renderTags(page.tags)}\n${stateScript(options.state?.())}`;
+        const head = `${renderTags(page.tags)}\n${stateScript(options.state?.(), options.app.kernel.locale.current())}`;
         const file = join(options.outDir, page.path, "index.html");
 
-        await write(file, options.template.replace(headMarker, () => head).replace(appMarker, () => markup));
+        await write(file, withLang(options.template.replace(headMarker, () => head).replace(appMarker, () => markup), options.app.kernel.locale.current()));
         written.push({ path: page.path, file });
     }
 
@@ -305,7 +318,7 @@ export async function handle(request: Request, options: HandleOptions): Promise<
             tags = tagsOf(checked.head, found.route.title);
         }
 
-        const head = `${renderTags(tags)}\n${stateScript(options.state?.(app))}`;
+        const head = `${renderTags(tags)}\n${stateScript(options.state?.(app), app.kernel.locale.current())}`;
         if (app.router !== undefined)
         {
             const url = new URL(request.url);
@@ -425,9 +438,29 @@ function servingPages(outDir: string): Middleware
         const method = request.method ?? "GET";
         const pathname = new URL(request.url ?? "/", "http://preview").pathname;
 
-        if ((method !== "GET" && method !== "HEAD") || parse(pathname).ext !== "")
+        if (method !== "GET" && method !== "HEAD")
         {
             next();
+
+            return;
+        }
+
+        if (parse(pathname).ext !== "")
+        {
+            const asset = join(outDir, normalize(pathname));
+
+            void isFile(asset).then((exists) =>
+            {
+                if (exists && asset.startsWith(outDir + sep))
+                {
+                    next();
+
+                    return;
+                }
+
+                response.statusCode = 404;
+                response.end(Buffer.from(""));
+            });
 
             return;
         }
@@ -564,7 +597,7 @@ export function respondWith(options: { template: string; tree: (app: StartedApp)
     return (app) =>
     {
         const markup = renderToString(options.tree(app));
-        const page = options.template.replace(headMarker, () => "").replace(appMarker, () => markup);
+        const page = withLang(options.template.replace(headMarker, () => "").replace(appMarker, () => markup), app.kernel.locale.current());
 
         return Promise.resolve(new Response(page, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }));
     };

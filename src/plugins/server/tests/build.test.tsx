@@ -185,6 +185,7 @@ export default { plugins: [prerenderOnBuild({ entry: "entry.mjs", origin: "https
             expect(await read("/items/7")).toBe("the shell");
             expect(await read("/")).toBe("home page");
             expect(await read("/%2e%2e/%2e%2e/etc")).toBe("the shell");
+            expect((await fetch(`http://127.0.0.1:${String(port)}/missing.js`)).status).toBe(404);
         }
         finally
         {

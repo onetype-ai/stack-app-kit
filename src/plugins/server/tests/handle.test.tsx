@@ -94,7 +94,7 @@ describe("rendering a request on the server", () =>
         const response = await handle(requestFor("/me", { cookie: "session=ana" }), { start: starting, respond, state: () => ({ items: [1] }) });
         const html = await response?.text();
 
-        expect(html).toBe("<html><head><meta charset=\"utf-8\"><title>Me</title>\n<meta name=\"description\" content=\"Page of ana\" data-kit-head>\n<script type=\"application/json\" id=\"kit-state\">{\"items\":[1]}</script></head><body>hello ana</body></html>");
+        expect(html).toBe("<html><head><meta charset=\"utf-8\"><title>Me</title>\n<meta name=\"description\" content=\"Page of ana\" data-kit-head>\n<script type=\"application/json\" id=\"kit-state\" data-locale=\"en\">{\"items\":[1]}</script></head><body>hello ana</body></html>");
         expect(sawCookies).toEqual(["session=ana"]);
     });
 

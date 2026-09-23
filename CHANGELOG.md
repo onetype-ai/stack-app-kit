@@ -27,7 +27,12 @@
   same function and case table as the api kit; a plugin's `messages` by
   locale (refused at start when the fallback lacks a key), `ctx.locale`
   (`text` with `{holes}` and plural forms, `format.number/date`, `change`,
-  `watch`), `start({ locale })` and `useLocale(plugin)`.
+  `watch`), `start({ locale })` and `useLocale(plugin)`. A rendered page
+  records its locale (`#kit-state` `data-locale`, `<html lang>`);
+  `prerenderedLocale()` and `useLocaleAfterHydration(tag)` hydrate in it,
+  then turn to the viewer's; `KernelProvider` keeps `<html lang>` current;
+  `kernel.locale` reads and changes it for the whole application.
+- `vite preview` answers 404 for a missing file rather than the home page.
 - `./react`: `AppBoundary` (a page with a retry instead of a blank screen,
   and `onError` to log what it caught) and `StreamedText` (busy while it
   grows, announced once when it completes, never for text that did not

@@ -375,6 +375,12 @@
     failures: () => readonly ListenerFailure[]
     }
     run: (command: string, input: unknown) => Promise<void>
+    // The viewer's locale for the whole application: what a page renders in, and what `html lang` says.
+    locale: {
+    current: () => string
+    change: (tag: string) => void
+    watch: (notify: () => void) => () => void
+    }
     sent: () => Readonly<Record<string, string>>
 
 > What the kernel refuses.
@@ -1089,6 +1095,9 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 > The 404, for a path nothing declared.
 ### NotFound(): ReactNode
 
+> The locale a prerendered page was written in (`#kit-state`'s `data-locale`), for `start` to hydrate in; undefined on a page the browser rendered first.
+### prerenderedLocale(): string | undefined
+
 > What a prerender wrote for the cache to hydrate from (`<script id="kit-state">`), or undefined on a page the browser rendered first.
 ### prerenderedState(): unknown
 
@@ -1135,6 +1144,9 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 
 > A plugin's view of the viewer's locale, re-rendering the component whenever any plugin changes it.
 ### useLocale(plugin: string): PluginLocale
+
+> Once hydration is done, switches to the viewer's own locale (what `negotiate` answered), so a page written in another hydrates first.
+### useLocaleAfterHydration(tag: string | undefined): void
 
 > One plugin's context and services, by name.
 ### usePlugin<Config = unknown, Services = unknown>(name: string): PluginHandle<Config, Services>

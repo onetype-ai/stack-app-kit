@@ -51,6 +51,18 @@ function usePages(): StatusPages
 /** Puts a kernel in reach of everything below it. */
 export function KernelProvider({ kernel, children }: { kernel: Kernel; children: ReactNode }): ReactNode
 {
+    useEffect(() =>
+    {
+        const say = (): void =>
+        {
+            document.documentElement.lang = kernel.locale.current();
+        };
+
+        say();
+
+        return kernel.locale.watch(say);
+    }, [kernel]);
+
     return <KernelContext.Provider value={kernel}>{children}</KernelContext.Provider>;
 }
 
@@ -351,6 +363,28 @@ export function useLocale(plugin: string): PluginLocale
     useSyncExternalStore(locale.watch, locale.current, locale.current);
 
     return locale;
+}
+
+/** The locale a prerendered page was written in (`#kit-state`'s `data-locale`), for `start` to hydrate in; undefined on a page the browser rendered first. */
+export function prerenderedLocale(): string | undefined
+{
+    const tag = typeof document === "undefined" ? null : document.getElementById("kit-state")?.getAttribute("data-locale") ?? null;
+
+    return tag === null || tag === "" ? undefined : tag;
+}
+
+/** Once hydration is done, switches to the viewer's own locale (what `negotiate` answered), so a page written in another hydrates first. */
+export function useLocaleAfterHydration(tag: string | undefined): void
+{
+    const kernel = useKernel();
+
+    useEffect(() =>
+    {
+        if (tag !== undefined && tag !== kernel.locale.current())
+        {
+            kernel.locale.change(tag);
+        }
+    }, [kernel, tag]);
 }
 
 /** What a prerender wrote for the cache to hydrate from (`<script id="kit-state">`), or undefined on a page the browser rendered first. */

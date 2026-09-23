@@ -7,9 +7,9 @@ One tag from what a viewer accepts, and each plugin's text in it:
 
 ## Purpose
 
-The api and the app answer the same tag for the same viewer: both kits ship
-this function and run one case table. A plugin's text lives beside its code
-and fails at start when the fallback lacks a key, never on a screen.
+Api and app answer one tag for one viewer: both kits ship this function and
+run one case table. A plugin's text sits beside its code and fails at start,
+not on a screen, when the fallback lacks a key.
 
 ## Usage
 
@@ -30,9 +30,13 @@ const locale = useLocale("items");       // re-renders on change
 - `negotiate`: a supported stored choice wins; then each accepted tag in
   order (q-values, ties by position, `*` and `q=0` ignored): exact, then by
   language (`de-AT` → `de`, `de` → the first `de-*`); then `fallback`.
-- `text` reads the current locale, then the fallback, then the key itself.
-- `change(tag)` reaches every plugin and every `watch`.
+- `text` reads the current locale, then the fallback, then the key.
+- `change(tag)` reaches every plugin and `watch`.
 - Server pages: `handle` forwards `accept-language`; negotiate the same way.
+- A rendered page records its locale in `#kit-state` and `<html lang>`:
+  start in `prerenderedLocale() ?? current`, then call
+  `useLocaleAfterHydration(current)` so hydration matches first.
+  `KernelProvider` keeps `<html lang>` in step.
 
 ## Refuses
 

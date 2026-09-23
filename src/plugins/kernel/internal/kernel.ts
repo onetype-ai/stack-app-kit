@@ -72,6 +72,13 @@ export type Kernel = {
     events: { failures: () => readonly ListenerFailure[] };
     run: (command: string, input: unknown) => Promise<void>;
 
+    /** The viewer's locale for the whole application: what a page renders in, and what `html lang` says. */
+    locale: {
+        current: () => string;
+        change: (tag: string) => void;
+        watch: (notify: () => void) => () => void;
+    };
+
     sent: () => Readonly<Record<string, string>>;
 };
 
@@ -710,6 +717,8 @@ export function createKernel(options: KernelOptions): Kernel
         context,
 
         permissions: permits,
+
+        locale: locales.forPlugin(undefined),
 
         events: { failures: bus.failures },
 
