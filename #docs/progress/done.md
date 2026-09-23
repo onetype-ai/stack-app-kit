@@ -1,6 +1,6 @@
 # done
 
-Six plugins, 468 tests, each watched to fail before it was trusted.
+Seven plugins, 482 tests, each watched to fail before it was trusted.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events
 - `kernel` plugin: `definePlugin`, `createKernel`, contract validation, events,
@@ -24,6 +24,12 @@ Six plugins, 468 tests, each watched to fail before it was trusted.
 - `findUnusedFields()` found a declared field nothing read
 - `fakeContext()` in `/testing`: one fake, answering as the transport does
 - `findPrivateComments()` refuses a comment that never reaches `dist`
+
+## logs: what a browser logged, sent home
+
+A leveled logger for `start({ log })` and a shipper: 20 entries or 30 kB a
+request, the rest on the next tick (the project's version dropped them),
+redacted keys and token-shaped values, a minute's pause after a 429.
 
 ## settings: config from the environment
 

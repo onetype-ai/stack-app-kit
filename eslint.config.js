@@ -74,9 +74,9 @@ export default tseslint.config(
         },
     },
 
-    // The packer is a command a person runs, and what it says is the answer.
+    // The packer is a command a person runs, and what it says is the answer; the console writer is what a person reads.
     {
-        files: ["src/packing.ts"],
+        files: ["src/packing.ts", "src/plugins/logs/internal/console.ts"],
         rules: { "no-console": "off" },
     }
 );
