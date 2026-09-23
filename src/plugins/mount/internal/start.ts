@@ -1,21 +1,21 @@
 import { boot } from "../../../kernel/boot";
+import { closeOver } from "../../../kernel/closure";
 import type { HostLog } from "../../../kernel/host";
 import { z } from "zod";
 
 import { createKernel, definePlugin } from "../../kernel/api";
-import type { Realtime } from "../../kernel/api";
+import type { Plugin as AppPlugin, Realtime } from "../../kernel/api";
 import { from as transportFrom } from "../../transport/api";
 import { transportPlugin } from "../../transport/plugin";
 import { tree } from "../../router/api";
 import type { StartOptions, StartedApp } from "../api";
 import { client } from "./client";
-import { closeOver } from "./closure";
 
 /** Brings an application up: transport, then kernel, then plugins. */
 export async function start(given: StartOptions): Promise<StartedApp>
 {
     const closed = await closeOver(given.plugins, given.config);
-    const starting: StartOptions = { ...given, plugins: closed.plugins, ...(closed.config !== undefined && { config: closed.config }) };
+    const starting: StartOptions = { ...given, plugins: closed.plugins as readonly AppPlugin[], ...(closed.config !== undefined && { config: closed.config }) };
     const logger = starting.log;
     const log: HostLog = (line, about) =>
     {

@@ -1,12 +1,13 @@
-import type { Plugin } from "../../kernel/api";
+export type Closable = {
+    name: string;
+    definition: { dependsOn?: readonly string[] | undefined };
+};
 
-/** A plugin a test did not name, and the config it boots with; config is only ever given to a plugin the closure added. */
 export type FoundPlugin = {
-    plugin: Plugin;
+    plugin: Closable;
     config?: unknown;
 };
 
-/** Where the plugins a test did not name come from. `resolve` runs once per name, only for one nothing given provides. */
 export type TestKernels = {
     resolve: (name: string) => FoundPlugin | undefined | Promise<FoundPlugin | undefined>;
 };
@@ -18,27 +19,20 @@ type Configured = {
 
 let configured: Configured | undefined;
 
-/**
- * Set once per test process (a setup file). From then on `start` adds every plugin the given ones depend on,
- * transitively: a plugin the test passed wins by name, so a stand-in stays one, dependencies come first, and
- * otherwise the given order holds. A name nothing provides is still refused as UNKNOWN_DEPENDENCY.
- * Never called, `start` boots exactly what it was given. Only `./testing` exports it.
- */
-export function configureTestKernels(fixture: TestKernels): void
+export function configure(fixture: TestKernels): void
 {
     configured = { resolve: fixture.resolve, found: new Map() };
 }
 
-/** Forgets what `configureTestKernels` set, so `start` boots exactly what it is given again. */
-export function resetTestKernels(): void
+export function forget(): void
 {
     configured = undefined;
 }
 
 export async function closeOver(
-    plugins: readonly Plugin[],
+    plugins: readonly Closable[],
     config: Readonly<Record<string, unknown>> | undefined,
-): Promise<{ plugins: readonly Plugin[]; config: Readonly<Record<string, unknown>> | undefined }>
+): Promise<{ plugins: readonly Closable[]; config: Readonly<Record<string, unknown>> | undefined }>
 {
     const fixture = configured;
 
@@ -49,7 +43,7 @@ export async function closeOver(
 
     const given = new Map(plugins.map((plugin) => [plugin.name, plugin]));
     const added = new Map<string, FoundPlugin>();
-    const ordered: Plugin[] = [];
+    const ordered: Closable[] = [];
     const placed = new Set<string>();
 
     const find = async (name: string): Promise<FoundPlugin | undefined> =>
@@ -62,7 +56,7 @@ export async function closeOver(
         return fixture.found.get(name);
     };
 
-    const place = async (plugin: Plugin): Promise<void> =>
+    const place = async (plugin: Closable): Promise<void> =>
     {
         if (placed.has(plugin.name))
         {
@@ -117,10 +111,4 @@ export async function closeOver(
     }
 
     return { plugins: ordered, config: withAdded };
-}
-
-/** The same closure over dependsOn, for a test building its kernel with `createKernel` rather than `start`. */
-export async function withDependencies(plugins: readonly Plugin[]): Promise<readonly Plugin[]>
-{
-    return (await closeOver(plugins, undefined)).plugins;
 }

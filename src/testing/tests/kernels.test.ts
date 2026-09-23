@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { createKernel, definePlugin } from "../../kernel/api";
-import type { Plugin } from "../../kernel/api";
-import { configureTestKernels, resetTestKernels, start, withDependencies } from "../api";
-import type { StartedApp } from "../api";
-import * as main from "../../../index";
+import * as main from "../../index";
+import { createKernel, definePlugin, start } from "../../index";
+import type { Plugin, StartedApp } from "../../index";
+import { configureTestKernels, resetTestKernels, withDependencies } from "../../testing";
 
 let app: StartedApp | undefined;
 
