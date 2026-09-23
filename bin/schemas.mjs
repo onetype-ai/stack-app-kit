@@ -215,15 +215,76 @@ function exported(source, chunkSourcesByFile)
     return shownBy;
 }
 
+// Which name each namespace object is shown under, per file. tsup names them
+// `api`, `api$1` in every file it writes, so one table for the whole entry let
+// a chunk's `api` (moved there once a second entry shared it) be read as the
+// entry's own `api`, and every member of the chunk's namespace vanished.
+function namespaceNames(entryFile, source, chunkSourcesByFile)
+{
+    const byFile = new Map([[entryFile, new Map()]]);
+
+    for (const block of source.matchAll(/^export\s+(?:type\s+)?\{([^}]*)\}(?:\s*from\s+["']([^"']+)["'])?/gm))
+    {
+        const from = block[2] ?? null;
+
+        if (from === null)
+        {
+            for (const { local, shown } of renames(block[1]))
+            {
+                byFile.get(entryFile).set(local, shown);
+            }
+
+            continue;
+        }
+
+        const file = [...chunkSourcesByFile.keys()].find((path) => path.endsWith(from.replace(/\.js$/, ".d.ts").replace(/^\.\//, "/")));
+
+        if (file === undefined)
+        {
+            continue;
+        }
+
+        const localBy = new Map();
+
+        for (const clause of chunkSourcesByFile.get(file).matchAll(/^export\s+(?:type\s+)?\{([^}]*)\}/gm))
+        {
+            for (const { local, shown } of renames(clause[1]))
+            {
+                localBy.set(shown, local);
+            }
+        }
+
+        const names = byFile.get(file) ?? new Map();
+
+        for (const { local, shown } of renames(block[1]))
+        {
+            names.set(localBy.get(local) ?? local, shown);
+        }
+
+        byFile.set(file, names);
+    }
+
+    return byFile;
+}
+
 // A namespace object reaches its members only through the name it is exported
 // under: `transport.TransportFault` works, a bare `TransportFault` does not.
 // tsup builds one per plugin as `declare namespace api$2 { export { ... } }`,
 // aliasing each member through a `api$2_Thing` shim. Followed back to the
 // declaration each shim points at, so the member prints its real signature
 // under the namespace that owns it.
-function namespaces(lines, shownBy)
+function namespaces(lines, shownBy, file)
 {
     const byName = new Map();
+    const declaredHere = new Map();
+
+    for (const declaration of declarations(lines))
+    {
+        if (!declaredHere.has(declaration.name))
+        {
+            declaredHere.set(declaration.name, declaration);
+        }
+    }
 
     // Only tsup's generated namespace objects, which it always names `api`,
     // `api$1`, `api$2`. A hand-written `declare namespace definePlugin` merged
@@ -259,7 +320,7 @@ function namespaces(lines, shownBy)
             }
         }
 
-        byName.set(start[1], { shown: shownBy.get(start[1]), members });
+        byName.set(`${file}:${start[1]}`, { local: start[1], shown: shownBy.get(start[1]), members, declared: declaredHere });
     }
 
     return byName;
@@ -392,7 +453,18 @@ for (const entry of entryPoints())
     const chunkSourcesByFile = new Map([...chunks].map((chunk) => [chunk, readFileSync(chunk, "utf8")]));
     const lines = [entrySource, ...chunkSourcesByFile.values()].join("\n").split("\n");
     const shownBy = exported(entrySource, chunkSourcesByFile);
-    const grouped = namespaces(entrySource.split("\n"), shownBy);
+    const names = namespaceNames(entry.file, entrySource, chunkSourcesByFile);
+    const grouped = new Map();
+
+    for (const [file, showAs] of names)
+    {
+        const fileSource = file === entry.file ? entrySource : chunkSourcesByFile.get(file);
+
+        for (const [key, value] of namespaces(fileSource.split("\n"), showAs, file))
+        {
+            grouped.set(key, value);
+        }
+    }
 
     // What the entry lists by name, which is what a root `import { ... }` can
     // reach. A namespace member that also appears here is importable both ways.
@@ -413,12 +485,12 @@ for (const entry of entryPoints())
     // A member reached through `api$2_TransportFault = TransportFault` is that
     // declaration under another name. The shim is followed once; what it points
     // at carries the signature and the sentence above it.
-    function behind(local)
+    function behind(local, own = declared)
     {
         const shim = /^api(?:\$\d+)?_(.+)$/.exec(local);
         const target = shim === null ? local : shim[1];
 
-        return declared.get(target) ?? declared.get(local) ?? null;
+        return own.get(target) ?? declared.get(target) ?? own.get(local) ?? declared.get(local) ?? null;
     }
 
     // Namespace members are printed under their namespace, never loose: a
@@ -460,7 +532,7 @@ for (const entry of entryPoints())
         // tsup emits `type api_Thing = Thing` to build its namespace objects.
         // The alias is not a declaration anyone can import, and the thing it
         // points at is printed under the namespace that carries it.
-        if (/^api(\$\d+)?_/.test(declaration.name) || grouped.has(declaration.name))
+        if (/^api(\$\d+)?(_|$)/.test(declaration.name))
         {
             continue;
         }
@@ -501,13 +573,13 @@ for (const entry of entryPoints())
     // Namespaces last, each under its own heading: the heading names the only
     // import that reaches the members, and every member below it is written
     // dotted, so a reader copies `transport.TransportFault` and it compiles.
-    for (const { shown, members } of [...grouped.values()].sort((left, right) => left.shown.localeCompare(right.shown)))
+    for (const { shown, members, declared: own } of [...grouped.values()].filter((group) => group.shown !== undefined).sort((left, right) => left.shown.localeCompare(right.shown)))
     {
         written.push(``, `## ${shown}`, ``, `Imported whole, then reached through the name: \`import { ${shown} } from "${entry.name}";\`. Its members have no import of their own.`, ``);
 
         for (const member of [...members].sort((left, right) => left[1].localeCompare(right[1])))
         {
-            const declaration = behind(member[0]);
+            const declaration = behind(member[0], own);
 
             if (declaration === null)
             {
