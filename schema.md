@@ -212,6 +212,7 @@
     readonly contributes: readonly DeclaredContribution[]
     readonly registries: readonly DeclaredRegistry[]
     readonly adds: readonly DeclaredAddition[]
+    readonly pipelines: readonly DeclaredPipeline[]
     readonly emits: readonly DeclaredEntry[]
     readonly listens: readonly DeclaredEntry[]
     readonly hooks: readonly DeclaredEntry[]
@@ -245,6 +246,14 @@
 ### DeclaredEntry
     readonly name: string
     readonly describe: string
+
+> One pipeline and the order its steps run in, across the plugins read together; `problems` is what start would refuse.
+### DeclaredPipeline = DeclaredEntry &
+    readonly steps: readonly {
+    readonly id: string
+    readonly owner: string
+    }[]
+    readonly problems: readonly string[]
 
 > One registry: its sentence, and the field that names each entry.
 ### DeclaredRegistry = DeclaredEntry &

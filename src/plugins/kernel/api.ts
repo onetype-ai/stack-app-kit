@@ -52,6 +52,7 @@ export type {
     DeclaredRoute,
     DeclaredRegistry,
     DeclaredAddition,
+    DeclaredPipeline,
 } from "./internal/declared";
 
 export type { ListenerFailure } from "./internal/events";

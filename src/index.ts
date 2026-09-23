@@ -36,6 +36,7 @@ export type {
     DeclaredRoute,
     DeclaredRegistry,
     DeclaredAddition,
+    DeclaredPipeline,
     Pages,
     Participant,
     Permission,

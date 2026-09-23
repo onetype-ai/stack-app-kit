@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { createKernel, definePlugin } from "../api";
+import { createKernel, declarationsOf, definePlugin } from "../api";
 
 import type { Definition, Pipeline, PipelineStep, Plugin } from "../api";
 
@@ -59,6 +59,22 @@ describe("a pipeline", () =>
         expect(published).toEqual({ text: "hi", marks: ["validate", "shorten", "moderate", "preview", "store"] });
         expect(kernel.explain("posts.publish").map((step) => step.id)).toEqual(reversed.explain("posts.publish").map((step) => step.id));
         expect(kernel.explain("posts.publish")[1]).toEqual({ id: "shorten", owner: "links", anchor: { after: "validate" } });
+    });
+
+    test("reads as data in the order start runs it, whatever order the plugins are handed in", async () =>
+    {
+        const plugins = [
+            createPosts(),
+            createAdder("zeta", [{ id: "last", after: "validate", run: mark("last") }]),
+            createAdder("alpha", [{ id: "first", after: "validate", run: mark("first") }]),
+        ];
+        const kernel = createKernel({ plugins });
+        await kernel.start();
+
+        const declared = declarationsOf(plugins, "posts")[0]?.pipelines[0];
+
+        expect(declared?.steps.map((step) => step.id)).toEqual(kernel.explain("posts.publish").map((step) => step.id));
+        expect(declared).toMatchObject({ name: "posts.publish", problems: [] });
     });
 
     test("ends early when a step stops it with an output", async () =>

@@ -26,7 +26,7 @@ function anchorOf(step: PipelineStep): { before: string } | { after: string } | 
     return step.after === undefined ? undefined : { after: step.after };
 }
 
-function resolve(name: string, owner: string, pipeline: Pipeline, added: readonly Added[]): { placed: Placed[]; problems: string[] }
+export function resolve(name: string, owner: string, pipeline: Pipeline, added: readonly Added[]): { placed: Placed[]; problems: string[] }
 {
     const placed: Placed[] = pipeline.steps.map((step) => ({ id: step.id, owner, run: step.run }));
     const problems: string[] = [];
@@ -59,7 +59,8 @@ function resolve(name: string, owner: string, pipeline: Pipeline, added: readonl
         return { placed, problems };
     }
 
-    let waiting = [...added];
+    // sorted, so a reader handed the plugins in any order (declarationsOf) places steps as start does
+    let waiting = [...added].sort((first, second) => first.plugin.localeCompare(second.plugin) || first.step.id.localeCompare(second.step.id));
     const tails = new Map<string, string>();
 
     while (waiting.length > 0)

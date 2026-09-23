@@ -30,6 +30,8 @@
   `PIPELINE_FAILED`, naming it. A pipeline opens no transaction.
 - `kernel.explain(name)` answers the resolved order. Start logs it at debug,
   and each step logs its outcome and duration, never the state.
+- `declarationsOf` lists each pipeline's steps in the order start runs them,
+  with what start would refuse, and `tools/declared.mjs` prints them.
 - `Context` gains `registry` and `pipeline`: a hand-built fake annotated with
   `Context` needs them (see 6.4.0). `fakeContext()` records runs in `piped`.
 

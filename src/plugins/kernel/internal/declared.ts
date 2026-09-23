@@ -1,4 +1,5 @@
-import type { Plugin } from "./contract";
+import type { Pipeline, PipelineStep, Plugin } from "./contract";
+import { resolve } from "./pipelines";
 
 /** One page as declared: where it lives, and what it takes to see it. */
 export type DeclaredRoute = {
@@ -39,6 +40,12 @@ export type DeclaredAddition = {
     readonly keys: readonly string[];
 };
 
+/** One pipeline and the order its steps run in, across the plugins read together; `problems` is what start would refuse. */
+export type DeclaredPipeline = DeclaredEntry & {
+    readonly steps: readonly { readonly id: string; readonly owner: string }[];
+    readonly problems: readonly string[];
+};
+
 /** Everything one plugin declares, as data rather than source. */
 export type Declaration = {
     readonly name: string;
@@ -51,6 +58,7 @@ export type Declaration = {
     readonly contributes: readonly DeclaredContribution[];
     readonly registries: readonly DeclaredRegistry[];
     readonly adds: readonly DeclaredAddition[];
+    readonly pipelines: readonly DeclaredPipeline[];
     readonly emits: readonly DeclaredEntry[];
     readonly listens: readonly DeclaredEntry[];
     readonly hooks: readonly DeclaredEntry[];
@@ -159,7 +167,19 @@ function commandsOf(held: unknown): DeclaredCommand[]
         .sort((first, second) => first.name.localeCompare(second.name));
 }
 
-function declarationFor(plugin: Plugin): Declaration
+function pipelinesOf(plugin: Plugin, all: readonly Plugin[]): DeclaredPipeline[]
+{
+    return entriesOf(plugin.definition.pipelines).map((entry) =>
+    {
+        const pipeline = (plugin.definition.pipelines ?? {})[entry.name] as Pipeline;
+        const added = all.flatMap((other) => ((other.definition.adds ?? {})[entry.name] ?? []).map((step) => ({ plugin: other.name, step: step as PipelineStep })));
+        const answer = resolve(entry.name, plugin.name, { ...pipeline, steps: Array.isArray(pipeline?.steps) ? pipeline.steps : [] }, added);
+
+        return { ...entry, steps: answer.placed.map(({ id, owner }) => ({ id, owner })), problems: answer.problems };
+    });
+}
+
+function declarationFor(plugin: Plugin, all: readonly Plugin[]): Declaration
 {
     const definition = plugin.definition as unknown as Record<string, unknown>;
 
@@ -174,6 +194,7 @@ function declarationFor(plugin: Plugin): Declaration
         contributes: contributionsOf(definition["contributes"]),
         registries: registriesOf(definition["registries"]),
         adds: additionsOf(definition["adds"]),
+        pipelines: pipelinesOf(plugin, all),
         emits: entriesOf(definition["emits"]),
         listens: entriesOf(definition["listens"]),
         hooks: entriesOf(definition["hooks"]),
@@ -197,6 +218,6 @@ export function declarationsOf(plugins: readonly Plugin[], name?: string): Decla
 {
     return plugins
         .filter((plugin) => name === undefined || plugin.name === name)
-        .map(declarationFor)
+        .map((plugin) => declarationFor(plugin, plugins))
         .sort((first, second) => first.name.localeCompare(second.name));
 }

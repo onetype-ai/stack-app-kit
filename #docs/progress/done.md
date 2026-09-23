@@ -1,6 +1,6 @@
 # done
 
-Eleven plugins, 606 tests, each watched to fail before it was trusted.
+Eleven plugins, 607 tests, each watched to fail before it was trusted.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events
 - `kernel` plugin: `definePlugin`, `createKernel`, contract validation, events,
