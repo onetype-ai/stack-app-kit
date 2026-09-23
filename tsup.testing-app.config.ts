@@ -2,14 +2,11 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
     entry: {
-        index: "src/index.ts",
-        react: "src/plugins/kernel/react/index.tsx",
-        testing: "src/testing.ts",
-        server: "src/plugins/server/react/server.tsx",
+        "testing-app": "src/testing/react/app.tsx",
     },
     format: ["esm"],
     dts: true,
-    clean: true,
+    clean: false,
     sourcemap: true,
     treeshake: true,
     target: "es2022",
