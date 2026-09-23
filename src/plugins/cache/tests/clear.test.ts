@@ -84,7 +84,7 @@ describe("clearing the cache built from a query client", () =>
     {
         const cache = fromQueries({ invalidateQueries: () => {} });
 
-        expect(() => cache.clear()).toThrow("Pass the client itself");
+        expect(() => cache.clear()).toThrow(expect.objectContaining({ code: "INVALID_CONFIG", message: expect.stringContaining("Pass the client itself") }));
     });
 });
 

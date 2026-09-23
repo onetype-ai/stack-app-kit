@@ -1,4 +1,5 @@
 import type { Host } from "../../kernel/host";
+import { KernelFault } from "../kernel/api";
 import type { Cache } from "../kernel/api";
 
 /** What this plugin offers itself as. */
@@ -27,7 +28,7 @@ export function fromQueries(client: Queries): Cache
         {
             if (client.cancelQueries === undefined || client.removeQueries === undefined || client.resetQueries === undefined)
             {
-                throw new Error("cache: clear needs cancelQueries, removeQueries and resetQueries on the query client. Pass the client itself, not a wrapper holding only invalidateQueries.");
+                throw new KernelFault("INVALID_CONFIG", "cache: clear needs cancelQueries, removeQueries and resetQueries on the query client. Pass the client itself, not a wrapper holding only invalidateQueries.");
             }
 
             void client.cancelQueries();
