@@ -99,13 +99,11 @@ useEvent(listener, event, handle): void             // listener is the plugin he
 useStore(watch, read): Value                         // a value a service keeps
 ```
 
-`kernel.permissions.changed()` says the answer moved, so every guard asks
-again: a viewer who signs in stops seeing the page that refused them.
+`kernel.permissions.changed()` has every guard ask again.
 
-`Route.instead(ctx)` answers a path when the viewer belongs elsewhere: a
-checkout with an empty cart is early, not forbidden. `send` does the going,
-since the kit imports no router. `RouteGuard` asks it **before** `requires`:
-a signed-out reader is sent to sign in, not told the page is not theirs.
+`Route.instead(ctx)` answers a path when the viewer belongs elsewhere (an
+empty cart's checkout); `send` does the going. `RouteGuard` asks it
+**before** `requires`, so a signed-out reader is sent to sign in.
 
 Memoise what `useStore`'s `read` answers, or it never stops re-rendering.
 
@@ -117,8 +115,15 @@ by `requires` and wraps each in its plugin's `fallback`.
 Without it, start refuses `UNDECLARED_DEPENDENCY`.
 
 `/react` also answers `StartupFailure`, `StatusPageProvider`, `useDismiss`,
-`useEventCallback` and `useFocusTrap`. `NotFound` is not optional: routes
-assembled without it throw.
+`useEventCallback`, `useFocusTrap` (focus returns on close), and:
+
+```tsx
+<AppBoundary onError={(error) => log.error("render failed", { error })}>…</AppBoundary>
+<StreamedText text={reply} streaming={isStreaming} label="Assistant" />
+```
+
+`AppBoundary` shows a retry page, never nothing. `StreamedText` is busy while
+it grows, announced once complete. `NotFound` is required.
 
 ## Faults
 
@@ -129,11 +134,9 @@ request. Each carries a `code` and sets `name`.
 TransportFault: { code; status?; method; path; retryable; body }
 ```
 
-`body` is what the server sent with its refusal, unread: a form finds its
-field errors there.
-
-A 401 is also announced as `transport.unauthorized` carrying `{ path }`. The
-mount owns it, so a plugin that listens names `transport` in `dependsOn`.
+`body` is the server's refusal, unread: a form finds its field errors there.
+A 401 is also announced as `transport.unauthorized` (`{ path }`); a listener
+names `transport` in `dependsOn`.
 
 ## Testing
 
@@ -143,12 +146,10 @@ import { Project } from "@onetype/stack-app-kit/testing";
 expect(Project.findAll()).toEqual([]);
 ```
 
-One call runs every check, so one the kit adds later needs no new test here.
-Each answers `{ check, message }`. Two plugins each holding one util or one
-enum is refused; a copy that cannot import names itself in `sharing`.
-`budgets: { "public/x.js": 2048 }`
-weighs a built file gzipped.
-Each `find*` is exported too.
+One call runs every check, including ones the kit adds later; each answers
+`{ check, message }`, and each `find*` is exported too. Two plugins holding
+one util or enum is refused (a copy names itself in `sharing`).
+`budgets: { "public/x.js": 2048 }` weighs a built file gzipped.
 `otherStacks: ["../api/src/plugins"]` names the other half of a two-stack
 application; a guard that cannot reach it is `skipped`, never a pass.
 

@@ -1030,6 +1030,9 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     pages: Partial<StatusPages>
     children: ReactNode
 
+> Shows streamed text as it grows, and announces it through a polite live region once, when it stops growing.
+### StreamedText({ text, streaming, label, className }: StreamedTextProps): ReactNode
+
 > Calls `onDismiss` on Escape, or on a pointer press outside both the element and its anchor.
 ### useDismiss: (isOpen: boolean, inside: RefObject<HTMLElement | null>, anchor: RefObject<HTMLElement | null> | undefined, onDismiss: () => void) => void
 
@@ -1055,7 +1058,31 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 > Reads a value a service keeps, and re-renders when it changes.
 ### useStore<Value>(watch: (notify: () => void) => () => void, read: () => Value): Value
 
+## Classes
+
+> Catches what no plugin's boundary did, reports it once, and shows a page with a way back.
+### AppBoundary extends Component<AppBoundaryProps, AppBoundaryState>
+    state: AppBoundaryState
+    static getDerivedStateFromError(error: unknown): AppBoundaryState
+    componentDidCatch(error: unknown, info: ErrorInfo): void
+    render(): ReactNode
+
 ## Types
+
+> Around the whole application: whatever throws above a plugin's own boundary is shown and reported, never a blank page.
+### AppBoundaryProps
+    children: ReactNode
+    // Reports what was caught, e.g. `(error) => log.error("render failed", { error })`, since no window error event fires for it.
+    onError?: ((error: unknown, info: {
+    componentStack?: string | null | undefined
+    }) => void) | undefined
+    // The page shown instead; a plain one with a retry when left out.
+    fallback?: ComponentType<AppFailureProps> | undefined
+
+> What the page an `AppBoundary` falls back to receives.
+### AppFailureProps
+    error: unknown
+    reset: () => void
 
 > What a plugin holds: its config, its services, and everything a context carries.
 ### PluginHandle<Config = unknown, Services = unknown> = Context<Config, Services>
@@ -1073,6 +1100,15 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     permission?: string | undefined
     }>
     missing: ComponentType
+
+> Text that grows while it streams: shown as it arrives, announced once when it completes; text that never streamed is not announced.
+### StreamedTextProps
+    text: string
+    // True while more text may arrive: the text is marked busy, and nothing is announced yet.
+    streaming: boolean
+    // What a screen reader hears before the text, e.g. the author's name.
+    label?: string | undefined
+    className?: string | undefined
 
 # @onetype/stack-app-kit/testing
 

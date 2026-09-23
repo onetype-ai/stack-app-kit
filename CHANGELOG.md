@@ -13,6 +13,10 @@
   accepted, and `ctx.http.upload` then refuses.
 - The package ships every plugin's `usage.md`, for an agent reading
   `node_modules`.
+- `./react`: `AppBoundary` (a page with a retry instead of a blank screen,
+  and `onError` to log what it caught) and `StreamedText` (busy while it
+  grows, announced once when it completes, never for text that did not
+  stream).
 
 ### Changed
 

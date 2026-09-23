@@ -5,6 +5,10 @@ import type { Context, FallbackProps, HeadTag, RegisteredRoute, RouteParams } fr
 import type { Kernel } from "../internal/kernel";
 
 export { StartupFailure } from "./StartupFailure";
+export { AppBoundary } from "./AppBoundary";
+export type { AppBoundaryProps, AppFailureProps } from "./AppBoundary";
+export { StreamedText } from "./StreamedText";
+export type { StreamedTextProps } from "./StreamedText";
 export type { StartupFailureProps } from "./StartupFailure";
 
 export { useDismiss } from "./hooks/useDismiss";
