@@ -16,7 +16,7 @@ afterEach(async () =>
 
 function serving(extra = ""): string[]
 {
-    return ["node", "-e", `require("node:http").createServer((q, s) => { s.end(JSON.stringify({ env: process.env })); }).listen(Number(process.env.PORT), "127.0.0.1"); ${extra}`];
+    return ["node", "-e", `require("node:http").createServer((q, s) => { s.end(JSON.stringify({ env: process.env, pid: process.pid })); }).listen(Number(process.env.PORT), "127.0.0.1"); ${extra}`];
 }
 
 function isAlive(pid: number): boolean
@@ -76,7 +76,7 @@ describe("a stack", () =>
             services: { api: { folder: ".", command: serving("process.on(\"SIGTERM\", () => {});"), port: port ?? 0, env: { PORT: String(port) } } },
             stopGraceMs: 300,
         });
-        const pid = await pidOfListener(port ?? 0);
+        const { pid } = await (await fetch(stack.origins["api"] ?? "")).json() as { pid: number };
 
         await stack.stop();
 
@@ -100,20 +100,6 @@ describe("a stack", () =>
         await expect(fetch(`http://127.0.0.1:${String(first)}`)).rejects.toThrow();
     });
 });
-
-async function pidOfListener(port: number): Promise<number>
-{
-    const { execFileSync } = await import("node:child_process");
-
-    try
-    {
-        return Number(execFileSync("lsof", ["-t", `-iTCP:${String(port)}`, "-sTCP:LISTEN"], { encoding: "utf8" }).trim().split("\n")[0]);
-    }
-    catch
-    {
-        return 0;
-    }
-}
 
 describe("fixture hosts", () =>
 {
