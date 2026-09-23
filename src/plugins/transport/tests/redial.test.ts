@@ -68,6 +68,32 @@ describe("a socket address that follows the viewer", () =>
         expect(heard).toEqual(["from b"]);
     });
 
+    test("sign out closes every socket, one still dialling too, and the old viewer hears nothing more", async () =>
+    {
+        const app = startDialling();
+        const heard: unknown[] = [];
+        app.transport.subscribe("inbox.updated", (message) =>
+        {
+            heard.push(message);
+        });
+        app.transport.reconnect();
+        const signingIn = app.transport.connect();
+        app.last().opened();
+        await signingIn;
+
+        app.choose(undefined);
+        app.transport.reconnect();
+        for (const socket of app.dialled)
+        {
+            socket.delivered(JSON.stringify({ channel: "inbox.updated", body: "for a" }));
+        }
+
+        expect(app.dialled.length).toBeGreaterThan(0);
+        expect(app.dialled.every((socket) => socket.isClosed())).toBe(true);
+        expect(heard).toEqual([]);
+        expect(await app.transport.connect()).toBe("http");
+    });
+
     test("reads the address again on a redial after the server drops the socket", async () =>
     {
         const app = startDialling();

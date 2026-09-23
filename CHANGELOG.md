@@ -33,7 +33,9 @@ with `KernelOptions["…"]`, which still takes the old shapes, or use
   multipart, with progress and abort, never retried (`transport.uploader`
   replaces `XMLHttpRequest`).
 - Fixed: a request over the socket carries the headers HTTP sends, and its
-  refusal the server's body; a socket opening after its timeout is closed.
+  refusal the server's body; a socket opening after its timeout is closed;
+  a dial while another socket was still opening closes that one, so a sign
+  out leaves no socket of the previous viewer open.
 
 ### Kernel
 

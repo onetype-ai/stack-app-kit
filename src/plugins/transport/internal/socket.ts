@@ -281,6 +281,16 @@ export function socket(settings: SocketOptions)
                 }
             };
 
+            // A second dial must never orphan the first: that socket still carries the previous viewer.
+            const previous = current;
+
+            if (previous !== undefined)
+            {
+                current = undefined;
+                dropped();
+                previous.close();
+            }
+
             let url: string | undefined;
 
             try

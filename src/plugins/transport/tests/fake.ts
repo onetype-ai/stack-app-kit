@@ -6,6 +6,7 @@ export function fakeSocket(): Socket & {
     dropped: (code?: number) => void;
     failed: () => void;
     sent: () => string[];
+    isClosed: () => boolean;
 } {
     const listeners = new Map<string, ((event: unknown) => void)[]>();
     const outbox: string[] = [];
@@ -75,6 +76,8 @@ export function fakeSocket(): Socket & {
         },
 
         sent: () => [...outbox],
+
+        isClosed: () => state === 3,
     };
 }
 
