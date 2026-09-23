@@ -1,6 +1,6 @@
 # done
 
-Five plugins, 453 tests, each watched to fail before it was trusted.
+Six plugins, 468 tests, each watched to fail before it was trusted.
 
 - `src/kernel/`: boot order by `needs`, `offer`/`take`, events
 - `kernel` plugin: `definePlugin`, `createKernel`, contract validation, events,
@@ -24,6 +24,12 @@ Five plugins, 453 tests, each watched to fail before it was trusted.
 - `findUnusedFields()` found a declared field nothing read
 - `fakeContext()` in `/testing`: one fake, answering as the transport does
 - `findPrivateComments()` refuses a comment that never reaches `dist`
+
+## settings: config from the environment
+
+`start({ environment })` maps `VITE_<PLUGIN>__<FIELD>` onto config and refuses
+every problem at once; `refusingSecrets` stops a build shipping a variable
+that reads like a secret.
 
 ## 6.2.0: a socket that knows its state
 
