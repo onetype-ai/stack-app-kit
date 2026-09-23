@@ -51,6 +51,13 @@
   `@tanstack/react-router`, `@testing-library/react` and `vitest` are
   optional peers, needed only for this entry.
 
+### Tooling
+
+- `npx stack-app-kit new plugin <name> [--plugins <folder>]` writes
+  `plugin.ts`, `index.ts`, `usage.md` and a test that the plugin starts. It
+  refuses a bad name or an existing folder. `Project.findWarnings()` lists
+  each `TODO:` left in a plugin's `plugin.ts` or `usage.md` (`unfinished`).
+
 ## 6.4.0
 
 The first release after 6.0.2. An application on 6.0.2 starts, and its tests

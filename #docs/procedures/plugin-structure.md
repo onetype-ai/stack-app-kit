@@ -30,6 +30,9 @@ reader is an application developer who will never open `internal/`.
 Sections in order: `Description`, `Purpose`, `Usage`, `Refuses`. Technical,
 proven, copy-pasteable. What the plugin does, never what it will do.
 
+`npx stack-app-kit new plugin <name>` writes this layout with `TODO:`
+placeholders; `Project.findWarnings()` lists each one left.
+
 ## Refuses
 
 - A top-level file that is not one of the six named.

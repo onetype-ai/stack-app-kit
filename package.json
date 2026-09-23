@@ -94,7 +94,8 @@
         "access": "public"
     },
     "bin": {
-        "stack-app-kit-schemas": "bin/schemas.mjs"
+        "stack-app-kit-schemas": "bin/schemas.mjs",
+        "stack-app-kit": "bin/stack-app-kit.mjs"
     },
     "files": [
         "dist",

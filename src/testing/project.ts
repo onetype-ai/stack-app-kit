@@ -21,7 +21,7 @@ import { findDanglingPaths, findEntryReach, findUnusedFields, findUnwatched } fr
 
 /** One thing a run found wrong, tagged with the check that found it and phrased for a reader. */
 export type ProjectProblem = {
-    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed" | "reach" | "undocumented";
+    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed" | "reach" | "undocumented" | "unfinished";
     message: string;
 };
 
@@ -173,7 +173,10 @@ export const Project = {
         const root = checking.root ?? process.cwd();
         const plugins = checking.plugins ?? join(root, "src", "plugins");
 
-        return checking.strict === true ? [] : oversizedUsage(root, plugins, checking.maxCharacters);
+        return [
+            ...(checking.strict === true ? [] : oversizedUsage(root, plugins, checking.maxCharacters)),
+            ...unfinished(root, plugins),
+        ];
     },
 
     /** Every check that could not run, and what it would have read. */
@@ -197,6 +200,23 @@ export const Project = {
         ];
     },
 };
+
+function unfinished(root: string, plugins: string): ProjectProblem[]
+{
+    if (!existsSync(plugins))
+    {
+        return [];
+    }
+
+    return readdirSync(plugins, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .flatMap((entry) => ["plugin.ts", "usage.md"].map((file) => join(plugins, entry.name, file)))
+        .filter((file) => existsSync(file) && readFileSync(file, "utf8").includes("TODO:"))
+        .map((file) => ({
+            check: "unfinished" as const,
+            message: `${file.replace(`${root}/`, "")} still holds a TODO: the generator's placeholder, or a note nobody finished.`,
+        }));
+}
 
 function oversizedUsage(root: string, plugins: string, maxCharacters: number | undefined): ProjectProblem[]
 {
