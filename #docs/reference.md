@@ -90,7 +90,7 @@ import { transport, cache } from "@onetype/stack-app-kit";
 ```
 
 ```ts
-<Slot name="board.aside" payload={{ id }} />        // parses against the slot's schema
+<Slot name="board.aside" payload={{ id }} />        // parsed by its schema; none is {}
 <RouteGuard route={registered} send={goTo} />       // one route, guarded
 useKernel(): Kernel
 usePlugin<Config, Services>(name): Context          // the context itself, not a wrapper
