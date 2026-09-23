@@ -488,7 +488,7 @@ export function respondWith(options: { template: string; tree: (app: StartedApp)
 {
     if (!options.template.includes(headMarker) || !options.template.includes(appMarker))
     {
-        throw new SeoFault([`the template must hold both ${headMarker} and ${appMarker}: read the built _template.html, not _shell.html or a prerendered page`]);
+        throw new SeoFault([`the template must hold both ${headMarker} and ${appMarker}: read the built _template.html, not _shell.html or a prerendered page`], "server: respondWith was given a template it cannot render into.");
     }
 
     return (app) =>

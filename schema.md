@@ -767,7 +767,7 @@ Imported whole, then reached through the name: `import { seo } from "@onetype/st
 ### seo.SeoFault extends Error
     readonly code = "REFUSED_PRERENDER"
     readonly problems: readonly string[]
-    constructor(problems: readonly string[])
+    constructor(problems: readonly string[], what?: string)
 
 ### seo.SitemapPage
     path: string
