@@ -2,13 +2,12 @@
 
 ## Description
 
-One HTTP boundary (base URL, headers, timeouts, retries, one error shape),
-plus a websocket when the server has one.
+One HTTP boundary (base URL, headers, timeouts, retries, errors), plus a
+websocket when the server has one.
 
 ## Purpose
 
-A failure reads the same everywhere. **This layer owns retrying**: a retry
-above it turned three attempts into nine.
+**This layer owns retrying**: a retry above it turned three into nine.
 
 ## Usage
 
@@ -19,10 +18,11 @@ await client.upload({ path: "/items/1/files", body: file, onProgress, signal });
 ```
 
 - `request` answers `unknown`: validate it. Idempotent requests retry with
-  jittered backoff; `POST`/`PATCH` never retry or change channel. Both
-  channels send one set of headers.
-- `upload` sends a `Blob` as is or a `FormData` as multipart, through
-  `XMLHttpRequest` (or `uploader`), with progress; never retried.
+  jittered backoff; `POST`/`PATCH` never retry or change channel. One set
+  of headers; a request with its own `Authorization` or `Cookie` goes by
+  HTTP, since the socket speaks for whoever dialled it.
+- `upload` sends a `Blob` or `FormData` via `XMLHttpRequest` (or
+  `uploader`), with progress; never retried.
 - `wsUrl` may be a function of the headers sent now (`undefined`: no
   socket yet); `reconnect()` redials, keeping subscriptions.
   `socketFor: "push"` keeps requests on HTTP.
@@ -30,8 +30,8 @@ await client.upload({ path: "/items/1/files", body: file, onProgress, signal });
   of `reconnectBaseMs · 2ⁿ` (≤ 30 s) or a server `$backoff`. 4001/4003
   wait for `reconnect()`; 4000 redials at once. After a `$ping`,
   `silenceMs` of quiet redials; `wake(listener)` redials at once.
-- `onReconnected({ downMs })` runs once `$ready` and every channel answered
-  (or after `connectTimeoutMs`): pushes missed meanwhile are lost.
+- `onReconnected({ downMs })` runs once `$ready` and every channel answered:
+  pushes missed meanwhile are lost.
 - No socket: `subscribe` succeeds, delivering nothing.
 
 ## Refuses

@@ -56,7 +56,9 @@ export function transport(settings: TransportOptions, log: HostLog): Transport
 
     async function sendOnce(request: HttpRequest): Promise<Answer>
     {
-        const channel = requestsOverSocket && socketChannel !== undefined && socketChannel.channel.open() ? socketChannel.channel : overHttp;
+        // The socket's identity was fixed when it was dialled; a request naming its own would be answered as the socket's.
+        const namesItsIdentity = Object.keys(request.headers ?? {}).some((name) => ["authorization", "cookie"].includes(name.toLowerCase()));
+        const channel = requestsOverSocket && !namesItsIdentity && socketChannel !== undefined && socketChannel.channel.open() ? socketChannel.channel : overHttp;
 
         try
         {

@@ -94,6 +94,19 @@ describe("a socket address that follows the viewer", () =>
         expect(await app.transport.connect()).toBe("http");
     });
 
+    test("sends a request carrying its own authorization over http, never as the socket's viewer", async () =>
+    {
+        const app = startDialling();
+        const socket = await app.connected();
+
+        await app.transport.request({ method: "GET", path: "/try", headers: { Authorization: "Bearer visitor" } });
+        void app.transport.request({ method: "GET", path: "/items" }).catch(() => undefined);
+        await Promise.resolve();
+
+        expect(app.fetches.calls().map((call) => call.url)).toEqual(["https://example.test/api/try"]);
+        expect(socket.sent().some((frame) => frame.includes("/items"))).toBe(true);
+    });
+
     test("reads the address again on a redial after the server drops the socket", async () =>
     {
         const app = startDialling();
