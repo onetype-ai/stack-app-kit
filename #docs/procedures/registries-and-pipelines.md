@@ -1,7 +1,6 @@
 # Registries and pipelines
 
-A **registry** is a named list: one plugin declares it, and the plugins
-depending on that plugin add to it.
+A **registry** is a named list one plugin declares and its dependants fill.
 
 ```ts
 registries: { "editor.blocks": { describe, entry: Block, key: "id",
@@ -14,9 +13,10 @@ useRegistry("editor.blocks");
 - `adds` and `set` get the same checks: schema, key, reserved, cap.
 - Entries list by `order`, then key, minus what the viewer lacks the
   `requires` for.
+- `remote: "<api registry>"` mirrors the server's: a snapshot, then pushes,
+  refetched after a gap or reconnect, emptied on `session.changed()`.
 
-A **pipeline** is a list of ordered steps. The owner declares it, and the
-plugins depending on it add steps beside an anchor.
+A **pipeline** is ordered steps; dependants add steps beside an anchor.
 
 ```ts
 pipelines: { "posts.publish": { describe, input: Draft, output: Post,

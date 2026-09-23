@@ -5,6 +5,7 @@ import { events, type ListenerFailure } from "./events";
 import { KernelFault } from "./faults";
 import { hooks } from "./hooks";
 import { permissions, type PermissionSource } from "./permissions";
+import { mirror } from "./mirror";
 import { pipelines, type ExplainedStep } from "./pipelines";
 import { registries, type RegistryEntry } from "./registries";
 import { slots, type MountedContribution } from "./slots";
@@ -236,6 +237,7 @@ export function createKernel(options: KernelOptions): Kernel
         log("warn", plugin, line, about);
     });
     const flows = pipelines();
+    const mirrors = new Map<string, ReturnType<typeof mirror>>();
     let readGranted: (() => readonly string[]) | undefined;
 
     const permits = permissions({
@@ -270,6 +272,13 @@ export function createKernel(options: KernelOptions): Kernel
         places.reset();
         lists.reset();
         flows.reset();
+
+        for (const one of mirrors.values())
+        {
+            one.stop();
+        }
+
+        mirrors.clear();
         services.clear();
         commands.clear();
         parsed.clear();
@@ -411,8 +420,19 @@ export function createKernel(options: KernelOptions): Kernel
                 {
                     options.cache?.clear?.();
 
+                    // gone before the next identity reads, as the socket is; refetched with the headers as they read now
+                    for (const one of mirrors.values())
+                    {
+                        one.drop();
+                    }
+
                     permits.changed();
                     realtime.reconnect();
+
+                    for (const one of mirrors.values())
+                    {
+                        void one.refetch();
+                    }
                 },
             },
 
@@ -779,6 +799,43 @@ export function createKernel(options: KernelOptions): Kernel
                     commands: ungated,
                     turnOn: "declare requires: [...] on each, or leave it if anyone really may",
                 });
+            }
+
+            for (const { name, remote } of lists.remotes())
+            {
+                const owner = lists.ownerOf(name) ?? "kernel";
+                const one = mirror(remote, {
+                    feed: (entries) => lists.feed(name, entries),
+                    patch: (key, entry) => lists.patch(name, key, entry),
+                }, http, realtime, (line, about) =>
+                {
+                    log("warn", owner, line, about);
+                });
+
+                mirrors.set(name, one);
+                void one.start();
+            }
+
+            if (mirrors.size > 0)
+            {
+                try
+                {
+                    // pushes sent while the socket was down are lost, so every mirror reads its snapshot again
+                    bus.listen("kernel", "transport.reconnected", {
+                        describe: "Registries mirroring the server read their snapshot again.",
+                        handle: () =>
+                        {
+                            for (const one of mirrors.values())
+                            {
+                                void one.refetch();
+                            }
+                        },
+                    }, () => true);
+                }
+                catch
+                {
+                    log("debug", "kernel", "no transport.reconnected event is declared; mirrored registries refetch only on a gap or a session change");
+                }
             }
 
             permits.changed();

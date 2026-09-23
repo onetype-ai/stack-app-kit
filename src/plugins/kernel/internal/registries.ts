@@ -73,6 +73,11 @@ export function registries(warn: (plugin: string, line: string, about: Readonly<
 
             const { registry, owner } = one;
 
+            if (registry.remote !== undefined)
+            {
+                refuse(name, plugin, `it is fed by the server's "${registry.remote}", so only the server adds to it.`);
+            }
+
             if (registry.set === "owner" && plugin !== owner)
             {
                 refuse(name, plugin, `only "${owner}" may add to it.`);
@@ -129,6 +134,75 @@ export function registries(warn: (plugin: string, line: string, about: Readonly<
                     changed(one);
                 }
             };
+        },
+
+        remotes: (): { name: string; remote: string }[] =>
+        {
+            return [...opened].flatMap(([name, one]) => (one.registry.remote === undefined ? [] : [{ name, remote: one.registry.remote }]));
+        },
+
+        // The server decides what this viewer sees, so nothing here filters by who adds; an entry the schema refuses is dropped, never shown.
+        feed: (name: string, entries: readonly unknown[]): number =>
+        {
+            const one = opened.get(name);
+
+            if (one === undefined)
+            {
+                return 0;
+            }
+
+            one.held.clear();
+
+            let dropped = 0;
+
+            for (const candidate of entries)
+            {
+                const answer = one.registry.entry.safeParse(candidate);
+                const key = answer.success ? (answer.data as RegistryEntry)[one.registry.key] : undefined;
+
+                if (!answer.success || typeof key !== "string" || key === "")
+                {
+                    dropped += 1;
+
+                    continue;
+                }
+
+                one.held.set(key, { plugin: one.owner, entry: Object.freeze({ ...(answer.data as RegistryEntry) }) });
+            }
+
+            changed(one);
+
+            return dropped;
+        },
+
+        patch: (name: string, key: string, entry: unknown): boolean =>
+        {
+            const one = opened.get(name);
+
+            if (one === undefined)
+            {
+                return false;
+            }
+
+            if (entry === undefined)
+            {
+                one.held.delete(key);
+                changed(one);
+
+                return true;
+            }
+
+            const answer = one.registry.entry.safeParse(entry);
+
+            if (!answer.success || (answer.data as RegistryEntry)[one.registry.key] !== key)
+            {
+                return false;
+            }
+
+            one.held.set(key, { plugin: one.owner, entry: Object.freeze({ ...(answer.data as RegistryEntry) }) });
+            changed(one);
+
+            return true;
         },
 
         list: (name: string): readonly RegistryEntry[] =>

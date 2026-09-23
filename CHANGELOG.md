@@ -12,7 +12,12 @@
   `DUPLICATE_REGISTRY`).
 - `ctx.registry(name).list()`, `kernel.registry(name)` and
   `useRegistry(name)` answer the entries by `order` and then key, without
-  those whose `requires` the viewer lacks. `declarationsOf` lists
+  those whose `requires` the viewer lacks.
+- `remote: "<owner>.<name>"` mirrors an api kit registry: it loads
+  `GET /registries/<name>`, applies each next push on `registry.<name>`,
+  reads the snapshot again after a gap or `transport.reconnected`, and
+  empties on `ctx.session.changed()` before the next identity reads. Only
+  the server adds to it. `declarationsOf` lists
   `registries` and `adds`, and `fakeContext()` records what a plugin set.
 
 ### Pipeline

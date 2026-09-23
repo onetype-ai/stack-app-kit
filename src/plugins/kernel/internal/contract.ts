@@ -69,6 +69,9 @@ export type Registry = Describable & {
 
     /** Who may add: the plugins depending on the owner (the default), or the owner alone. */
     set?: "owner" | "dependants" | undefined;
+
+    /** The server registry this one mirrors (`<owner>.<name>` on the api): read from its snapshot, kept live over the socket, never added to here. */
+    remote?: string | undefined;
 };
 
 /** What a plugin reads from, and adds to, one registry. */
