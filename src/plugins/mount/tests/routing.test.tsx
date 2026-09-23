@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { definePlugin } from "../../kernel/api";
-import { start } from "../internal/start";
+import { start } from "../api";
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";

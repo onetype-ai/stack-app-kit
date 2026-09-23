@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { definePlugin } from "../../kernel/api";
-import { start } from "../internal/start";
+import { start } from "../api";
 
 describe("a 401 from the server", () =>
 {

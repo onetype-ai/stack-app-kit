@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { address } from "../internal/address";
+import { address } from "../api";
 
 describe("a relative base", () =>
 {

@@ -36,20 +36,6 @@ function said(value: unknown): string
 
 describe("a server that refuses the socket", () =>
 {
-    test("is not redialled after closing it as forbidden, until reconnect is asked", async () =>
-    {
-        const app = startDialling();
-        const socket = await app.connected();
-
-        socket.dropped(4003);
-        await vi.advanceTimersByTimeAsync(60_000);
-        const whileForbidden = app.dialled.length;
-        app.transport.reconnect();
-
-        expect(whileForbidden).toBe(1);
-        expect(app.dialled).toHaveLength(2);
-    });
-
     test("that asks for a backoff is left alone at least that long", async () =>
     {
         const app = startDialling();

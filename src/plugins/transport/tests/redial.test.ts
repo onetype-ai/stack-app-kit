@@ -188,17 +188,17 @@ describe("requests over the socket", () =>
 
 describe("redialling", () =>
 {
-    test("waits for reconnect after the server closed the socket as signed out", async () =>
+    test.each([[4001, "signed out"], [4003, "forbidden"]])("waits for reconnect after the server closed the socket with %i (%s)", async (code) =>
     {
         const app = startDialling();
         const socket = await app.connected();
 
-        socket.dropped(4001);
+        socket.dropped(code);
         await vi.advanceTimersByTimeAsync(60_000);
-        const whileSignedOut = app.dialled.length;
+        const whileRefused = app.dialled.length;
         app.transport.reconnect();
 
-        expect(whileSignedOut).toBe(1);
+        expect(whileRefused).toBe(1);
         expect(app.dialled).toHaveLength(2);
     });
 
@@ -255,31 +255,20 @@ describe("redialling", () =>
         expect(app.dialled).toHaveLength(beforeTheDrop + 1);
     });
 
-    test("spreads a redial up to the whole backoff", async () =>
+    test.each([
+        [1, 999, "up to the whole backoff"],
+        [0, 499, "at least half of it, so a tab never redials in a tight loop"],
+    ])("spreads a redial (random %i): not before %i ms, %s", async (random, justBefore) =>
     {
-        const app = startDialling({ random: () => 1 });
+        const app = startDialling({ random: () => random });
         const socket = await app.connected();
 
         socket.dropped(1006);
-        await vi.advanceTimersByTimeAsync(999);
-        const beforeTheCeiling = app.dialled.length;
+        await vi.advanceTimersByTimeAsync(justBefore);
+        const before = app.dialled.length;
         await vi.advanceTimersByTimeAsync(1);
 
-        expect(beforeTheCeiling).toBe(1);
-        expect(app.dialled).toHaveLength(2);
-    });
-
-    test("waits at least half the backoff, so a tab never redials in a tight loop", async () =>
-    {
-        const app = startDialling();
-        const socket = await app.connected();
-
-        socket.dropped(1006);
-        await vi.advanceTimersByTimeAsync(499);
-        const beforeTheFloor = app.dialled.length;
-        await vi.advanceTimersByTimeAsync(1);
-
-        expect(beforeTheFloor).toBe(1);
+        expect(before).toBe(1);
         expect(app.dialled).toHaveLength(2);
     });
 

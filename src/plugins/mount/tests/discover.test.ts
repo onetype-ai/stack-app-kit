@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { definePlugin } from "../../kernel/api";
-import { discover } from "../internal/discover";
+import { discover } from "../api";
 
 const modules = (name: string) => definePlugin(name, { version: "1.0.0", describe: `The ${name} plugin.` });
 

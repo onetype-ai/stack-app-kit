@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
 import { definePlugin } from "../../kernel/api";
-import { start } from "../internal/start";
+import { start } from "../api";
 
 function listing(heard: unknown[])
 {

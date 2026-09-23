@@ -4,7 +4,7 @@ import { z } from "zod";
 import { boot } from "../../../kernel/boot";
 import { kernelPlugin } from "../../kernel/plugin";
 import { from } from "../api";
-import { tree } from "../internal/tree";
+import { tree } from "../api";
 import { routerPlugin } from "../plugin";
 
 import type { ComponentType } from "react";

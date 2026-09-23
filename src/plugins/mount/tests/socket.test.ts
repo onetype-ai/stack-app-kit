@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { definePlugin } from "../../kernel/api";
 import type { Context } from "../../kernel/api";
 import type { Socket } from "../../transport/api";
-import { start } from "../internal/start";
+import { start } from "../api";
 
 function openingSocket(opened: ((run: (kind: string, event: unknown) => void) => void) = () => {}): Socket
 {

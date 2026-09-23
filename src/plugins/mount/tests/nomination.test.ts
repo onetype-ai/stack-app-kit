@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { definePlugin, KernelFault } from "../../kernel/api";
-import { start } from "../internal/start";
+import { start } from "../api";
 import type { Plugin } from "../../kernel/api";
 
 function granter(name: string): Plugin

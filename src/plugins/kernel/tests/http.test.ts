@@ -89,6 +89,7 @@ describe("ctx.http", () =>
 
         expect(() => kernel.context("demo").http.get("/items")).toThrow(KernelFault);
         expect(() => kernel.context("demo").http.get("/items")).toThrow(/ctx\.http/);
+        expect(() => kernel.context("demo").http.get("/items")).toThrow(/Pass one as `http`/);
 
         await kernel.stop();
     });

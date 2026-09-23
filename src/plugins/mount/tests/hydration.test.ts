@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { definePlugin } from "../../kernel/api";
 import type { RouterOptions } from "../../router/api";
-import { start } from "../internal/start";
+import { start } from "../api";
 
 function recordingRouter(steps: string[]): RouterOptions
 {

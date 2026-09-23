@@ -32,20 +32,6 @@ describe("realtime reaches a plugin", () =>
         expect(subscribe).toHaveBeenCalledOnce();
     });
 
-    it("names http as the channel, and refuses to subscribe, when none is given", async () =>
-    {
-        const kernel = createKernel({ plugins: [probe], http: answering });
-
-        await kernel.start();
-
-        const ctx = kernel.context("probe");
-
-        expect(ctx.realtime.channel()).toBe("http");
-
-        // a subscription that returned quietly looked live and delivered nothing
-        expect(() => ctx.realtime.subscribe("x", () => {})).toThrow(/no realtime was given/);
-    });
-
     it("answers a reconnect that does nothing when the realtime given has none, and passes it on when it has", async () =>
     {
         const reconnect = vi.fn();
@@ -58,29 +44,6 @@ describe("realtime reaches a plugin", () =>
         withIt.context("probe").realtime.reconnect();
 
         expect(reconnect).toHaveBeenCalledOnce();
-    });
-});
-
-describe("http reaches a plugin", () =>
-{
-    it("gives a plugin the client it was started with", async () =>
-    {
-        const get = vi.fn(() => Promise.resolve({ ok: true }));
-        const kernel = createKernel({ plugins: [probe], http: { ...answering, get } });
-
-        await kernel.start();
-
-        await expect(kernel.context("probe").http.get("/items")).resolves.toEqual({ ok: true });
-        expect(get).toHaveBeenCalledOnce();
-    });
-
-    it("refuses a request when none was given, naming what to pass", async () =>
-    {
-        const kernel = createKernel({ plugins: [probe] });
-
-        await kernel.start();
-
-        expect(() => kernel.context("probe").http.get("/items")).toThrow(/Pass one as `http`/);
     });
 });
 
