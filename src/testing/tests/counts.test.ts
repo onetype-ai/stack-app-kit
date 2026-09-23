@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
@@ -31,11 +30,11 @@ describe("what the progress notes claim about this package", () =>
 
     test("and a count no lower than the tests written, so a stale number cannot stand", () =>
     {
-        const written = execSync("git ls-files '*.test.ts' '*.test.tsx'", { cwd: root, encoding: "utf8" })
-            .trim().split("\n").filter(Boolean)
-            .reduce((sum, file) =>
+        const written = readdirSync(join(root, "src"), { withFileTypes: true, recursive: true })
+            .filter((entry) => entry.isFile() && /\.test\.tsx?$/.test(entry.name))
+            .reduce((sum, entry) =>
             {
-                return sum + (readFileSync(join(root, file), "utf8").match(/^\s*(?:test|it)(?:\.\w+)?\(/gm)?.length ?? 0);
+                return sum + (readFileSync(join(entry.parentPath, entry.name), "utf8").match(/^\s*(?:test|it)(?:\.\w+)?\(/gm)?.length ?? 0);
             }, 0);
 
         expect(written).toBeGreaterThan(0);
