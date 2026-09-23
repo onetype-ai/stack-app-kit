@@ -1,5 +1,44 @@
 # Changelog
 
+## 6.2.0
+
+Additive, except `settings.refusingSecrets`, which is new here.
+
+### Added
+
+- Realtime, agreed with the api kit's `/ws`:
+  - a close 4003 waits for `reconnect()`;
+  - a server's `$backoff` is waited out, capped at five minutes;
+  - once a server sent `$ping`, a socket silent for `silenceMs` (60 s) is
+    dialled again;
+  - `wake(listener)` redials at once when the device is back;
+  - `subscribe(topic, receive, refused)` hears `CHANNEL_REFUSED`;
+  - `onReconnected({ downMs })` and the `transport.reconnected` event fire
+    once the server is `$ready` and every channel answered.
+- `ctx.session.changed()`: clears the cache, has every guard ask again, then
+  redials, in that order.
+- `settings`: `start({ environment })` maps `VITE_<PLUGIN>__<FIELD>` onto
+  config and refuses every problem at once. `settings.refusingSecrets()` is a
+  Vite plugin that stops a build shipping a variable that reads like a
+  secret.
+- `logs`:
+  - `logs.create` gives `start({ log })` a leveled logger;
+  - `logs.shipper` batches, clips, redacts and sends a browser's logs;
+  - `postTo(url)` sends them, and `captureErrors` logs what nothing caught.
+- `seo` and `./server`:
+  - a route may be `render: "prerender"`, with `paths`, `load` and a
+    validated `head` (canonical, robots, Open Graph, Twitter, JSON-LD,
+    hreflang);
+  - `prerender()` writes each page, `sitemap.xml` and `robots.txt`;
+  - `RouteGuard` applies the head in the browser (pass `params`).
+- `npx stack-app-kit-schemas [--check]` writes, or checks, an
+  application's `schemas.md` from the installed kit.
+
+### Fixed
+
+- `schema.md` lost a plugin's namespace when tsup moved it into a shared
+  chunk.
+
 ## 6.1.0
 
 Everything here is additive; an application on 6.0.2 starts unchanged.
