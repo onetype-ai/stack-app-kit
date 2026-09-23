@@ -50,7 +50,7 @@
 ### serving(options?: ServingOptions): Serving
 
 > Brings an application up: transport, then kernel, then plugins.
-### start(starting: StartOptions): Promise<StartedApp>
+### start(given: StartOptions): Promise<StartedApp>
 
 > The transport plugin.
 ### transportPlugin(settings: TransportOptions): HostPlugin
@@ -104,6 +104,8 @@
 > What the kernel needs to drop what a view is holding.
 ### Cache
     invalidate: (key: readonly unknown[]) => void
+    // Cancels what is still loading, drops every entry no view shows, and resets the ones a view shows so they fetch again: when the data's owner changed (a workspace switch, sign-out), not when some of it went stale.
+    clear: () => void
 
 > One request, as a plugin makes it.
 ### CallOptions
@@ -361,10 +363,12 @@
     plugins: readonly Plugin[]
     config?: Readonly<Record<string, unknown>>
     http?: HttpClient
-    cache?: Cache
-    realtime?: Realtime
+    // Without `clear`, ctx.cache.clear() refuses, naming what to give.
+    cache?: Omit<Cache, "clear"> & Partial<Pick<Cache, "clear">>
+    // Without `reconnect`, the kernel answers one that does nothing.
+    realtime?: Omit<Realtime, "reconnect"> & Partial<Pick<Realtime, "reconnect">>
     permissions?: PermissionSource
-    // Which plugin may answer what the viewer holds; any other declaring `grants` is refused.
+    // Which plugin may answer what the viewer holds; any other declaring `grants` is refused. Left out, the one plugin declaring `grants` is that plugin, and may own permissions under its own name.
     grantedBy?: string
     log?: LogFn
 
@@ -431,6 +435,8 @@
     subscribe: (topic: string, receive: (message: unknown) => void) => {
     close: () => void
     }
+    // Dials the socket again with the address as it reads now, keeping every subscription: after sign-in, sign-out or a workspace switch.
+    reconnect: () => void
 
 > A route, and the plugin it came from.
 ### RegisteredRoute = Route &
@@ -522,7 +528,7 @@
     kernel: Kernel
     http: HttpClient
     realtime: Realtime
-    // Which channel carried the first request: "ws" or "http".
+    // Which channel was live once every plugin had started: the socket is dialled only then, so it carries every plugin's `sends`.
     channel: "ws" | "http"
     // The router built from what plugins declared, where `start` was given one to build with.
     router: unknown
@@ -538,7 +544,7 @@
     config?: Readonly<Record<string, unknown>> | undefined
     permissions?: PermissionSource | undefined
     log?: Logger | undefined
-    // Which plugin may answer what the viewer holds; any other declaring `grants` is refused.
+    // Which plugin may answer what the viewer holds; any other declaring `grants` is refused. Left out, the one plugin declaring `grants` is that plugin, and may own permissions under its own name.
     grantedBy?: string | undefined
     // Dropping what a view holds. Omit and `ctx.cache` refuses, naming itself.
     cache?: Cache | undefined
@@ -552,6 +558,8 @@ Imported whole, then reached through the name: `import { cache } from "@onetype/
 > What the kernel needs to drop what a view is holding.
 ### cache.Cache
     invalidate: (key: readonly unknown[]) => void
+    // Cancels what is still loading, drops every entry no view shows, and resets the ones a view shows so they fetch again: when the data's owner changed (a workspace switch, sign-out), not when some of it went stale.
+    clear: () => void
 
 > The cache, for a plugin that declared "cache" in needs.
 ### cache.from(host: Host): Cache | undefined
@@ -567,6 +575,11 @@ Imported whole, then reached through the name: `import { cache } from "@onetype/
     invalidateQueries: (filters: {
     queryKey: unknown[]
     }) => unknown
+    cancelQueries?: () => unknown
+    removeQueries?: (filters: {
+    type: "inactive"
+    }) => void
+    resetQueries?: () => unknown
 
 ## router
 
@@ -662,6 +675,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     request: (request: HttpRequest) => Promise<unknown>
     // Server-pushed messages. With no socket this succeeds and delivers nothing.
     subscribe: (topic: string, receive: (message: unknown) => void) => Subscription
+    // Closes the socket and dials again with the address as it reads now, keeping every subscription; a socket closed as signed out (4001) waits for this.
+    reconnect: () => void
     // Stops the socket for good.
     close: () => void
 
@@ -699,7 +714,11 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 > What the plugin needs before it can dial anything.
 ### transport.TransportOptions
     baseUrl: string
-    wsUrl?: string | undefined
+    // Where the socket dials. A function is read on every dial and redial with the headers a request would carry now
+    // (`headers` and every plugin's), so the address can follow the viewer; answering undefined keeps the socket closed until `reconnect()`.
+    wsUrl?: string | ((sent: Readonly<Record<string, string>>) => string | undefined) | undefined
+    // "requests" (the default) sends requests over the socket while it is open; "push" keeps every request on HTTP and the socket for pushes only.
+    socketFor?: "requests" | "push" | undefined
     openSocket?: ((url: string) => Socket) | undefined
     headers?: (() => Readonly<Record<string, string>>) | undefined
     onUnauthorized?: ((path: string) => void) | undefined
@@ -709,6 +728,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     connectTimeoutMs?: number
     reconnectBaseMs?: number
     sleep?: ((ms: number) => Promise<void>) | undefined
+    // Spreads every retry and redial between half and all of its backoff, so the tabs of a restarted server do not return in the same instant.
+    random?: (() => number) | undefined
 
 # @onetype/stack-app-kit/react
 
@@ -788,6 +809,12 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 
 ## Functions
 
+> Set once per test process (a setup file). From then on `start` adds every plugin the given ones depend on,
+> transitively: a plugin the test passed wins by name, so a stand-in stays one, dependencies come first, and
+> otherwise the given order holds. A name nothing provides is still refused as UNKNOWN_DEPENDENCY.
+> Never called, `start` boots exactly what it was given. Only `./testing` exports it.
+### configureTestKernels(fixture: TestKernels): void
+
 > A context that answers the way the real one does.
 ### fakeContext<Config = unknown, Services = unknown>(answers?: Answers, faking?: Faking<Config>): Fake<Config, Services>
 
@@ -857,6 +884,12 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     // Every check that could not run, and what it would have read.
     findSkipped: (checking?: ProjectCheckOptions) => ProjectSkipped[]
 
+> Forgets what `configureTestKernels` set, so `start` boots exactly what it is given again.
+### resetTestKernels(): void
+
+> The same closure over dependsOn, for a test building its kernel with `createKernel` rather than `start`.
+### withDependencies(plugins: readonly Plugin[]): Promise<readonly Plugin[]>
+
 ## Types
 
 > What routes a fake answers, keyed by the address the transport dials:
@@ -909,6 +942,10 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     }[]
     // How many times the plugin said what a viewer may do had moved.
     regranted: number
+    // How many times the plugin asked the socket to be dialled again.
+    reconnected: number
+    // How many times the plugin dropped the whole cache.
+    cleared: number
     // What `ctx.hooks.run` answers next. Set it to refuse.
     refusal: string | undefined
     // Sends a message on a channel, as a server would.
@@ -939,6 +976,11 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     // What each named plugin's `ctx.use` hands back.
     offering?: Readonly<Record<string, unknown>>
 
+> A plugin a test did not name, and the config it boots with; config is only ever given to a plugin the closure added.
+### FoundPlugin
+    plugin: Plugin
+    config?: unknown
+
 > One import that crossed from one plugin into another, as the specifier wrote it.
 ### ImportEdge
     from: string
@@ -968,7 +1010,7 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     utils?: string
     // Where the documents sit while they are a folder.
     docs?: string
-    // What every application must hold, whatever else it keeps.
+    // Documents this application asks itself to hold; none unless named. `Project.required` is the kit's suggestion.
     required?: readonly string[]
     // The size a document may reach before it has outgrown its point.
     maxCharacters?: number
@@ -1019,6 +1061,10 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     files: readonly string[]
     shared: readonly string[]
     disagreed: readonly string[]
+
+> Where the plugins a test did not name come from. `resolve` runs once per name, only for one nothing given provides.
+### TestKernels
+    resolve: (name: string) => FoundPlugin | undefined | Promise<FoundPlugin | undefined>
 
 > A `Definition` key the written procedure never mentions.
 ### UndocumentedKey
