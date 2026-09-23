@@ -19,7 +19,15 @@
         "isolatedModules": true,
         "types": [
             "node"
-        ]
+        ],
+        "paths": {
+            "@onetype/stack-app-kit": [
+                "./src/index.ts"
+            ],
+            "@onetype/stack-app-kit/react": [
+                "./src/plugins/kernel/react/index.tsx"
+            ]
+        }
     },
     "include": [
         "src",
