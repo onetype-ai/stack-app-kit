@@ -1,3 +1,5 @@
+import { KernelFault } from "../../kernel/api";
+
 export const levels = ["debug", "info", "warn", "error"] as const;
 
 export type Level = (typeof levels)[number];
@@ -18,7 +20,7 @@ export function rankOf(level: string): number
 
     if (rank === -1)
     {
-        throw new Error(`logs: level "${level}" is not one of ${levels.join(", ")}.`);
+        throw new KernelFault("INVALID_CONFIG", `logs: level "${level}" is not one of ${levels.join(", ")}.`);
     }
 
     return rank;

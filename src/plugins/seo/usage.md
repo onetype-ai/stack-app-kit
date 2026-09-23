@@ -9,7 +9,6 @@ page served by the SPA's `index.html`.
 ## Purpose
 
 A crawler and a link preview read the first HTML, not what a script renders.
-The browser entry calls `hydrateRoot` where the root holds markup.
 
 ## Usage
 
@@ -35,8 +34,8 @@ await prerender({
   `<outDir><path>/index.html`.
 - `head` is validated (absolute http(s) addresses, bounded text, JSON-LD as
   plain JSON) and escaped; `title` falls back to the route's.
-- `state: () => dehydrate(client)` writes `<script id="kit-state">` to
-  hydrate from.
+- `state: () => dehydrate(client)` writes the cache; the browser reads it
+  with `hydrate(client, prerenderedState())` before `hydrateRoot`.
 - A page with `robots: { index: false }` stays out of the sitemap; alternates
   become hreflang links in both.
 - In the browser, `RouteGuard` replaces the prerendered head on each

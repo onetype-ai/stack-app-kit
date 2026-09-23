@@ -74,7 +74,7 @@ describe("the logger", () =>
 
     test("refuses a level it does not know, naming the four", () =>
     {
-        expect(() => create({ level: "loud" as "info", write: () => {} })).toThrow("debug, info, warn, error");
+        expect(() => create({ level: "loud" as "info", write: () => {} })).toThrow(expect.objectContaining({ code: "INVALID_CONFIG", message: expect.stringContaining("debug, info, warn, error") }));
     });
 });
 

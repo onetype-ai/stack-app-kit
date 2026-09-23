@@ -15,11 +15,10 @@ the cache, has every guard ask again, then redials. Pushes missed while the
 socket was down are lost: listen to `transport.reconnected` and fetch again.
 
 **`http` answers the body, never an envelope.** A 204 is `undefined`, anything
-but a 2xx throws. A fake answering `{ status, body }` describes the channel
-underneath, and tests itself rather than the code.
+but a 2xx throws; a fake answering `{ status, body }` tests itself.
 
 `hooks.run` answers the first refusal, or nothing. `use` reaches another
-plugin's services outside a component.
+plugin's services.
 
 `events.on` hears while a caller wants to and answers what stops it; a
 contract's `listens` never stops. Neither hears its own plugin's events.
@@ -36,7 +35,8 @@ config?: ZodType; permissions?: Record<string, { describe: string }>;
 grants?: (ctx) => readonly string[];          // at most one plugin
 services?: (ctx) => Services;                 // ctx.services is never here
 frame?: FunctionComponent; pages?: Pages; fallback?: ComponentType;
-routes?: readonly Route[];   // path, component, title, requires?, search?, instead?
+routes?: readonly Route[];   // path, component, title, requires?, search?, instead?,
+                             // render?, paths?, load?, head? (seo/usage.md)
 slots?: Record<string, Slot>; contributes?: readonly SlotContribution[];
 emits?: Record<string, Event>; listens?: Record<string, Listener>;
 hooks?: Record<string, Hook>; participates?: Record<string, Participant>;

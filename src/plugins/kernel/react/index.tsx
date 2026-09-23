@@ -338,6 +338,26 @@ export function RouteGuard({ route, send, params = {} }: { route: RegisteredRout
     );
 }
 
+/** What a prerender wrote for the cache to hydrate from (`<script id="kit-state">`), or undefined on a page the browser rendered first. */
+export function prerenderedState(): unknown
+{
+    const written = typeof document === "undefined" ? null : document.getElementById("kit-state")?.textContent ?? null;
+
+    if (written === null)
+    {
+        return undefined;
+    }
+
+    try
+    {
+        return JSON.parse(written) as unknown;
+    }
+    catch
+    {
+        return undefined;
+    }
+}
+
 /** The 404, for a path nothing declared. */
 export function NotFound(): ReactNode
 {

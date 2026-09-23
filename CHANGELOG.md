@@ -30,7 +30,10 @@ Additive, except `settings.refusingSecrets`, which is new here.
     validated `head` (canonical, robots, Open Graph, Twitter, JSON-LD,
     hreflang);
   - `prerender()` writes each page, `sitemap.xml` and `robots.txt`;
-  - `RouteGuard` applies the head in the browser (pass `params`).
+  - `RouteGuard` applies the head in the browser (pass `params`), replacing
+    what the prerender wrote;
+  - `prerenderedState()` from `./react` reads back the cache state a
+    prerender wrote, for `hydrate` before `hydrateRoot`.
 - `npx stack-app-kit-schemas [--check]` writes, or checks, an
   application's `schemas.md` from the installed kit.
 

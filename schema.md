@@ -927,6 +927,9 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 > The 404, for a path nothing declared.
 ### NotFound(): ReactNode
 
+> What a prerender wrote for the cache to hydrate from (`<script id="kit-state">`), or undefined on a page the browser rendered first.
+### prerenderedState(): unknown
+
 > A page, and what it takes to see it; `params` are what the path matched, for the route's `head`.
 ### RouteGuard({ route, send, params }: { route: RegisteredRoute; send?: (to: string) => ReactNode; params?: RouteParams }): ReactNode
     route: RegisteredRoute

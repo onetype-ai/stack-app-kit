@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 
 import { createKernel, definePlugin } from "../api";
 import type { Route } from "../api";
-import { KernelProvider, RouteGuard } from "../react/index";
+import { KernelProvider, RouteGuard, prerenderedState } from "../react/index";
 
 afterEach(() =>
 {
@@ -100,5 +100,24 @@ describe("the head a page declares", () =>
         });
         expect(document.head.querySelector("link[rel=canonical]")).toBeNull();
         expect(document.title).toBe("A");
+    });
+});
+
+describe("the state a prerender wrote", () =>
+{
+    test("is read back for the cache to hydrate from", () =>
+    {
+        document.body.innerHTML = "<script type=\"application/json\" id=\"kit-state\">{\"items\":[1,2]}</script>";
+
+        expect(prerenderedState()).toEqual({ items: [1, 2] });
+    });
+
+    test("is undefined on a page the browser rendered first, or one whose state does not parse", () =>
+    {
+        document.body.innerHTML = "";
+        const absent = prerenderedState();
+        document.body.innerHTML = "<script type=\"application/json\" id=\"kit-state\">{broken</script>";
+
+        expect([absent, prerenderedState()]).toEqual([undefined, undefined]);
     });
 });
