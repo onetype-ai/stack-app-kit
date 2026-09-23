@@ -1,3 +1,5 @@
+import { BootFault } from "./errors";
+
 export const rules = {
     text: (name: string, given: unknown, fallback?: string): string | undefined =>
     {
@@ -8,7 +10,7 @@ export const rules = {
 
         if (typeof given !== "string" || given.length === 0)
         {
-            throw new Error(`${name} must be a non-empty string when it is set.`);
+            throw new BootFault("INVALID_ENV", `${name} must be a non-empty string when it is set.`);
         }
 
         return given;
@@ -20,7 +22,7 @@ export const rules = {
 
         if (value === undefined)
         {
-            throw new Error(`${name} is required and was not set.`);
+            throw new BootFault("INVALID_ENV", `${name} is required and was not set.`);
         }
 
         return value;
@@ -39,7 +41,7 @@ export const rules = {
 
         if (!Number.isInteger(asNumber) || asNumber < min || asNumber > max)
         {
-            throw new Error(`${name} must be a whole number from ${String(min)} to ${String(max)}. Received "${value}".`);
+            throw new BootFault("INVALID_ENV", `${name} must be a whole number from ${String(min)} to ${String(max)}. Received "${value}".`);
         }
 
         return asNumber;
@@ -56,7 +58,7 @@ export const rules = {
 
         if (value !== "true" && value !== "false")
         {
-            throw new Error(`${name} must be "true" or "false". Received "${value}".`);
+            throw new BootFault("INVALID_ENV", `${name} must be "true" or "false". Received "${value}".`);
         }
 
         return value === "true";
@@ -76,7 +78,7 @@ export const rules = {
 
         if (!allowed.includes(value as Allowed))
         {
-            throw new Error(`${name} must be one of ${allowed.join(", ")}. Received "${value}".`);
+            throw new BootFault("INVALID_ENV", `${name} must be one of ${allowed.join(", ")}. Received "${value}".`);
         }
 
         return value as Allowed;

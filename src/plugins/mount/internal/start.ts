@@ -1,4 +1,5 @@
 import { boot } from "../../../kernel/boot";
+import { BootFault } from "../../../kernel/errors";
 import { closeOver } from "../../../kernel/closure";
 import type { HostLog } from "../../../kernel/host";
 import { z } from "zod";
@@ -57,7 +58,7 @@ export async function start(given: StartOptions): Promise<StartedApp>
 
     if (carrier === undefined)
     {
-        throw new Error("mount: the transport plugin offered nothing.");
+        throw new BootFault("NO_API", "mount: the transport plugin offered nothing, so there is no client to start with.", "mount");
     }
 
     const realtime: Realtime = {

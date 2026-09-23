@@ -7,7 +7,8 @@ export type BootFaultCode =
     | "CYCLE"
     | "NOT_BOOTING"
     | "OFFERED_TWICE"
-    | "NO_API";
+    | "NO_API"
+    | "INVALID_ENV";
 
 /** A refusal from the kernel itself, naming the plugin it came from. */
 export class BootFault extends Error

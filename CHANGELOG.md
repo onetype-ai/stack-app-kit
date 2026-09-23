@@ -20,6 +20,11 @@
 
 ### Changed
 
+- What the kit throws at run time is always its own class, never a bare
+  `Error`: `Env.rules` and `serving` throw `BootFault` (`INVALID_ENV`),
+  `useKernel` outside its provider, `useStore` with an unstable read and
+  `discover` given a module that is no plugin throw `KernelFault`. Messages
+  are unchanged.
 - `RouterOptions.createRoute` may be called with an `id` and no `path`, for
   the layout route holding the frame. A router adapter written for 6.3
   types its `path` as optional.

@@ -97,3 +97,25 @@ describe("one of a list of allowed words", () =>
             .toThrow(/VITE_LEVEL/);
     });
 });
+
+describe("a refusal", () =>
+{
+    test("is a BootFault a caller can match, naming the variable", () =>
+    {
+        const refused = (() =>
+        {
+            try
+            {
+                Env.rules.number("VITE_PORT", "eighty", 80);
+            }
+            catch (error)
+            {
+                return error;
+            }
+
+            return undefined;
+        })();
+
+        expect(refused).toMatchObject({ name: "BootFault", code: "INVALID_ENV", message: expect.stringContaining("VITE_PORT") });
+    });
+});

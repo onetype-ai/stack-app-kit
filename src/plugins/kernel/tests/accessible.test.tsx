@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { AppBoundary, StreamedText, useFocusTrap } from "../react/index";
+import { AppBoundary, StreamedText, useFocusTrap, useKernel } from "../react/index";
 
 afterEach(cleanup);
 
@@ -105,5 +105,34 @@ describe("a focus trap closing", () =>
         });
 
         expect(document.activeElement).toBe(opener);
+    });
+});
+
+describe("a hook used outside the provider", () =>
+{
+    test("refuses with the kernel's fault, naming where to render it", () =>
+    {
+        function Reader(): React.ReactNode
+        {
+            useKernel();
+
+            return null;
+        }
+
+        const failed = (() =>
+        {
+            try
+            {
+                render(<Reader />);
+            }
+            catch (error)
+            {
+                return error;
+            }
+
+            return undefined;
+        })();
+
+        expect(failed).toMatchObject({ code: "NOT_STARTED", message: expect.stringContaining("KernelProvider") });
     });
 });

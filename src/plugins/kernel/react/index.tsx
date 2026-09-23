@@ -70,7 +70,7 @@ export function useKernel(): Kernel
 
     if (kernel === undefined)
     {
-        throw new Error("useKernel was called outside a KernelProvider.");
+        throw new KernelFault("NOT_STARTED", "useKernel was called outside a KernelProvider. Render it inside <KernelProvider kernel={app.kernel}>.");
     }
 
     return kernel;
@@ -132,7 +132,8 @@ export function useStore<Value>(
 
         if (!Object.is(read(), read()))
         {
-            throw new Error(
+            throw new KernelFault(
+                "INVALID_CONFIG",
                 "useStore was given a read that answers something different every "
                 + "call, so React re-renders forever. Answer the value the service "
                 + "already holds, or read one field at a time.",

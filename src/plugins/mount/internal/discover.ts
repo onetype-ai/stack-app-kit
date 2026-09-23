@@ -1,3 +1,4 @@
+import { KernelFault } from "../../kernel/api";
 import type { Plugin } from "../../kernel/api";
 
 /** What a bundler's eager glob returns. */
@@ -11,7 +12,7 @@ export function discover(modules: PluginModules): Plugin[]
         {
             if (module.default === undefined)
             {
-                throw new Error(`${path} must default-export a definePlugin(...) result.`);
+                throw new KernelFault("INVALID_CONFIG", `${path} must default-export a definePlugin(...) result.`);
             }
 
             return module.default;

@@ -1,4 +1,5 @@
 import { rules } from "./env";
+import { BootFault } from "./errors";
 
 /** What a development server needs to know, before any of it is a Vite option. */
 export type ServingOptions = {
@@ -26,7 +27,7 @@ const port = (name: string, fallback: number, set: Record<string, string | undef
     }
     catch
     {
-        throw new Error(`${name} must be a whole port between 1 and 65535. Received "${String(given)}".`);
+        throw new BootFault("INVALID_ENV", `${name} must be a whole port between 1 and 65535. Received "${String(given)}".`);
     }
 };
 

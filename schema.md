@@ -111,7 +111,16 @@
 ## Types
 
 > What the kernel refuses, and why.
-### BootFaultCode = "NO_NAME" | "NO_BOOT" | "REGISTERED_TWICE" | "UNKNOWN_NEED" | "CYCLE" | "NOT_BOOTING" | "OFFERED_TWICE" | "NO_API"
+### BootFaultCode
+    | "NO_NAME"
+    | "NO_BOOT"
+    | "REGISTERED_TWICE"
+    | "UNKNOWN_NEED"
+    | "CYCLE"
+    | "NOT_BOOTING"
+    | "OFFERED_TWICE"
+    | "NO_API"
+    | "INVALID_ENV"
 
 > What the kernel needs to drop what a view is holding.
 ### Cache
