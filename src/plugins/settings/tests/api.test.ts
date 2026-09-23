@@ -103,11 +103,23 @@ describe("what may ship in the public bundle", () =>
         expect(problemsOf(["VITE_ITEMS__API_URL", "VITE_ITEMS__BETA_ENABLED", "VITE_ITEMS__PAGE_SIZE", "DATABASE_PASSWORD"])).toEqual([]);
     });
 
-    test("stops a build with every problem, and lets a clean one through", () =>
+    test("stops a build with every problem in what the bundler exposes, and lets a clean one through", () =>
     {
-        const refused = refusalOf(() => refusingSecrets(["VITE_A_TOKEN", "VITE_B__SECRET_URL"]).configResolved());
+        const refused = refusalOf(() => refusingSecrets().configResolved({ env: { VITE_A_TOKEN: "t", VITE_B__SECRET_URL: "u", MODE: "production" } }));
 
         expect(refused.problems).toHaveLength(2);
-        expect(() => refusingSecrets(["VITE_ITEMS__API_URL"]).configResolved()).not.toThrow();
+        expect(() => refusingSecrets().configResolved({ env: { VITE_ITEMS__API_URL: "u", MODE: "production" } })).not.toThrow();
+    });
+
+    test("reads the prefix the bundler was configured with, so a renamed prefix is still guarded", () =>
+    {
+        const refused = refusalOf(() => refusingSecrets().configResolved({ env: { PUBLIC_SESSION_SECRET: "s" }, envPrefix: ["PUBLIC_"] }));
+
+        expect(refused.problems).toEqual([expect.stringContaining("PUBLIC_SESSION_SECRET reads like a secret")]);
+    });
+
+    test("trusts what the application lists as public", () =>
+    {
+        expect(() => refusingSecrets({ application: ["VITE_API_URL"] }).configResolved({ env: { VITE_API_URL: "/api" } })).not.toThrow();
     });
 });

@@ -6,8 +6,10 @@
 // what a consumer actually receives. Hand-written before, it drifted: it still
 // named `listenTo`, `resetsIn` and `UNHEARD_EVENT` months after those were
 // renamed. Run from the kit's root after a build, it writes schema.md; run
-// from an application depending on the kit (`npx stack-app-kit-schema`), it
-// writes schemas.md there, from the kit that application installed.
+// from an application depending on the kit (`npx stack-app-kit-schemas`), it
+// writes schemas.md there, from the kit that application installed. With
+// --check it writes nothing and fails when the file on disk is not what it
+// would write, so a stale surface is caught where it is committed.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -524,6 +526,23 @@ for (const entry of entryPoints())
     written.push(``);
 }
 
-writeFileSync(OUT, `${written.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`);
+const surface = `${written.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`;
+
+if (process.argv.includes("--check"))
+{
+    const current = existsSync(OUT) ? readFileSync(OUT, "utf8") : "";
+
+    if (current !== surface)
+    {
+        console.error(`${OUT} is not the surface the installed kit offers. Run \`npx stack-app-kit-schemas\` and commit it.`);
+        process.exit(1);
+    }
+
+    console.log(`${OUT}: current`);
+}
+else
+{
+    writeFileSync(OUT, surface);
+}
 
 console.log(`${OUT}: ${written.filter((line) => line.startsWith("### ")).length} declarations`);

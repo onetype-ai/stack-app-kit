@@ -1,6 +1,7 @@
 export type PublicRule = {
     application: readonly string[];
     suffixes: readonly string[];
+    prefixes: readonly string[];
 };
 
 export const prefix = "VITE_";
@@ -30,7 +31,7 @@ function problemOf(name: string, rule: PublicRule): string | undefined
 
     if (secretWords.some((word) => name.includes(word)))
     {
-        return `${name} reads like a secret, and every ${prefix} value ships inside the public bundle. Keep it on the server, or list it as application-wide if it is public by design.`;
+        return `${name} reads like a secret, and every public variable ships inside the bundle. Keep it on the server, or list it as application-wide if it is public by design.`;
     }
 
     const at = name.indexOf(separator);
@@ -38,7 +39,7 @@ function problemOf(name: string, rule: PublicRule): string | undefined
 
     if (at === -1 || field.length === 0)
     {
-        return `${name} is neither a plugin's (${prefix}<PLUGIN>__<FIELD>) nor listed as application-wide.`;
+        return `${name} is neither a plugin's (<PREFIX><PLUGIN>__<FIELD>) nor listed as application-wide.`;
     }
 
     if (!rule.suffixes.some((suffix) => `_${field}`.endsWith(suffix)))
@@ -52,7 +53,7 @@ function problemOf(name: string, rule: PublicRule): string | undefined
 export function problemsOf(names: readonly string[], rule: PublicRule): string[]
 {
     return names
-        .filter((name) => name.startsWith(prefix))
+        .filter((name) => rule.prefixes.some((one) => name.startsWith(one)))
         .sort()
         .map((name) => problemOf(name, rule))
         .filter((problem): problem is string => problem !== undefined);

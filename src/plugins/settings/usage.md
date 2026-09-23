@@ -16,8 +16,8 @@ variables onto config by hand also leaks one by hand, sooner or later.
 // main.tsx: VITE_ITEMS__PAGE_SIZE=20 becomes config.items.pageSize
 const app = await start({ plugins, environment: import.meta.env, transport });
 
-// vite.config.ts: the build stops on a secret-looking name
-plugins: [settings.refusingSecrets(Object.keys(loadEnv(mode, ".", "")))],
+// vite.config.ts: reads what Vite exposes, under its own envPrefix
+plugins: [settings.refusingSecrets({ application: ["VITE_API_URL"] })],
 ```
 
 - A plugin's variables are `VITE_<PLUGIN>__<FIELD>`: the plugin name in
@@ -28,8 +28,7 @@ plugins: [settings.refusingSecrets(Object.keys(loadEnv(mode, ".", "")))],
 - `settings.configFor(plugins, environment)` answers the same map, for a
   test or a kernel built with `createKernel`.
 - Application-wide names are allowed by listing them exactly, and a listed
-  name is trusted even if it reads like a secret (a publishable key):
-  `refusingSecrets(names, { application: ["VITE_API_URL"] })`.
+  name is trusted even if it reads like a secret (a publishable key).
 
 ## Refuses
 

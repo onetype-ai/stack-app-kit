@@ -22,7 +22,7 @@ step "lint" npx eslint src
 step "build" npx tsup
 step "test" npx vitest run
 step "docs" node tools/docs.mjs
-step "schema" node bin/schema.mjs
+step "schema" node bin/schemas.mjs --check
 step "boundaries" node tools/boundaries.mjs
 
 if [ "$failed" -ne 0 ]

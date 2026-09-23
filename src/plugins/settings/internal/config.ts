@@ -1,6 +1,6 @@
 import type { Plugin } from "../../kernel/api";
 import { SettingsFault } from "./faults";
-import { prefixOf, problemsOf, publicSuffixes, variableOf } from "./variables";
+import { prefix, prefixOf, problemsOf, publicSuffixes, variableOf } from "./variables";
 
 export type PluginConfig = Readonly<Record<string, Readonly<Record<string, string>>>>;
 
@@ -49,7 +49,7 @@ export function configFor(plugins: readonly Plugin[], environment: Readonly<Reco
                 continue;
             }
 
-            const unsafe = problemsOf([name], { application: [], suffixes: publicSuffixes });
+            const unsafe = problemsOf([name], { application: [], suffixes: publicSuffixes, prefixes: [prefix] });
 
             if (unsafe.length > 0)
             {

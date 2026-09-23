@@ -22,6 +22,6 @@ export function from(host: Host): Settings | undefined
 
 export { configFor };
 export { publicProblemsOf as problemsOf, refusingSecrets } from "./internal/guard";
-export type { BuildGuard, PublicOptions } from "./internal/guard";
+export type { BuildGuard, PublicOptions, ResolvedBuild } from "./internal/guard";
 export { SettingsFault } from "./internal/faults";
 export type { PluginConfig } from "./internal/config";

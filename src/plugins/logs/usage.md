@@ -15,7 +15,7 @@ hand floods the server on a loop and carries tokens out in `about`.
 ```ts
 const shipper = logs.shipper({
     level: "warn",
-    send: logs.postTo("/api/client-logs"),
+    send: logs.postTo(`${apiUrl}/client-logs`),
     every: (run) => setInterval(run, 10_000),
 });
 addEventListener("pagehide", () => shipper.flush(true));

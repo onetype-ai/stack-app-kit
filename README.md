@@ -12,8 +12,6 @@ application writes.
 npm install @onetype/stack-app-kit
 ```
 
-React is an optional peer: `.` and `./testing` run without it.
-
 ```ts
 import { discover, start } from "@onetype/stack-app-kit";
 
@@ -26,11 +24,11 @@ const app = await start({
 `start` validates every contract, then starts every plugin or throws naming
 the one that failed. Nothing partly starts.
 
-Three entries: `.` is pure and runs without a DOM, `./react` renders, and
-`./testing` holds the checks an application runs on itself.
+Three entries: `.` is pure and runs without a DOM, `./react` renders (React
+is an optional peer), and `./testing` holds the checks an application runs.
 
-`npx stack-app-kit-schema` writes `schemas.md`: every signature the installed
-kit offers, read from its built types. Rerun it after each upgrade.
+`npx stack-app-kit-schemas` writes `schemas.md`, the installed kit's surface;
+`--check` fails when it is stale.
 
 ## Layout
 
@@ -40,7 +38,7 @@ src/plugins/<name>/  one capability each, behind a contract
 src/testing/         the checks it runs on itself
 src/index.ts         the one file naming our plugins
 #docs/               architecture, procedures
-tools/               the checks CI runs
+bin/, tools/         the schemas writer; the checks CI runs
 ```
 
 A plugin declares everything crossing its boundary: dependencies, public API,
@@ -50,15 +48,13 @@ refuses it before anything starts.
 ## Work on it
 
 `#docs/architecture.md` is the map, `#docs/reference.md` what a context and a
-kernel hand you, `#docs/procedures/` the rules, and each plugin's `usage.md`
-its contract. That is the whole context needed for one plugin.
+kernel hand you, `#docs/procedures/` the rules, each `usage.md` a contract.
 
 ```sh
 tools/check.sh
 ```
 
-Runs what CI runs: types, lint, tests, the 1800-character limit, and the
-plugin boundaries.
+Runs what CI runs: types, lint, tests, sizes, the surface and boundaries.
 
 Every check here was broken on purpose and watched to fail. One that has never
 been red proves only that it runs.
