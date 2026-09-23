@@ -21,7 +21,7 @@ import { findDanglingPaths, findEntryReach, findUnusedFields, findUnwatched } fr
 
 /** One thing a run found wrong, tagged with the check that found it and phrased for a reader. */
 export type ProjectProblem = {
-    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed" | "reach" | "undocumented" | "unfinished";
+    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed" | "reach" | "undocumented" | "unfinished" | "size" | "tests" | "slow";
     message: string;
 };
 
@@ -46,6 +46,16 @@ export type ProjectCheckOptions = {
 
     /** Refuses what 6.x only warns about (a plugin's usage.md past its size); the default from 7.0. */
     strict?: boolean;
+
+    /** Lines a source file may reach before it warns (500): past it, one file holds more than one idea. */
+    maxLines?: number;
+
+    /** How far a plugin's test lines may pass its production lines before it warns (1.1): past it, tests re-prove what they already proved. */
+    maxTestRatio?: number;
+
+    /** A vitest JSON report (`--reporter=json --outputFile=...`); a test file taking over `maxTestShare` of the suite's time warns. */
+    testReport?: string;
+    maxTestShare?: number;
 
     /** The size a document may reach before it has outgrown its point. */
     maxCharacters?: number;
@@ -176,6 +186,9 @@ export const Project = {
         return [
             ...(checking.strict === true ? [] : oversizedUsage(root, plugins, checking.maxCharacters)),
             ...unfinished(root, plugins),
+            ...oversizedFiles(root, plugins, checking.maxLines ?? 500),
+            ...heavyTests(root, plugins, checking.maxTestRatio ?? 1.1),
+            ...slowTests(root, checking.testReport, checking.maxTestShare ?? 0.1),
         ];
     },
 
@@ -200,6 +213,72 @@ export const Project = {
         ];
     },
 };
+
+function linesOf(file: string): number
+{
+    return readFileSync(file, "utf8").split("\n").length;
+}
+
+function sourcesOf(folder: string): { file: string; isTest: boolean }[]
+{
+    return entriesOf(folder, true)
+        .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+        .map((entry) =>
+        {
+            const file = join(entry.parentPath, entry.name);
+
+            return { file, isTest: /\.test\.tsx?$/.test(entry.name) || file.includes("/tests/") };
+        });
+}
+
+function oversizedFiles(root: string, plugins: string, maxLines: number): ProjectProblem[]
+{
+    return sourcesOf(plugins)
+        .filter(({ isTest }) => !isTest)
+        .map(({ file }) => ({ file, lines: linesOf(file) }))
+        .filter(({ lines }) => lines > maxLines)
+        .map(({ file, lines }) => ({
+            check: "size" as const,
+            message: `${file.replace(`${root}/`, "")} is ${lines} lines, past ${maxLines}: split it by the ideas it holds.`,
+        }));
+}
+
+function heavyTests(root: string, plugins: string, maxRatio: number): ProjectProblem[]
+{
+    return entriesOf(plugins)
+        .filter((entry) => entry.isDirectory())
+        .map((entry) =>
+        {
+            const sources = sourcesOf(join(plugins, entry.name));
+            const count = (isTest: boolean): number => sources.filter((source) => source.isTest === isTest).reduce((sum, source) => sum + linesOf(source.file), 0);
+
+            return { name: entry.name, production: count(false), tests: count(true) };
+        })
+        .filter(({ production, tests }) => production > 0 && tests / production > maxRatio)
+        .map(({ name, production, tests }) => ({
+            check: "tests" as const,
+            message: `${name} holds ${tests} test lines for ${production} lines of code, past ${Math.round(maxRatio * 100)}%: prove each guarantee once, through the public entry.`,
+        }));
+}
+
+function slowTests(root: string, report: string | undefined, maxShare: number): ProjectProblem[]
+{
+    if (report === undefined || !existsSync(report))
+    {
+        return [];
+    }
+
+    const read = JSON.parse(readFileSync(report, "utf8")) as { testResults?: { name?: string; startTime?: number; endTime?: number }[] };
+    const files = (read.testResults ?? []).map((result) => ({ name: result.name ?? "", ms: (result.endTime ?? 0) - (result.startTime ?? 0) }));
+    const total = files.reduce((sum, file) => sum + file.ms, 0);
+
+    return files
+        .filter((file) => total > 0 && file.ms / total > maxShare)
+        .map((file) => ({
+            check: "slow" as const,
+            message: `${file.name.replace(`${root}/`, "")} takes ${Math.round((file.ms / total) * 100)}% of the suite's time, past ${Math.round(maxShare * 100)}%: fake its clock or its world, or tag it slow.`,
+        }));
+}
 
 function unfinished(root: string, plugins: string): ProjectProblem[]
 {

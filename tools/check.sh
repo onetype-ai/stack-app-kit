@@ -25,6 +25,10 @@ step "docs" node tools/docs.mjs
 step "schema" node bin/schemas.mjs --check
 step "boundaries" node tools/boundaries.mjs
 
+# Warnings never fail a 6.x run; they are printed so a reader sees them.
+printf '\n== warnings\n'
+node --input-type=module -e 'import { Project } from "./dist/testing.js"; for (const w of Project.findWarnings()) console.log(`warn  [${w.check}] ${w.message}`);' || true
+
 if [ "$failed" -ne 0 ]
 then
     printf '\nFAILED\n'

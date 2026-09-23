@@ -57,6 +57,12 @@
   `plugin.ts`, `index.ts`, `usage.md` and a test that the plugin starts. It
   refuses a bad name or an existing folder. `Project.findWarnings()` lists
   each `TODO:` left in a plugin's `plugin.ts` or `usage.md` (`unfinished`).
+- `Project.findWarnings()` also warns (never refuses in 6.x):
+  - `size`: a source file past `maxLines` (500);
+  - `tests`: a plugin whose test lines pass its code lines by more than
+    `maxTestRatio` (1.1);
+  - `slow`: a test file over `maxTestShare` (10%) of the suite's time, read
+    from a vitest JSON `testReport`.
 
 ## 6.4.0
 

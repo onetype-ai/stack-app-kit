@@ -1527,6 +1527,13 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     required?: readonly string[]
     // Refuses what 6.x only warns about (a plugin's usage.md past its size); the default from 7.0.
     strict?: boolean
+    // Lines a source file may reach before it warns (500): past it, one file holds more than one idea.
+    maxLines?: number
+    // How far a plugin's test lines may pass its production lines before it warns (1.1): past it, tests re-prove what they already proved.
+    maxTestRatio?: number
+    // A vitest JSON report (`--reporter=json --outputFile=...`); a test file taking over `maxTestShare` of the suite's time warns.
+    testReport?: string
+    maxTestShare?: number
     // The size a document may reach before it has outgrown its point.
     maxCharacters?: number
     // The published type declaring `Definition`, read to list the keys a plugin may declare.
@@ -1549,7 +1556,7 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 
 > One thing a run found wrong, tagged with the check that found it and phrased for a reader.
 ### ProjectProblem
-    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed" | "reach" | "undocumented"
+    check: "boundaries" | "wiring" | "unexplained" | "token" | "class" | "comment" | "literal" | "oversized" | "missing" | "dangling" | "twice" | "budget" | "split" | "shadowed" | "reach" | "undocumented" | "unfinished" | "size" | "tests" | "slow"
     message: string
 
 > What a run did not look at, and why.
