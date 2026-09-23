@@ -169,9 +169,11 @@ export function useRegistry(name: string): readonly RegistryEntry[]
 export function Slot({ name, payload }: { name: string; payload?: unknown }): ReactNode
 {
     const kernel = useKernel();
-    const { contributions, payload: answered, problem } = kernel.slot(name, payload);
 
     useGranting();
+    useSlotEntries(kernel, name);
+
+    const { contributions, payload: answered, problem } = kernel.slot(name, payload);
 
     if (problem !== undefined)
     {
@@ -193,6 +195,16 @@ export function Slot({ name, payload }: { name: string; payload?: unknown }): Re
                 ))}
         </>
     );
+}
+
+// a contribution set at run time re-renders the slot as one declared at start would have rendered
+function useSlotEntries(kernel: Kernel, name: string): void
+{
+    const read = useMemo(() => (kernel.hasSlot(name) ? kernel.registry(name) : undefined), [kernel, name]);
+    const watch = useCallback((notify: () => void) => read?.watch(notify) ?? (() => {}), [read]);
+    const list = useCallback(() => read?.list(), [read]);
+
+    useSyncExternalStore(watch, list, list);
 }
 
 function useGranting(): void

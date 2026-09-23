@@ -11,6 +11,7 @@ type Held = { plugin: string; entry: RegistryEntry };
 
 type Opened = {
     owner: string;
+    numbered: boolean;
     registry: Registry;
     held: Map<string, Held>;
     listeners: Set<() => void>;
@@ -30,6 +31,7 @@ function byOrderThenKey(key: string)
 export function registries(warn: (plugin: string, line: string, about: Readonly<Record<string, unknown>>) => void)
 {
     const opened = new Map<string, Opened>();
+    let counter = 0;
 
     function refuse(name: string, plugin: string, message: string): never
     {
@@ -47,9 +49,10 @@ export function registries(warn: (plugin: string, line: string, about: Readonly<
     }
 
     return {
-        declare: (owner: string, name: string, registry: Registry): void =>
+        // numbered: entries carry no key of their own (a slot's contributions), so each is keyed by when it came, which is how a slot always ordered its ties
+        declare: (owner: string, name: string, registry: Registry, numbered = false): void =>
         {
-            opened.set(name, { owner, registry, held: new Map(), listeners: new Set(), listed: undefined });
+            opened.set(name, { owner, numbered, registry, held: new Map(), listeners: new Set(), listed: undefined });
         },
 
         known: (name: string): boolean =>
@@ -81,6 +84,12 @@ export function registries(warn: (plugin: string, line: string, about: Readonly<
             if (registry.set === "owner" && plugin !== owner)
             {
                 refuse(name, plugin, `only "${owner}" may add to it.`);
+            }
+
+            if (one.numbered)
+            {
+                counter += 1;
+                candidate = { ...(candidate as object), [registry.key]: `#${String(counter).padStart(9, "0")}`, plugin };
             }
 
             const answer = registry.entry.safeParse(candidate);

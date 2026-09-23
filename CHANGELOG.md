@@ -21,6 +21,11 @@
   the server adds to it. `declarationsOf` lists
   `registries` and `adds`, and `fakeContext()` records what a plugin set.
 
+- A slot is a registry of its contributions: `ctx.registry("<slot>").set({
+  render, order?, requires? })` adds one while the app runs, and `<Slot>`
+  re-renders. Declared contributions render as before, ties in the order
+  they came. A slot and a registry may not share a name.
+
 ### Pipeline
 
 - A plugin declares `pipelines` (`input`, `output`, ordered `steps`), and

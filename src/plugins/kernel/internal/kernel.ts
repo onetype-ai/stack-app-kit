@@ -231,11 +231,11 @@ export function createKernel(options: KernelOptions): Kernel
         log("error", failure.plugin, `listening to "${failure.event}" failed`, { cause: failure.error instanceof Error ? failure.error.message : String(failure.error) });
     });
     const points = hooks<Context>();
-    const places = slots();
     const lists = registries((plugin, line, about) =>
     {
         log("warn", plugin, line, about);
     });
+    const places = slots(lists);
     const flows = pipelines();
     const mirrors = new Map<string, ReturnType<typeof mirror>>();
     let readGranted: (() => readonly string[]) | undefined;

@@ -150,6 +150,9 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, report: (code: Ker
         if (checkNamespaced(name, key, "slot", report))
         {
             claim("slots", key, "DUPLICATE_SLOT", "Slot");
+
+            // a slot is a registry of its contributions, so the two share one set of names
+            claim("registries", key, "DUPLICATE_SLOT", "Slot or registry");
         }
 
         // The shape, not only the name: a declaration missing the field that

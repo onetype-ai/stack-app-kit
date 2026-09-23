@@ -1,23 +1,33 @@
+import { z } from "zod";
+
 import type { SlotContribution, Slot } from "./contract";
 import { KernelFault } from "./faults";
+import type { registries } from "./registries";
 
 /** One thing to render in a slot, and what it needs to be seen. */
 export type MountedContribution = SlotContribution & { plugin: string };
 
-export function slots()
+const Contribution = z.object({
+    render: z.custom<SlotContribution["render"]>((value) => typeof value === "function" || (typeof value === "object" && value !== null), "render must be a component"),
+    order: z.number().optional(),
+    requires: z.array(z.string()).optional(),
+}).passthrough();
+
+// A slot is a registry of contributions, so one that arrives at run time (ctx.registry(slot).set) renders like a declared one.
+export function slots(lists: ReturnType<typeof registries>)
 {
     const openedBy = new Map<string, { owner: string; slot: Slot }>();
-    const placed = new Map<string, MountedContribution[]>();
 
     return {
         declare: (owner: string, name: string, slot: Slot): void =>
         {
             openedBy.set(name, { owner, slot });
+            lists.declare(owner, name, { describe: slot.describe, entry: Contribution, key: "id" }, true);
         },
 
         fill: (plugin: string, contribution: SlotContribution): void =>
         {
-            placed.set(contribution.slot, [...(placed.get(contribution.slot) ?? []), { ...contribution, plugin }]);
+            lists.add(plugin, contribution.slot, contribution);
         },
 
         known: (name: string): boolean =>
@@ -45,7 +55,7 @@ export function slots()
                 };
             }
 
-            const contributions = [...(placed.get(name) ?? [])].sort((first, second) => (first.order ?? 0) - (second.order ?? 0));
+            const contributions = lists.list(name).map((entry) => ({ ...entry, slot: name }) as unknown as MountedContribution);
 
             return { contributions, payload: answer.data };
         },
@@ -66,7 +76,6 @@ export function slots()
         reset: (): void =>
         {
             openedBy.clear();
-            placed.clear();
         },
     };
 }

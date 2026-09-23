@@ -6,11 +6,11 @@ A **registry** is a named list one plugin declares and its dependants fill.
 registries: { "editor.blocks": { describe, entry: Block, key: "id",
     cap: 64, reserved: ["core"], replace: "refuse", set: "dependants" } },
 adds: { "editor.blocks": [{ id: "quote", label: "Quote", order: 20 }] },
-const stop = ctx.registry("editor.blocks").set(entry);
-useRegistry("editor.blocks");
+const stop = ctx.registry("editor.blocks").set(entry); // useRegistry(name)
 ```
 
-- `adds` and `set` get the same checks: schema, key, reserved, cap.
+- `adds` and `set` get the same checks: schema, key, reserved, cap. A slot
+  is a registry too: `set({ render })` renders in its `<Slot>`.
 - Entries list by `order`, then key, minus what the viewer lacks the
   `requires` for.
 - `remote: "<api registry>"` mirrors the server's: a snapshot, then pushes,
@@ -27,11 +27,10 @@ await ctx.pipeline("posts.publish").run(draft);
 
 - A step is `run(state, ctx, { stop })`. It answers the next state, or
   `stop(output)` to end the run early.
-- Input and output are checked. `kernel.explain(name)` answers the
-  order; start logs it, and each step logs its outcome, never the state.
-- **No transaction.** A step that writes opens its own. A step calling a
-  provider (LLM, HTTP, storage) never writes in the same one: it would
-  hold locks for seconds.
+- Input and output are checked. `kernel.explain(name)` answers the order;
+  start logs it, each step its outcome (never state).
+- **No transaction.** A step writing opens its own; one calling a provider
+  (LLM, HTTP, storage) never writes in it, or locks are held for seconds.
 
 ## Refuses
 
@@ -40,4 +39,4 @@ await ctx.pipeline("posts.publish").run(draft);
   - a bad entry; a step with no anchor, an unknown one, or a taken id;
   - an anchor cycle.
 - At run time: a bad `set`, a refused input or output, and a failing
-  step (`PIPELINE_FAILED`, naming it).
+  step (`PIPELINE_FAILED`).
