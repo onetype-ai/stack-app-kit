@@ -101,6 +101,24 @@ describe("a plugin reaching another", () =>
         expect(violations.some((violation) => violation.message.includes("../../auth/types/Session"))).toBe(true);
     });
 
+    test("refuses a component rendering another plugin's page or component by path, even a declared dependency", () =>
+    {
+        const violations = findImportViolations(
+            tree({
+                auth: { "plugin.ts": contractFor("auth"), "pages/SignIn.tsx": "export const SignIn = () => null;", "components/Avatar.tsx": "export const Avatar = () => null;" },
+                demo: {
+                    "plugin.ts": contractFor("demo", ["auth"]),
+                    "pages/Home.tsx": 'import { SignIn } from "@plugins/auth/pages/SignIn";\nimport { Avatar } from "../../auth/components/Avatar";',
+                },
+            }),
+        );
+
+        expect(violations.filter((violation) => violation.rule === "deep").map((violation) => violation.message)).toEqual([
+            "demo/pages/Home.tsx reaches \"@plugins/auth/pages/SignIn\" instead of \"@plugins/auth\".",
+            "demo/pages/Home.tsx reaches \"../../auth/components/Avatar\" instead of \"@plugins/auth\".",
+        ]);
+    });
+
     test("ignores a relative import inside one plugin", () =>
     {
         const violations = findImportViolations(
