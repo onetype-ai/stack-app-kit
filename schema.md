@@ -1529,7 +1529,7 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     strict?: boolean
     // Lines a source file may reach before it warns (500): past it, one file holds more than one idea.
     maxLines?: number
-    // How far a plugin's test lines may pass its production lines before it warns (1.1): past it, tests re-prove what they already proved.
+    // A plugin's test lines as a share of its production lines before it warns (0.1): past it, tests re-prove what they already proved.
     maxTestRatio?: number
     // A vitest JSON report (`--reporter=json --outputFile=...`); a test file taking over `maxTestShare` of the suite's time warns.
     testReport?: string

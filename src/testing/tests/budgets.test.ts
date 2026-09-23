@@ -48,16 +48,16 @@ describe("budgets a project is warned about, never refused, in 6.x", () =>
         expect(warned(root, "size")).toEqual(["src/plugins/items/services/list.ts is 501 lines, past 500: split it by the ideas it holds."]);
     });
 
-    test("a plugin whose test lines pass its code by more than 10%", () =>
+    test("a plugin whose test lines pass a tenth of its code", () =>
     {
         const root = project({
             "src/plugins/items/plugin.ts": lines(100),
-            "src/plugins/items/tests/items.test.ts": lines(111),
+            "src/plugins/items/tests/items.test.ts": lines(11),
             "src/plugins/notes/plugin.ts": lines(100),
-            "src/plugins/notes/tests/notes.test.ts": lines(110),
+            "src/plugins/notes/tests/notes.test.ts": lines(10),
         });
 
-        expect(warned(root, "tests")).toEqual(["items holds 111 test lines for 100 lines of code, past 110%: prove each guarantee once, through the public entry."]);
+        expect(warned(root, "tests")).toEqual(["items holds 11 test lines for 100 lines of code, past 10%: prove each guarantee once, through the public entry."]);
     });
 
     test("a test file taking over a tenth of the suite's time, read from a vitest report when one is given", () =>
@@ -81,5 +81,6 @@ describe("budgets a project is warned about, never refused, in 6.x", () =>
 
         expect(warned(root, "size", { maxLines: 200 })).toHaveLength(1);
         expect(warned(root, "tests", { maxTestRatio: 2 })).toEqual([]);
+        expect(warned(root, "tests")).toHaveLength(1);
     });
 });

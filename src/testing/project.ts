@@ -50,7 +50,7 @@ export type ProjectCheckOptions = {
     /** Lines a source file may reach before it warns (500): past it, one file holds more than one idea. */
     maxLines?: number;
 
-    /** How far a plugin's test lines may pass its production lines before it warns (1.1): past it, tests re-prove what they already proved. */
+    /** A plugin's test lines as a share of its production lines before it warns (0.1): past it, tests re-prove what they already proved. */
     maxTestRatio?: number;
 
     /** A vitest JSON report (`--reporter=json --outputFile=...`); a test file taking over `maxTestShare` of the suite's time warns. */
@@ -187,7 +187,7 @@ export const Project = {
             ...(checking.strict === true ? [] : oversizedUsage(root, plugins, checking.maxCharacters)),
             ...unfinished(root, plugins),
             ...oversizedFiles(root, plugins, checking.maxLines ?? 500),
-            ...heavyTests(root, plugins, checking.maxTestRatio ?? 1.1),
+            ...heavyTests(root, plugins, checking.maxTestRatio ?? 0.1),
             ...slowTests(root, checking.testReport, checking.maxTestShare ?? 0.1),
         ];
     },

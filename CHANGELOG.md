@@ -59,8 +59,8 @@
   each `TODO:` left in a plugin's `plugin.ts` or `usage.md` (`unfinished`).
 - `Project.findWarnings()` also warns (never refuses in 6.x):
   - `size`: a source file past `maxLines` (500);
-  - `tests`: a plugin whose test lines pass its code lines by more than
-    `maxTestRatio` (1.1);
+  - `tests`: a plugin whose test lines pass `maxTestRatio` (0.1) of its code
+    lines;
   - `slow`: a test file over `maxTestShare` (10%) of the suite's time, read
     from a vitest JSON `testReport`.
 
