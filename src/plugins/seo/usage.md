@@ -9,6 +9,7 @@ page served by the SPA's `index.html`.
 ## Purpose
 
 A crawler and a link preview read the first HTML, not what a script renders.
+The browser entry calls `hydrateRoot` where the root holds markup.
 
 ## Usage
 
@@ -30,19 +31,18 @@ await prerender({
 });
 ```
 
-- `template` holds `<!--kit-head-->` and `<!--kit-app-->`; each page lands at
+- `template` holds `<!--kit-head-->` and `<!--kit-app-->`; a page lands at
   `<outDir><path>/index.html`.
 - `head` is validated (absolute http(s) addresses, bounded text, JSON-LD as
   plain JSON) and escaped; `title` falls back to the route's.
-- `state: () => dehydrate(client)` writes `<script id="kit-state">` for the
-  client to hydrate from.
+- `state: () => dehydrate(client)` writes `<script id="kit-state">` to
+  hydrate from.
 - A page with `robots: { index: false }` stays out of the sitemap; alternates
   become hreflang links in both.
-- In the browser, `RouteGuard` applies the same head on each navigation and
-  removes only the tags it wrote; pass it the router's `params`.
+- In the browser, `RouteGuard` replaces the prerendered head on each
+  navigation, never a tag it did not write; pass it the router's `params`.
 
 ## Refuses
 
-Every problem, at once, before anything is written: a head that fails
-validation, a template without both markers, a parameter missing, empty,
-`.` or `..`.
+All at once, before anything is written: an invalid head, a template
+missing a marker, a parameter missing, empty, `.` or `..`.

@@ -63,7 +63,7 @@ describe("prerendering", () =>
         ]);
 
         expect([...files.keys()].sort()).toEqual(["dist/index.html", "dist/robots.txt", "dist/sitemap.xml"]);
-        expect(files.get("dist/index.html")).toContain("<title>Shop</title>\n<meta name=\"description\" content=\"Chairs\">");
+        expect(files.get("dist/index.html")).toContain("<title>Shop</title>\n<meta name=\"description\" content=\"Chairs\" data-kit-head>");
         expect(files.get("dist/index.html")).toContain("<div id=\"root\"><p>page at <!-- -->/</p></div>");
     });
 
@@ -135,7 +135,7 @@ describe("prerendering", () =>
             [{ path: "/", title: "Shop", component: page, render: "prerender", head: () => ({ description: "Save $& now" }) }],
         );
 
-        expect(files.get("dist/index.html")).toContain("content=\"Save $&amp; now\"");
+        expect(files.get("dist/index.html")).toContain("content=\"Save $&amp; now\" data-kit-head");
     });
 
     test("writes a sitemap and robots.txt from what was prerendered", async () =>

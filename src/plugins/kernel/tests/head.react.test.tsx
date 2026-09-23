@@ -28,6 +28,19 @@ async function guarding(routes: readonly Route[], logged: string[] = [])
 
 describe("the head a page declares", () =>
 {
+    test("replaces what a prerender wrote, rather than adding a second copy beside it", async () =>
+    {
+        document.head.innerHTML = "<meta name=\"description\" content=\"from the server\" data-kit-head>";
+        const kernel = await guarding([{ path: "/a", title: "A", component: () => <p>a</p>, head: () => ({ description: "from the browser" }) }]);
+
+        render(<KernelProvider kernel={kernel}><RouteGuard route={kernel.routes()[0]!} /></KernelProvider>);
+
+        await waitFor(() =>
+        {
+            expect(Array.from(document.head.querySelectorAll("meta[name=description]"), (meta) => meta.getAttribute("content"))).toEqual(["from the browser"]);
+        });
+    });
+
     test("reaches the document, with the path's parameters", async () =>
     {
         const kernel = await guarding([{

@@ -51,16 +51,16 @@ describe("a head", () =>
 
     test("falls back to the route's title, and says robots as a crawler reads it", () =>
     {
-        expect(tagsFor({ robots: { index: false } })).toBe("<title>Items</title>\n<meta name=\"robots\" content=\"noindex, follow\">");
+        expect(tagsFor({ robots: { index: false } })).toBe("<title>Items</title>\n<meta name=\"robots\" content=\"noindex, follow\" data-kit-head>");
     });
 
     test("fills link-preview fields from the page's own title, description and canonical", () =>
     {
         const written = tagsFor({ description: "Chairs", canonical: "https://shop.example/items", openGraph: { type: "website" } });
 
-        expect(written).toContain("<meta property=\"og:title\" content=\"Items\">");
-        expect(written).toContain("<meta property=\"og:description\" content=\"Chairs\">");
-        expect(written).toContain("<meta property=\"og:url\" content=\"https://shop.example/items\">");
+        expect(written).toContain("<meta property=\"og:title\" content=\"Items\" data-kit-head>");
+        expect(written).toContain("<meta property=\"og:description\" content=\"Chairs\" data-kit-head>");
+        expect(written).toContain("<meta property=\"og:url\" content=\"https://shop.example/items\" data-kit-head>");
     });
 
     test("escapes what it writes, so a title cannot close its tag and a quote cannot end an attribute", () =>

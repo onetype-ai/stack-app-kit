@@ -125,7 +125,7 @@ export function renderTags(tags: readonly HeadTag[]): string
             return `<title>${escaped(one.text)}</title>`;
         }
 
-        const attributes = Object.entries(one.attributes).map(([key, value]) => ` ${key}="${escaped(value)}"`).join("");
+        const attributes = `${Object.entries(one.attributes).map(([key, value]) => ` ${key}="${escaped(value)}"`).join("")} data-kit-head`;
 
         if (one.tag === "script")
         {
