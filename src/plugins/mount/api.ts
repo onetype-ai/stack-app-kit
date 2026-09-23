@@ -20,6 +20,9 @@ export type StartOptions = {
     transport: TransportOptions;
 
     config?: Readonly<Record<string, unknown>> | undefined;
+
+    /** What the bundler exposes (`import.meta.env`): `VITE_<PLUGIN>__<FIELD>` reaches that plugin's config, under whatever `config` gives it. */
+    environment?: Readonly<Record<string, unknown>> | undefined;
     permissions?: PermissionSource | undefined;
     log?: Logger | undefined;
 

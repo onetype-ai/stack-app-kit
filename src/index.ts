@@ -57,6 +57,8 @@ export { cachePlugin } from "./plugins/cache/plugin";
 export * as router from "./plugins/router/api";
 export { routerPlugin } from "./plugins/router/plugin";
 
+export * as settings from "./plugins/settings/api";
+export { settingsPlugin } from "./plugins/settings/plugin";
 export { discover, start } from "./plugins/mount/api";
 export { mountPlugin } from "./plugins/mount/plugin";
 export type { PluginModules, StartedApp, StartOptions } from "./plugins/mount/api";

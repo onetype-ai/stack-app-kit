@@ -10,12 +10,16 @@ import { transportPlugin } from "../../transport/plugin";
 import { tree } from "../../router/api";
 import type { StartOptions, StartedApp } from "../api";
 import { client } from "./client";
+import { configFor } from "../../settings/api";
 
 /** Brings an application up: transport, then kernel, then plugins. */
 export async function start(given: StartOptions): Promise<StartedApp>
 {
     const closed = await closeOver(given.plugins, given.config);
-    const starting: StartOptions = { ...given, plugins: closed.plugins as readonly AppPlugin[], ...(closed.config !== undefined && { config: closed.config }) };
+    const plugins = closed.plugins as readonly AppPlugin[];
+    const fromEnvironment = given.environment === undefined ? {} : configFor(plugins, given.environment);
+    const config = closed.config === undefined && given.environment === undefined ? undefined : { ...fromEnvironment, ...closed.config };
+    const starting: StartOptions = { ...given, plugins, ...(config !== undefined && { config }) };
     const logger = starting.log;
     const log: HostLog = (line, about) =>
     {
