@@ -19,10 +19,14 @@
         "zod": "^4.5.4"
     },
     "peerDependencies": {
-        "react": ">=18"
+        "react": ">=18",
+        "react-dom": ">=18"
     },
     "peerDependenciesMeta": {
         "react": {
+            "optional": true
+        },
+        "react-dom": {
             "optional": true
         }
     },
@@ -92,6 +96,10 @@
         "./testing": {
             "types": "./dist/testing.d.ts",
             "import": "./dist/testing.js"
+        },
+        "./server": {
+            "types": "./dist/server.d.ts",
+            "import": "./dist/server.js"
         }
     }
 }

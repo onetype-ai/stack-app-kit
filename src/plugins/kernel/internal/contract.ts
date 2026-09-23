@@ -1,3 +1,4 @@
+import type { Head } from "./head";
 import type { ComponentType, FunctionComponent, ReactNode } from "react";
 import type { z } from "zod";
 
@@ -74,7 +75,22 @@ export type Route<Config = unknown, Services = unknown> = {
     /** Where the viewer belongs instead, when this page is not it: asked before `requires`. */
     instead?: ((ctx: Context<Config, Services>) => string | undefined) | undefined;
 
+    /** "prerender" writes this page as HTML at build time, for search engines and first paint; "client" (the default) renders it in the browser only. A prerendered page may hold no `requires` or `instead`. */
+    render?: "client" | "prerender" | undefined;
+
+    /** Every set of parameters to prerender, for a path holding `$name` segments: `[{ id: "1" }]` for `/items/$id`. */
+    paths?: ((ctx: Context<Config, Services>) => readonly RouteParams[] | Promise<readonly RouteParams[]>) | undefined;
+
+    /** Fetches what the page reads before it renders on a server, filling the cache the page reads from. */
+    load?: ((ctx: Context<Config, Services>, params: RouteParams) => void | Promise<void>) | undefined;
+
+    /** What the page says to search engines and link previews, validated before it is written; `title` falls back to the route's. */
+    head?: ((ctx: Context<Config, Services>, params: RouteParams) => Head | Promise<Head>) | undefined;
+
 };
+
+/** A path's `$name` segments and what they matched. */
+export type RouteParams = Readonly<Record<string, string>>;
 
 /** What a component sees when a contribution or a page threw. */
 export type FallbackProps = {

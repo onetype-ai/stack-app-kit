@@ -30,11 +30,14 @@ export type {
     Realtime,
     CallOptions,
     Route,
+    RouteParams,
     DescribableWithSchema,
     Slot,
 } from "./internal/contract";
 
 export { declarationsOf } from "./internal/declared";
+export { checkHead, renderTags, tagsOf } from "./internal/head";
+export type { Head, HeadProblem, HeadTag } from "./internal/head";
 export type {
     Declaration,
     DeclaredCommand,

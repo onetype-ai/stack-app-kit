@@ -1,7 +1,7 @@
 import { Component, createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ComponentType, type FunctionComponent, type ReactNode } from "react";
 
-import { KernelFault } from "../api";
-import type { Context, FallbackProps, RegisteredRoute } from "../api";
+import { KernelFault, checkHead, tagsOf } from "../api";
+import type { Context, FallbackProps, HeadTag, RegisteredRoute, RouteParams } from "../api";
 import type { Kernel } from "../internal/kernel";
 
 export { StartupFailure } from "./StartupFailure";
@@ -209,12 +209,96 @@ function useMissingPermissions(route: RegisteredRoute): readonly string[]
     return useSyncExternalStore(watch, lacking, lacking).split(" ").filter(Boolean);
 }
 
-/** A page, and what it takes to see it. */
-export function RouteGuard({ route, send }: { route: RegisteredRoute; send?: (to: string) => ReactNode }): ReactNode
+const ownedByHead = "data-kit-head";
+
+function applyHead(tags: readonly HeadTag[]): void
+{
+    document.head.querySelectorAll(`[${ownedByHead}]`).forEach((stale) =>
+    {
+        stale.remove();
+    });
+
+    for (const one of tags)
+    {
+        if (one.tag === "title")
+        {
+            document.title = one.text;
+
+            continue;
+        }
+
+        const element = document.createElement(one.tag);
+
+        for (const [key, value] of Object.entries(one.attributes))
+        {
+            element.setAttribute(key, value);
+        }
+
+        if (one.tag === "script")
+        {
+            element.textContent = one.text;
+        }
+
+        element.setAttribute(ownedByHead, "");
+        document.head.append(element);
+    }
+}
+
+function useHead(kernel: Kernel, route: RegisteredRoute, params: RouteParams): void
+{
+    const paramsKey = JSON.stringify(params);
+
+    useEffect(() =>
+    {
+        let isCurrent = true;
+        const ctx = kernel.context(route.plugin);
+        const fallback = [{ tag: "title" as const, text: route.title }];
+
+        Promise.resolve(route.head?.(ctx, JSON.parse(paramsKey) as RouteParams) ?? {})
+            .then((given) =>
+            {
+                if (!isCurrent)
+                {
+                    return;
+                }
+
+                const checked = checkHead(given);
+
+                if ("problems" in checked)
+                {
+                    ctx.log.error(`head of "${route.path}" was refused`, { problems: checked.problems.map((one) => `${one.field}: ${one.problem}`).join("; ") });
+                    applyHead(fallback);
+
+                    return;
+                }
+
+                applyHead(tagsOf(checked.head, route.title));
+            })
+            .catch((cause: unknown) =>
+            {
+                ctx.log.error(`head of "${route.path}" threw`, { cause: cause instanceof Error ? cause.message : String(cause) });
+
+                if (isCurrent)
+                {
+                    applyHead(fallback);
+                }
+            });
+
+        return () =>
+        {
+            isCurrent = false;
+        };
+    }, [kernel, route, paramsKey]);
+}
+
+/** A page, and what it takes to see it; `params` are what the path matched, for the route's `head`. */
+export function RouteGuard({ route, send, params = {} }: { route: RegisteredRoute; send?: (to: string) => ReactNode; params?: RouteParams }): ReactNode
 {
     const kernel = useKernel();
     const pages = usePages();
     const lacking = useMissingPermissions(route);
+
+    useHead(kernel, route, params);
 
     const elsewhere = route.instead?.(kernel.context(route.plugin));
 

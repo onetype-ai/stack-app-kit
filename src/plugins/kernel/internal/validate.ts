@@ -165,6 +165,28 @@ function checkOwn(name: string, plugin: Plugin, owned: Owned, report: (code: Ker
             continue;
         }
 
+        const holdsParameters = /\$[A-Za-z_]/.test(route.path);
+
+        if (route.render !== undefined && route.render !== "client" && route.render !== "prerender")
+        {
+            report("INVALID_ROUTE", name, `Route "${route.path}" asks to render "${String(route.render)}", which is not "client" or "prerender".`);
+        }
+
+        if (route.render === "prerender" && ((route.requires?.length ?? 0) > 0 || route.instead !== undefined))
+        {
+            report("INVALID_ROUTE", name, `Route "${route.path}" is prerendered and guarded: a page written once at build time is the same for every viewer. Drop requires and instead, or render it on the client.`);
+        }
+
+        if (route.render === "prerender" && holdsParameters && route.paths === undefined)
+        {
+            report("INVALID_ROUTE", name, `Route "${route.path}" is prerendered and holds parameters, with no paths saying which to write. Add paths: (ctx) => [{ ... }].`);
+        }
+
+        if (route.paths !== undefined && !holdsParameters)
+        {
+            report("INVALID_ROUTE", name, `Route "${route.path}" declares paths, and its path holds no $parameter for them to fill. Remove paths.`);
+        }
+
         const owner = owned.routes.get(route.path);
 
         if (owner !== undefined)
