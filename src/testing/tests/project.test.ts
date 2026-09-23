@@ -81,13 +81,24 @@ describe("what a project refuses", () =>
         expect(Project.findAll({ root: at }).map((problem) => problem.check)).toContain("oversized");
     });
 
-    test("measuring a plugin's usage.md, which another author reads whole", () =>
+    test("warning about a plugin's usage.md past its size, without failing a project that passed before", () =>
     {
         const at = createProject();
 
         writeFileSync(join(at, "src", "plugins", "demo", "usage.md"), "x".repeat(1801));
 
-        expect(Project.findAll({ root: at }).map((problem) => problem.message)).toContainEqual(expect.stringContaining("src/plugins/demo/usage.md is 1801 characters"));
+        expect(Project.findAll({ root: at }).map((problem) => problem.check)).not.toContain("oversized");
+        expect(Project.findWarnings({ root: at }).map((problem) => problem.message)).toContainEqual(expect.stringContaining("src/plugins/demo/usage.md is 1801 characters"));
+    });
+
+    test("refusing it when strict, and then no longer warning about it", () =>
+    {
+        const at = createProject();
+
+        writeFileSync(join(at, "src", "plugins", "demo", "usage.md"), "x".repeat(1801));
+
+        expect(Project.findAll({ root: at, strict: true }).map((problem) => problem.message)).toContainEqual(expect.stringContaining("src/plugins/demo/usage.md is 1801 characters"));
+        expect(Project.findWarnings({ root: at, strict: true })).toEqual([]);
     });
 
     test("leaving a usage.md at the limit alone", () =>

@@ -1281,9 +1281,11 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 ### findUnwatched(root: string): Unwatched[]
 
 > Every check an application runs on itself, in one call.
-### Project: { required: readonly ["#docs/usage.md", "#docs/stack.md", "#docs/architecture.md"]; findAll: (checking?: ProjectCheckOptions) => ProjectProblem[]; /** Every check that could not run, and what it would have read. */ findSkipped: (checking?: ProjectCheckOptions) => ProjectSkipped[] }
+### Project: { required: readonly ["#docs/usage.md", "#docs/stack.md", "#docs/architecture.md"]; findAll: (checking?: ProjectCheckOptions) => ProjectProblem[]; /** What 6.x reports without failing: each becomes a refusal in `findAll` with `strict: true`, the default from 7.0. */ findWarnings: (checking?: ProjectCheckOptions) => ProjectProblem[]; /** Every check that could not run, and what it would have read. */ findSkipped: (checking?: ProjectCheckOptions) => ProjectSkipped[] }
     required: readonly ["#docs/usage.md", "#docs/stack.md", "#docs/architecture.md"]
     findAll: (checking?: ProjectCheckOptions) => ProjectProblem[]
+    // What 6.x reports without failing: each becomes a refusal in `findAll` with `strict: true`, the default from 7.0.
+    findWarnings: (checking?: ProjectCheckOptions) => ProjectProblem[]
     // Every check that could not run, and what it would have read.
     findSkipped: (checking?: ProjectCheckOptions) => ProjectSkipped[]
 
@@ -1419,6 +1421,8 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     docs?: string
     // Documents this application asks itself to hold; none unless named. `Project.required` is the kit's suggestion.
     required?: readonly string[]
+    // Refuses what 6.x only warns about (a plugin's usage.md past its size); the default from 7.0.
+    strict?: boolean
     // The size a document may reach before it has outgrown its point.
     maxCharacters?: number
     // The published type declaring `Definition`, read to list the keys a plugin may declare.

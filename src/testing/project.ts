@@ -44,6 +44,9 @@ export type ProjectCheckOptions = {
     /** Documents this application asks itself to hold; none unless named. `Project.required` is the kit's suggestion. */
     required?: readonly string[];
 
+    /** Refuses what 6.x only warns about (a plugin's usage.md past its size); the default from 7.0. */
+    strict?: boolean;
+
     /** The size a document may reach before it has outgrown its point. */
     maxCharacters?: number;
 
@@ -98,12 +101,7 @@ export const Project = {
                 message: `"${name}" has no usage.md. A plugin nobody can read is one nobody can depend on.`,
             })),
 
-            ...findOversizedDocs(plugins, checking.maxCharacters)
-                .filter((doc) => basename(doc.path) === "usage.md")
-                .map((doc) => ({
-                    check: "oversized" as const,
-                    message: `${doc.path.replace(`${root}/`, "")} is ${String(doc.size)} characters, past the size another author reads whole. Cut it to what a caller needs.`,
-                })),
+            ...(checking.strict === true ? oversizedUsage(root, plugins, checking.maxCharacters) : []),
 
             ...findUnknownTokens(source).map((unknown) => ({
                 check: "token" as const,
@@ -169,6 +167,15 @@ export const Project = {
         ];
     },
 
+    /** What 6.x reports without failing: each becomes a refusal in `findAll` with `strict: true`, the default from 7.0. */
+    findWarnings: (checking: ProjectCheckOptions = {}): ProjectProblem[] =>
+    {
+        const root = checking.root ?? process.cwd();
+        const plugins = checking.plugins ?? join(root, "src", "plugins");
+
+        return checking.strict === true ? [] : oversizedUsage(root, plugins, checking.maxCharacters);
+    },
+
     /** Every check that could not run, and what it would have read. */
     findSkipped: (checking: ProjectCheckOptions = {}): ProjectSkipped[] =>
     {
@@ -190,6 +197,16 @@ export const Project = {
         ];
     },
 };
+
+function oversizedUsage(root: string, plugins: string, maxCharacters: number | undefined): ProjectProblem[]
+{
+    return findOversizedDocs(plugins, maxCharacters)
+        .filter((doc) => basename(doc.path) === "usage.md")
+        .map((doc) => ({
+            check: "oversized" as const,
+            message: `${doc.path.replace(`${root}/`, "")} is ${String(doc.size)} characters, past the size another author reads whole. Cut it to what a caller needs.`,
+        }));
+}
 
 function everyDocument(folder: string): string
 {

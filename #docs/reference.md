@@ -146,8 +146,8 @@ import { Project } from "@onetype/stack-app-kit/testing";
 expect(Project.findAll()).toEqual([]);
 ```
 
-One call runs every check, including ones the kit adds later; each answers
-`{ check, message }`, and each `find*` is exported too. Two plugins holding
+One call runs every check, even later ones: `{ check, message }` each.
+`findWarnings()` lists what 6.x warns about; `strict: true` refuses it. Two plugins holding
 one util or enum is refused (a copy names itself in `sharing`).
 `budgets: { "public/x.js": 2048 }` weighs a built file gzipped.
 `otherStacks: ["../api/src/plugins"]` names the other half of a two-stack
@@ -155,5 +155,5 @@ application; a guard that cannot reach it is `skipped`, never a pass.
 
 `configureTestKernels({ resolve })` in a setup file lets a test name only the
 plugin under test: `start` adds its dependencies, transitively, from
-`resolve(name)` → `{ plugin, config? }`; a passed plugin wins by name.
+`resolve(name)` → `{ plugin, config? }`; a passed plugin wins.
 `withDependencies` does it for `createKernel`.
