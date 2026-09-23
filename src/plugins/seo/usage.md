@@ -2,41 +2,39 @@
 
 ## Description
 
-A route as HTML with its head: `render: "prerender"` at build time,
-`render: "server"` per request. Other routes stay client pages.
+What a crawler and a link preview read: a route's `head`, `sitemap.xml` and
+`robots.txt`. The `server` plugin writes them into rendered pages.
 
 ## Purpose
 
-A crawler and a link preview read the first HTML, not what a script draws.
+A search engine indexes the first HTML and its tags, not what a script draws.
+One validated head per route keeps every page's tags right by construction.
 
 ## Usage
 
 ```ts
-routes: [{ path: "/items/$id", component: ItemPage, title: "Item", render: "prerender",
-    paths: async (ctx) => (await ctx.http.get("/items")).map(({ id }) => ({ id })),
-    load: (ctx, { id }) => ctx.http.get(`/items/${id}`),
-    head: (ctx, { id }) => ({ description: "…", canonical: `https://shop.example/items/${id}` }) }],
-
-await prerender({ app, origin, outDir: "dist", template, render: (path) => …, state });
-const page = await handle(request, { respond, state,
-    start: (session) => start({ …, transport: { baseUrl, headers: () => session.headers } }) });
+routes: [{
+    path: "/items/$id", component: ItemPage, title: "Item", render: "prerender",
+    head: (ctx, { id }) => ({
+        description: "One item.",
+        canonical: `https://shop.example/items/${id}`,
+        openGraph: { type: "product", image: "https://shop.example/items/1.jpg" },
+        jsonLd: [{ "@context": "https://schema.org", "@type": "Product", name: "Item" }],
+        alternates: [{ locale: "de", href: `https://shop.example/de/items/${id}` }],
+    }),
+}],
 ```
 
-- `prerender` fills `<!--kit-head-->` and `<!--kit-app-->` of `template`
-  into `<outDir><path>/index.html`, and writes `sitemap.xml`, `robots.txt`
-  and `_shell.html`, served for every path without a file.
-- `handle` starts an app per request (only the cookie and the language
-  forwarded), writes the head before `</head>` of what `respond` streams,
-  and answers undefined unless a server route matches a GET. Keep request
-  state in the kernel.
-- `head` is validated and escaped; `title` defaults to the route's.
-- The browser: `hydrate(queryClient, state)` once `prerenderedState()` is
-  narrowed to an object, then
-  `start({ prerendered: prerenderedState() !== undefined })`, then
-  `hydrateRoot` with the same tree the server rendered.
-- `RouteGuard` replaces the head on navigation; pass it `params`.
+- `title` falls back to the route's. Every address is absolute http(s);
+  text is bounded; JSON-LD is plain JSON. Tags are escaped, and JSON-LD
+  cannot close its script.
+- `robots: { index: false }` keeps a page out of `sitemapXml`; alternates
+  become hreflang links in the page and the sitemap.
+- In the browser, `RouteGuard` applies the head on every navigation and
+  replaces only tags marked `data-kit-head`; pass it the router's `params`.
 
 ## Refuses
 
-All at once, before prerender writes: an invalid head, a template missing a
-marker, a bad `fallback`, a parameter missing, empty, `.` or `..`.
+A head with an unknown key, a relative or non-http address, text past its
+bound or JSON-LD that is not plain JSON, naming the field: a prerender stops,
+and a rendered or browsed page keeps its title and logs it.

@@ -45,7 +45,7 @@ describe("what the progress notes claim about this package", () =>
 
     test("names as many plugins as src/plugins holds", () =>
     {
-        const spelled: Record<string, number> = { Three: 3, Four: 4, Five: 5, Six: 6, Seven: 7, Eight: 8 };
+        const spelled: Record<string, number> = { Three: 3, Four: 4, Five: 5, Six: 6, Seven: 7, Eight: 8, Nine: 9, Ten: 10 };
         const claimedWord = /^(\w+) plugins/m.exec(progress("brief.md"))?.[1] ?? "";
 
         expect(spelled[claimedWord]).toBe(folders(join("src", "plugins")));

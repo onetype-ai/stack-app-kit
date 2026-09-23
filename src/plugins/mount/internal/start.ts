@@ -10,7 +10,7 @@ import { transportPlugin } from "../../transport/plugin";
 import { tree } from "../../router/api";
 import type { StartOptions, StartedApp } from "../api";
 import { client } from "./client";
-import { readyToHydrate } from "./hydration";
+import { readyToHydrate, visit } from "./hydration";
 import { configFor } from "../../settings/api";
 
 /** Brings an application up: transport, then kernel, then plugins. */
@@ -151,6 +151,8 @@ export async function start(given: StartOptions): Promise<StartedApp>
         realtime,
         channel,
         router,
+
+        visit: (path: string) => visit(router, building?.history, path),
 
         stop: async (): Promise<void> =>
         {

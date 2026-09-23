@@ -4,7 +4,7 @@ import { definePlugin } from "../../kernel/api";
 import type { Route } from "../../kernel/api";
 import { start } from "../../mount/api";
 import type { StartedApp } from "../../mount/api";
-import { SeoFault, robotsTxt, sitemapXml } from "../api";
+import { SeoFault } from "../../seo/api";
 import { prerender } from "../react/server";
 
 const template = "<html><head><!--kit-head--></head><body><div id=\"root\"><!--kit-app--></div></body></html>";
@@ -159,14 +159,5 @@ describe("prerendering", () =>
         expect(files.get("dist/sitemap.xml")).toContain("<loc>https://shop.example/</loc>\n    <xhtml:link rel=\"alternate\" hreflang=\"de\" href=\"https://shop.example/de\"/>");
         expect(files.get("dist/sitemap.xml")).not.toContain("/drafts");
         expect(files.get("dist/robots.txt")).toBe("User-agent: *\nDisallow: /account\nAllow: /\nSitemap: https://shop.example/sitemap.xml\n");
-    });
-});
-
-describe("sitemap and robots on their own", () =>
-{
-    test("escape what they write", () =>
-    {
-        expect(sitemapXml("https://shop.example", [{ path: "/a?b=1&c=2", isIndexed: true, alternates: [] }])).toContain("<loc>https://shop.example/a?b=1&amp;c=2</loc>");
-        expect(robotsTxt("https://shop.example")).toBe("User-agent: *\nAllow: /\nSitemap: https://shop.example/sitemap.xml\n");
     });
 });

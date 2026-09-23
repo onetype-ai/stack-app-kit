@@ -1,16 +1,16 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { dirname, join, parse, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 
 import { checkHead, renderTags, tagsOf } from "../../kernel/api";
 import type { HeadTag, RouteParams } from "../../kernel/api";
 import type { StartedApp } from "../../mount/api";
-import { SeoFault } from "../internal/faults";
+import { SeoFault, robotsTxt, sitemapXml } from "../../seo/api";
+import type { SitemapPage } from "../../seo/api";
 import { matchRoute } from "../internal/match";
 import { filled } from "../internal/paths";
-import { robotsTxt, sitemapXml } from "../internal/sitemap";
-import type { SitemapPage } from "../internal/sitemap";
 
 /** What `prerender` needs: a started app, how to render one path, and where the pages go. */
 export type PrerenderOptions = {
@@ -326,4 +326,151 @@ export async function handle(request: Request, options: HandleOptions): Promise<
 
         throw cause;
     }
+}
+
+/** What a build hands the entry `prerenderOnBuild` built: the client's template, where the site is served, and where pages go. */
+export type BuildOutput = {
+    template: string;
+    origin: string;
+    outDir: string;
+};
+
+/** What `prerenderApp` needs: the same app and tree the browser starts, built once for every page. */
+export type PrerenderAppOptions = {
+    /** Starts the app as the browser does, with one query client given to `cache.fromQueries` and read by `state`. */
+    start: () => Promise<StartedApp>;
+
+    /** The one tree `main.tsx` also renders, so server and client cannot drift. */
+    tree: (app: StartedApp) => ReactNode;
+
+    state?: (() => unknown) | undefined;
+    disallow?: readonly string[] | undefined;
+};
+
+/** The default export of a prerender entry: starts the app once, then writes every prerendered route through `prerender`. */
+export function prerenderApp(options: PrerenderAppOptions): (output: BuildOutput) => Promise<readonly PrerenderedPage[]>
+{
+    return async (output) =>
+    {
+        const app = await options.start();
+
+        try
+        {
+            return await prerender({
+                app,
+                template: output.template,
+                origin: output.origin,
+                outDir: output.outDir,
+                render: async (path) =>
+                {
+                    await app.visit(path);
+
+                    return options.tree(app);
+                },
+                ...(options.state !== undefined && { state: options.state }),
+                ...(options.disallow !== undefined && { disallow: options.disallow }),
+            });
+        }
+        finally
+        {
+            await app.stop();
+        }
+    };
+}
+
+/** What `prerenderOnBuild` takes: the entry whose default export `prerenderApp` answered, and where the site is served. */
+export type PrerenderOnBuildOptions = {
+    entry: string;
+    origin: string | undefined;
+};
+
+type ResolvedBuildConfig = {
+    root: string;
+    mode: string;
+    configFile: string | false | undefined;
+    command: string;
+    build: { outDir: string; ssr: unknown };
+};
+
+type ViteBuild = { build: (config: Record<string, unknown>) => Promise<unknown> };
+
+/**
+ * A Vite plugin: once the client is built, builds `entry` for the server, runs its default export with the built
+ * `index.html`, and removes the server build. Skips the nested server build it starts, and every command but `build`.
+ * In a production build, an origin that is missing or not absolute http(s) stops the build.
+ */
+export function prerenderOnBuild(options: PrerenderOnBuildOptions)
+{
+    let config: ResolvedBuildConfig | undefined;
+
+    return {
+        name: "stack-app-kit:prerender",
+
+        configResolved: (resolved: ResolvedBuildConfig) =>
+        {
+            config = resolved;
+
+            const isOwnServerBuild = resolved.build.ssr !== undefined && resolved.build.ssr !== false;
+
+            if (resolved.command !== "build" || isOwnServerBuild || resolved.mode !== "production")
+            {
+                return;
+            }
+
+            if (options.origin === undefined || !/^https?:\/\/[^/\s]+$/.test(options.origin.replace(/\/+$/, "")))
+            {
+                throw new SeoFault([`origin "${options.origin ?? ""}" must be an absolute http(s) address like https://shop.example, for canonical links and the sitemap`]);
+            }
+        },
+
+        closeBundle: async () =>
+        {
+            const built = config;
+
+            if (built === undefined || built.command !== "build" || (built.build.ssr !== undefined && built.build.ssr !== false))
+            {
+                return;
+            }
+
+            const outDir = resolve(built.root, built.build.outDir);
+            const serverDir = join(outDir, ".prerender");
+            const vite = await import("vite") as unknown as ViteBuild;
+
+            await vite.build({
+                root: built.root,
+                mode: built.mode,
+                configFile: built.configFile,
+                logLevel: "warn",
+                build: { ssr: options.entry, outDir: serverDir, emptyOutDir: true, copyPublicDir: false },
+            });
+
+            try
+            {
+                const name = parse(options.entry).name;
+                const file = (await readdir(serverDir)).find((one) => parse(one).name === name && /\.m?js$/.test(one));
+
+                if (file === undefined)
+                {
+                    throw new SeoFault([`the server build of "${options.entry}" wrote no ${name}.js to ${serverDir}`]);
+                }
+
+                const module = await import(pathToFileURL(join(serverDir, file)).href) as { default?: (output: BuildOutput) => Promise<unknown> };
+
+                if (typeof module.default !== "function")
+                {
+                    throw new SeoFault([`"${options.entry}" must default-export prerenderApp({ ... })`]);
+                }
+
+                await module.default({
+                    template: await readFile(join(outDir, "index.html"), "utf8"),
+                    origin: options.origin ?? "http://localhost",
+                    outDir,
+                });
+            }
+            finally
+            {
+                await rm(serverDir, { recursive: true, force: true });
+            }
+        },
+    };
 }

@@ -46,8 +46,11 @@
 > Turns the routes plugins declared into a router the application renders.
 ### routerPlugin(building: RouterOptions): HostPlugin
 
-> Offers what writes a site's sitemap and robots.txt; `./server` holds the prerender.
+> Offers what writes a site's sitemap and robots.txt.
 ### seoPlugin(): HostPlugin
+
+> Names the entry that renders pages in Node: prerender at build time, and per request.
+### serverPlugin(): HostPlugin
 
 > Where an application listens, and which server `/api` reaches.
 > `strictPort` is the point: a port already taken is refused rather than
@@ -508,6 +511,8 @@
     // What renders at `/` when no plugin declares it: a redirect to the first route there is.
     landing: (to: string) => ComponentType
     guard: (route: RegisteredRoute) => ComponentType
+    // A history standing at one path (`createMemoryHistory({ initialEntries: [path] })`), for rendering that path on a server.
+    history?: ((path: string) => unknown) | undefined
 
 > The part of a router library this plugin drives.
 ### RouterOptions
@@ -564,6 +569,8 @@
     channel: "ws" | "http"
     // The router built from what plugins declared, where `start` was given one to build with.
     router: unknown
+    // Stands the router at `path` and loads it, for rendering that path on a server; refuses without `router.history`.
+    visit: (path: string) => Promise<void>
     // Stops the plugins, then the socket.
     stop: () => Promise<void>
 
@@ -763,6 +770,21 @@ Imported whole, then reached through the name: `import { seo } from "@onetype/st
     }[]
 
 ### seo.sitemapXml(origin: string, pages: readonly SitemapPage[]): string
+
+## server
+
+Imported whole, then reached through the name: `import { server } from "@onetype/stack-app-kit";`. Its members have no import of their own.
+
+> The server plugin, for a plugin that declared "server" in needs.
+### server.from(host: Host): Server | undefined
+
+> What this plugin offers itself as.
+### server.NAME = "server"
+
+> What `server.from(host)` answers: nothing to call in a browser; the work is in the `./server` entry.
+### server.Server
+    // The entry a Node process imports for prerendering and rendering per request.
+    entry: "@onetype/stack-app-kit/server"
 
 ## settings
 
@@ -1302,7 +1324,24 @@ Imported whole, then reached through the name: `import { transport } from "@onet
 > a problem anywhere throws `SeoFault` naming them all.
 ### prerender(options: PrerenderOptions): Promise<readonly PrerenderedPage[]>
 
+> The default export of a prerender entry: starts the app once, then writes every prerendered route through `prerender`.
+### prerenderApp(options: PrerenderAppOptions): (output: BuildOutput) => Promise<readonly PrerenderedPage[]>
+
+> A Vite plugin: once the client is built, builds `entry` for the server, runs its default export with the built
+> `index.html`, and removes the server build. Skips the nested server build it starts, and every command but `build`.
+> In a production build, an origin that is missing or not absolute http(s) stops the build.
+### prerenderOnBuild(options: PrerenderOnBuildOptions): { name: string; configResolved: (resolved: ResolvedBuildConfig) => void; closeBundle: () => Promise<void> }
+    name: string
+    configResolved: (resolved: ResolvedBuildConfig) => void
+    closeBundle: () => Promise<void>
+
 ## Types
+
+> What a build hands the entry `prerenderOnBuild` built: the client's template, where the site is served, and where pages go.
+### BuildOutput
+    template: string
+    origin: string
+    outDir: string
 
 > What `handle` needs: a fresh app per request, and how that app renders its document.
 ### HandleOptions
@@ -1313,10 +1352,24 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     // What the client hydrates its cache from, read once the page loaded.
     state?: ((app: StartedApp) => unknown) | undefined
 
+> What `prerenderApp` needs: the same app and tree the browser starts, built once for every page.
+### PrerenderAppOptions
+    // Starts the app as the browser does, with one query client given to `cache.fromQueries` and read by `state`.
+    start: () => Promise<StartedApp>
+    // The one tree `main.tsx` also renders, so server and client cannot drift.
+    tree: (app: StartedApp) => ReactNode
+    state?: (() => unknown) | undefined
+    disallow?: readonly string[] | undefined
+
 > One page written, and what it said about itself.
 ### PrerenderedPage
     path: string
     file: string
+
+> What `prerenderOnBuild` takes: the entry whose default export `prerenderApp` answered, and where the site is served.
+### PrerenderOnBuildOptions
+    entry: string
+    origin: string | undefined
 
 > What `prerender` needs: a started app, how to render one path, and where the pages go.
 ### PrerenderOptions

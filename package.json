@@ -20,13 +20,17 @@
     },
     "peerDependencies": {
         "react": ">=18",
-        "react-dom": ">=18"
+        "react-dom": ">=18",
+        "vite": ">=6"
     },
     "peerDependenciesMeta": {
         "react": {
             "optional": true
         },
         "react-dom": {
+            "optional": true
+        },
+        "vite": {
             "optional": true
         }
     },
@@ -44,6 +48,7 @@
         "tsup": "^8.5.1",
         "typescript": "^5.7.0",
         "typescript-eslint": "^8.69.0",
+        "vite": "8.2.2",
         "vitest": "^2.1.0"
     },
     "description": "A kernel that holds frontend plugins apart: contracts, routes, slots, events, hooks and permissions, refused at startup rather than in review.",

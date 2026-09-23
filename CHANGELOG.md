@@ -8,6 +8,14 @@
   an app per request (the viewer's cookie and language only), the route's
   checked head written into the streamed document, undefined for requests
   it does not render.
+- `prerenderOnBuild({ entry, origin })`, a Vite plugin that builds and runs
+  the prerender entry after the client build (and skips its own server
+  build), and `prerenderApp({ start, tree, state })` as that entry's default
+  export.
+- `router.history` and `StartedApp.visit(path)`, which stand the router at a
+  path and load it.
+- A `server` plugin now owns rendering in Node; `seo` keeps the head, the
+  sitemap and robots.txt. `./server` and `SeoFault` are unchanged.
 
 ### Changed
 

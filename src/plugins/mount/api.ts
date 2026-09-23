@@ -60,6 +60,9 @@ export type RouterBuilding = {
     /** What renders at `/` when no plugin declares it: a redirect to the first route there is. */
     landing: (to: string) => ComponentType;
     guard: (route: RegisteredRoute) => ComponentType;
+
+    /** A history standing at one path (`createMemoryHistory({ initialEntries: [path] })`), for rendering that path on a server. */
+    history?: ((path: string) => unknown) | undefined;
 };
 
 /** What an application holds once it is up. */
@@ -73,6 +76,9 @@ export type StartedApp = {
 
     /** The router built from what plugins declared, where `start` was given one to build with. */
     router: unknown;
+
+    /** Stands the router at `path` and loads it, for rendering that path on a server; refuses without `router.history`. */
+    visit: (path: string) => Promise<void>;
 
     /** Stops the plugins, then the socket. */
     stop: () => Promise<void>;

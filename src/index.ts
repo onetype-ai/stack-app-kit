@@ -63,6 +63,8 @@ export { routerPlugin } from "./plugins/router/plugin";
 export * as logs from "./plugins/logs/api";
 export { logsPlugin } from "./plugins/logs/plugin";
 export * as seo from "./plugins/seo/api";
+export * as server from "./plugins/server/api";
+export { serverPlugin } from "./plugins/server/plugin";
 export { seoPlugin } from "./plugins/seo/plugin";
 export * as settings from "./plugins/settings/api";
 export { settingsPlugin } from "./plugins/settings/plugin";
