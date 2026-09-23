@@ -33,6 +33,16 @@
 - `Context` gains `registry` and `pipeline`: a hand-built fake annotated with
   `Context` needs them (see 6.4.0). `fakeContext()` records runs in `piped`.
 
+### Testing
+
+- `@onetype/stack-app-kit/testing/app`: `openApp({ path, plugins, answers?,
+  preset?, config?, apiBase?, staleTimeMs?, permissions?, log? })` starts the
+  application at `path` with the router, a query cache and the kernel,
+  against answers instead of an api. It answers `{ app, calls, client }` and
+  cleans up after each test. `@tanstack/react-query`,
+  `@tanstack/react-router`, `@testing-library/react` and `vitest` are
+  optional peers, needed only for this entry.
+
 ## 6.4.0
 
 The first release after 6.0.2. An application on 6.0.2 starts, and its tests

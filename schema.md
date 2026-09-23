@@ -1602,6 +1602,61 @@ Imported whole, then reached through the name: `import { transport } from "@onet
     file: string
     shape: string
 
+# @onetype/stack-app-kit/testing/app
+
+## Functions
+
+> A 200 carrying `body`.
+### ok: (body: unknown) => AppAnswer
+
+> Starts the application as a browser would (router, query cache, kernel) against answers instead of an api, and
+> renders it at `path`. After each test, what it rendered unmounts, every app it opened stops, and `fetch` is restored.
+### openApp({ path, plugins, answers, preset, config, apiBase, staleTimeMs, permissions, log, transport, calls }: OpenAppOptions): Promise<OpenedApp>
+
+## Types
+
+> What the api answers; a 204 carries no body.
+### AppAnswer
+    status: number
+    body?: unknown
+
+> An answer, or one worked out from the call; `undefined` falls through to the next source.
+### AppAnswering = AppAnswer | ((call: AppCall) => AppAnswer | undefined)
+
+> Answers keyed `"METHOD /path"`, or `"*"` for any call nothing else answers.
+### AppAnswers = Readonly<Record<string, AppAnswering>>
+
+> One request the app made, as the api would read it: the path without the api base.
+### AppCall
+    method: string
+    path: string
+    query: Readonly<Record<string, string>>
+    body: unknown
+    headers: Headers
+
+### OpenAppOptions
+    // Where the browser is when the app starts.
+    path: string
+    plugins: readonly Plugin[]
+    // Asked first, then `answers["*"]`, then `preset`; nothing answering is a 404 `NOT_FOUND`.
+    answers?: AppAnswers | undefined
+    // Answers shared by many tests, overridden by `answers`.
+    preset?: AppAnswers | undefined
+    config?: Readonly<Record<string, unknown>> | undefined
+    apiBase?: string | undefined
+    staleTimeMs?: number | undefined
+    permissions?: StartOptions["permissions"] | undefined
+    log?: StartOptions["log"] | undefined
+    // Merged over `{ baseUrl: apiBase, retries: 0 }`.
+    transport?: Partial<StartOptions["transport"]> | undefined
+    // Where calls are recorded, so several apps in one test can share one list.
+    calls?: AppCall[] | undefined
+
+### OpenedApp
+    app: StartedApp
+    calls: AppCall[]
+    client: QueryClient
+
 # @onetype/stack-app-kit/server
 
 ## Functions

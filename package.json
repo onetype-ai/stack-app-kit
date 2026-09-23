@@ -20,10 +20,14 @@
         "zod": "^4.5.4"
     },
     "peerDependencies": {
+        "playwright": ">=1.40",
         "react": ">=18",
         "react-dom": ">=18",
         "vite": ">=6",
-        "playwright": ">=1.40"
+        "@tanstack/react-query": ">=5",
+        "@tanstack/react-router": ">=1.100",
+        "@testing-library/react": ">=16",
+        "vitest": ">=2"
     },
     "peerDependenciesMeta": {
         "react": {
@@ -37,11 +41,25 @@
         },
         "playwright": {
             "optional": true
+        },
+        "@tanstack/react-query": {
+            "optional": true
+        },
+        "@tanstack/react-router": {
+            "optional": true
+        },
+        "@testing-library/react": {
+            "optional": true
+        },
+        "vitest": {
+            "optional": true
         }
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@tanstack/query-core": "5.102.8",
+        "@tanstack/react-query": "5.102.8",
+        "@tanstack/react-router": "1.170.32",
         "@testing-library/react": "^16.3.3",
         "@types/node": "^26.4.0",
         "@types/react": "^19.2.18",
@@ -109,6 +127,10 @@
         "./testing": {
             "types": "./dist/testing.d.ts",
             "import": "./dist/testing.js"
+        },
+        "./testing/app": {
+            "types": "./dist/testing-app.d.ts",
+            "import": "./dist/testing-app.js"
         },
         "./server": {
             "types": "./dist/server.d.ts",

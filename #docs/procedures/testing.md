@@ -16,13 +16,23 @@ test("start refuses a plugin needing one that was not passed", async () =>
 });
 ```
 
-Name the case, not the function. Assert on the contract: the thrown code, the
-returned value, what the application can observe. Never a private field, never
-a mock of ourselves.
+Name the case, not the function. Assert on what the application can observe,
+never a private field or a mock of ourselves.
 
 A plugin takes its world as arguments, so a test passes its own: `openSocket`
 returns a fake socket. A fake accepting what a real one rejects is where bugs
 hide.
+
+A page is tested as the viewer meets it: `openApp`
+(`@onetype/stack-app-kit/testing/app`) starts the app at a path, with
+router, query cache and kernel, against answers instead of an api.
+
+```ts
+const { calls } = await openApp({ path: "/items", plugins: [items],
+    answers: { "GET /items": ok([{ name: "Lamp" }]) } });
+```
+
+Then `answers["*"]`, then `preset`; the rest is a 404.
 
 ## What must be proved
 
