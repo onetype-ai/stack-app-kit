@@ -1,6 +1,6 @@
 # brief
 
-Eleven plugins work. 614 tests, every one watched to fail. `done.md` logs the
+Eleven plugins work. 615 tests, every one watched to fail. `done.md` logs the
 guarantees one by one.
 
 An application declares plugins with `definePlugin` and brings them up with

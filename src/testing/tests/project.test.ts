@@ -435,18 +435,36 @@ describe("a key the contract accepts", () =>
 {
     const contract = "type Definition = {\n    version: string;\n    slots?: unknown;\n};";
 
-    test("is refused where no document writes it, since an author never learns it exists", () =>
+    test("is refused where a plugin declares it and no document writes it, since an author never learns it exists", () =>
     {
         const at = createProject();
 
         mkdirSync(join(at, "#docs"), { recursive: true });
+        mkdirSync(join(at, "src", "plugins", "notes"), { recursive: true });
         writeFileSync(join(at, "#docs", "a.md"), "`version` is required.\n");
+        writeFileSync(join(at, "src", "plugins", "notes", "plugin.ts"), "export default definePlugin(\"notes\", {\n    version: \"1.0.0\",\n    slots: {},\n});\n");
 
         const found = Project.findAll({ root: at, contract })
             .filter((problem) => problem.check === "undocumented");
 
         expect(found).toHaveLength(1);
         expect(found[0]?.message).toContain("slots");
+    });
+
+    test("only warns while no plugin declares it, so a kit upgrade adding a key fails no project that changed nothing", () =>
+    {
+        const at = createProject();
+
+        mkdirSync(join(at, "#docs"), { recursive: true });
+        writeFileSync(join(at, "#docs", "a.md"), "`version` is required.\n");
+
+        const refused = Project.findAll({ root: at, contract }).filter((problem) => problem.check === "undocumented");
+        const warned = Project.findWarnings({ root: at, contract }).filter((problem) => problem.check === "undocumented");
+        const strict = Project.findAll({ root: at, contract, strict: true }).filter((problem) => problem.check === "undocumented");
+
+        expect(refused).toEqual([]);
+        expect(warned.map((problem) => problem.message)).toEqual([expect.stringContaining("`slots`")]);
+        expect(strict).toHaveLength(1);
     });
 
     test("and left alone once a document writes it in backticks, which is what the check reads", () =>

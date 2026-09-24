@@ -10,6 +10,11 @@
   run time, which answers a stop. Both go through the same checks, and start
   refuses every bad entry at once (`INVALID_ENTRY`, `UNDECLARED_REGISTRY`,
   `DUPLICATE_REGISTRY`).
+- The new contract keys (`registries`, `pipelines`, `adds`) do not fail a
+  project's `Project.findAll`: an undocumented key no plugin declares is a
+  `findWarnings()` warning in 6.x. Name it in your docs when you first use it;
+  a declared key nobody documents is still refused, and `strict: true`
+  refuses both.
 - `ctx.registry(name).list()`, `kernel.registry(name)` and
   `useRegistry(name)` answer the entries by `order` and then key, without
   those whose `requires` the viewer lacks.

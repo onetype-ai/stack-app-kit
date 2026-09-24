@@ -189,6 +189,7 @@ export const Project = {
             ...oversizedFiles(root, plugins, checking.maxLines ?? 500),
             ...heavyTests(root, plugins, checking.maxTestRatio ?? 0.1),
             ...slowTests(root, checking.testReport, checking.maxTestShare ?? 0.1),
+            ...(checking.strict === true ? [] : undocumented(root, checking, false)),
         ];
     },
 
@@ -352,13 +353,28 @@ function documents(root: string, checking: ProjectCheckOptions): ProjectProblem[
             message: `${path} is absent or says nothing, and every application is asked for it.`,
         })),
 
-        ...(checking.contract === undefined
-            ? []
-            : findUndocumentedKeys(checking.contract, everyDocument(docsFolder)).map((key: string) => ({
-                check: "undocumented" as const,
-                message: `\`${key}\` is a key a contract accepts, and no document writes it. An author reading these never learns it exists.`,
-            }))),
+        ...undocumented(root, checking, true),
     ];
+}
+
+// A key no plugin here declares yet is one a kit upgrade added: it warns in 6.x rather than failing a project that changed nothing.
+function undocumented(root: string, checking: ProjectCheckOptions, used: boolean): ProjectProblem[]
+{
+    if (checking.contract === undefined)
+    {
+        return [];
+    }
+
+    const docsFolder = checking.docs ?? join(root, "#docs");
+    const plugins = checking.plugins ?? join(root, "src", "plugins");
+    const declared = sourcesOf(plugins).filter(({ file, isTest }) => !isTest && basename(file) === "plugin.ts").map(({ file }) => readFileSync(file, "utf8")).join("\n");
+
+    return findUndocumentedKeys(checking.contract, everyDocument(docsFolder))
+        .filter((key) => checking.strict === true || new RegExp(`^\\s+${key}\\??\\s*:`, "m").test(declared) === used)
+        .map((key: string) => ({
+            check: "undocumented" as const,
+            message: `\`${key}\` is a key a contract accepts, and no document writes it. An author reading these never learns it exists.`,
+        }));
 }
 
 
