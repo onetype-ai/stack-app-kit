@@ -1,6 +1,6 @@
 # Changelog
 
-## 6.5.0 (unreleased)
+## 6.5.0
 
 ### Registry
 
@@ -69,11 +69,11 @@
   - `slow`: a test file over `maxTestShare` (10%) of the suite's time, read
     from a vitest JSON `testReport`.
 
-## 6.4.1
+### Fixed
 
-- Fixed: a request carrying its own `Authorization` or `Cookie` header went
-  over an open socket, where the server answers as whoever dialled it. It now
-  always goes over HTTP.
+- A request carrying its own `Authorization` or `Cookie` header went over an
+  open socket, where the server answers as whoever dialled it. It now always
+  goes over HTTP.
 
 ## 6.4.0
 
