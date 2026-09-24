@@ -292,11 +292,30 @@ describe("with a socket", () =>
         expect(sockets[0]?.sent()).toHaveLength(1);
 
         lastSubscription.close();
+        await new Promise((settle) => setTimeout(settle, 0));
 
         expect(sockets[0]?.sent()).toEqual([
             JSON.stringify({ subscribe: "items" }),
             JSON.stringify({ unsubscribe: "items" }),
         ]);
+    });
+
+    test("keeps the server's subscription through a remount, so a push sent meanwhile still arrives", async () =>
+    {
+        const { transport, sockets } = startSocket();
+        const heard: unknown[] = [];
+        const connecting = transport.connect();
+        sockets[0]?.opened();
+        await connecting;
+        const first = transport.subscribe("items", (message) => heard.push(message));
+
+        first.close();
+        transport.subscribe("items", (message) => heard.push(message));
+        sockets[0]?.delivered(JSON.stringify({ channel: "items", body: "during the remount" }));
+        await new Promise((settle) => setTimeout(settle, 0));
+
+        expect(heard).toEqual(["during the remount"]);
+        expect(sockets[0]?.sent()).toEqual([JSON.stringify({ subscribe: "items" })]);
     });
 
     test("and says every one again on the socket a reconnect opens", async () =>

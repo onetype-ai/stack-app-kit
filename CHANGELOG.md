@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.5.1
+
+- Fixed: a channel whose last listener left and another joined at once (a
+  remount, an effect run again) sent `unsubscribe` then `subscribe`, and a
+  push the server sent between them was lost. The unsubscribe now waits a
+  tick and is dropped when a listener rejoins, so nothing goes on the wire.
+
 ## 6.5.0
 
 ### Registry

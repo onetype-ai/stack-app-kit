@@ -47,6 +47,7 @@ export function socket(settings: SocketOptions)
     const waiting = new Map<string, InFlight>();
     const subscribers = new Map<string, Set<(message: unknown) => void>>();
     const refusals = new Map<string, Set<(code: string) => void>>();
+    const leaving = new Map<string, ReturnType<typeof setTimeout>>();
     const now = settings.now ?? Date.now;
 
     let current: Socket | undefined;
@@ -547,7 +548,15 @@ export function socket(settings: SocketOptions)
                 refusals.set(topic, refusing);
             }
 
-            if (listeners.size === 1)
+            const pending = leaving.get(topic);
+
+            // a listener rejoining before the unsubscribe went out keeps the server's subscription; resending both loses what it pushes between
+            if (pending !== undefined)
+            {
+                clearTimeout(pending);
+                leaving.delete(topic);
+            }
+            else if (listeners.size === 1)
             {
                 tell("subscribe", topic);
             }
@@ -562,11 +571,19 @@ export function socket(settings: SocketOptions)
                         refusing.delete(refused);
                     }
 
-                    if (listeners.size === 0)
+                    if (listeners.size === 0 && !leaving.has(topic))
                     {
-                        subscribers.delete(topic);
-                        refusals.delete(topic);
-                        tell("unsubscribe", topic);
+                        leaving.set(topic, setTimeout(() =>
+                        {
+                            leaving.delete(topic);
+
+                            if (listeners.size === 0)
+                            {
+                                subscribers.delete(topic);
+                                refusals.delete(topic);
+                                tell("unsubscribe", topic);
+                            }
+                        }, 0));
                     }
                 },
             };
@@ -575,6 +592,13 @@ export function socket(settings: SocketOptions)
         close: (): void =>
         {
             closedByUs = true;
+
+            for (const pending of leaving.values())
+            {
+                clearTimeout(pending);
+            }
+
+            leaving.clear();
             stopWaking?.();
             clearTimeout(silence);
             clearTimeout(readiness?.timer);
